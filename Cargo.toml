@@ -8,5 +8,5 @@ authors = ["Sumit Modak <sumit.modak.code@gmail.com>"]
 
 [dependencies]
 axum = "0.7.5"
-serde = "1.0.197"
+serde = { version = "1.0.197", features = ["derive"] }
 tokio = { version = "1.37.0", features = ["full"] }
