@@ -7,6 +7,7 @@ authors = ["Sumit Modak <sumit.modak.code@gmail.com>"]
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-axum = "0.7.5"
-serde = { version = "1.0.197", features = ["derive"] }
-tokio = { version = "1.37.0", features = ["full"] }
+tokio = { version = "1.41.1", features = ["full"] }
+axum = "0.7.9"
+serde = { version = "1.0.215", features = ["derive"] }
+serde_json = "1.0.133"
