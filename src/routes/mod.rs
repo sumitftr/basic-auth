@@ -3,6 +3,7 @@ mod profile;
 mod settings;
 
 use axum::{
+    http::HeaderMap,
     routing::{get, post},
     Router,
 };
@@ -20,4 +21,10 @@ pub fn routes() -> Router {
     return app;
 }
 
-pub async fn home_page() {}
+pub async fn home_page(headers_map: HeaderMap) -> String {
+    if crate::sessions::check_token(&headers_map) {
+        "good".to_string()
+    } else {
+        "bad".to_string()
+    }
+}
