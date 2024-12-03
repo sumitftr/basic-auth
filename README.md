@@ -1,11 +1,18 @@
-# RestFullAPI Template
+# Project Setup
 
-> Create .env file
-> Put your database uri
+> Create `.env` file
+
+> Paste your **`DATABASE URI`**
 ```
   DATABASE_URI=<your_database_uri>
 ```
-> Put your JWT Secret Key
+
+> Set your **`JWT SECRET KEY`**
 ```
   SUPER_SECRET_KEY=<your_jwt_secret_key>
+```
+
+> Run your project
+```
+  cargo run --release
 ```
