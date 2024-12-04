@@ -8,17 +8,16 @@ use axum::{
     Router,
 };
 
-pub fn routes() -> Router {
-    let app = Router::new()
+pub async fn routes() -> Router {
+    Router::new()
         .route("/", get(home_page))
-        .route("/register", get(auth::signup_page).post(auth::register))
+        .route("/register", get(auth::register_page).post(auth::register))
         .route("/login", get(auth::login_page).post(auth::login))
         .route("/logout", post(auth::logout))
         .route("/profile", get(profile::profile))
         .route("/profile", post(profile::update_profile))
-        .nest("/settings", settings::settings_routes());
-
-    return app;
+        // .nest("/settings", settings::settings_routes())
+        .with_state(crate::database::db_init().await)
 }
 
 pub async fn home_page(headers_map: HeaderMap) -> String {
