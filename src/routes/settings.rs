@@ -1,17 +1,7 @@
-use axum::{
-    routing::{get, post},
-    Router,
-};
-
-pub fn settings_routes() -> Router {
-    Router::new()
-        .route("/", get(settings))
-        .route("/email", post(change_email))
-        .route("/username", post(change_username))
-        .route("/password", post(reset_password))
-        .route("/metadata", post(change_metadata))
-        .route("/account/delete", post(delete_account))
-}
+// use axum::{
+//     routing::{get, post},
+//     Router,
+// };
 
 pub async fn settings() {}
 pub async fn change_email() {}
