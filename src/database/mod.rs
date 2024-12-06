@@ -34,31 +34,33 @@ pub async fn db_init() -> Arc<Database> {
 }
 
 // checks if the email is available or not
-pub async fn is_email_available(db: &Database, email: &str) -> mongodb::error::Result<bool> {
+pub async fn is_email_available(db: &Database, email: &str) -> mongodb::error::Result<()> {
     let users: Collection<User> = db.collection("users");
     match users.find_one(doc! { "email": email }).await {
         Ok(v) => match v {
-            Some(_) => return Ok(false),
-            None => return Ok(true),
+            Some(_) => return Err(mongodb::error::Error::custom("Email not available")),
+            None => return Ok(()),
         },
         Err(e) => return Err(e),
     }
 }
 
 // checks if the username is available or not
-pub async fn is_username_available(db: &Database, username: &str) -> mongodb::error::Result<bool> {
+pub async fn is_username_available(db: &Database, username: &str) -> mongodb::error::Result<()> {
     let users: Collection<User> = db.collection("users");
     match users.find_one(doc! { "username": username }).await {
         Ok(v) => match v {
-            Some(_) => return Ok(false),
-            None => return Ok(true),
+            Some(_) => return Err(mongodb::error::Error::custom("Username not available")),
+            None => return Ok(()),
         },
         Err(e) => return Err(e),
     }
 }
 
 // adds a user to the database
-pub async fn add_user(db: &Database, user: &User) -> mongodb::error::Result<()> {
+pub async fn check_and_add_user(db: &Database, user: &User) -> mongodb::error::Result<()> {
+    is_email_available(db, &user.email).await?;
+    is_username_available(db, &user.username).await?;
     let users: Collection<User> = db.collection("users");
     match users.insert_one(user).await {
         Ok(v) => {
@@ -75,9 +77,7 @@ pub async fn check_and_update_email(
     email: &str,
     new_email: &str,
 ) -> mongodb::error::Result<()> {
-    if is_email_available(db, email).await? == false {
-        return Err(mongodb::error::Error::custom("Email not available"));
-    }
+    is_email_available(db, email).await?;
     let users: Collection<User> = db.collection("users");
     let update = doc! {"email": email};
     let filter = doc! {"$set": doc! {"email": new_email}};
@@ -96,9 +96,7 @@ pub async fn check_and_update_username(
     username: &str,
     new_username: &str,
 ) -> mongodb::error::Result<()> {
-    if is_email_available(db, username).await? == false {
-        return Err(mongodb::error::Error::custom("Username not available"));
-    }
+    is_username_available(db, username).await?;
     let users: Collection<User> = db.collection("users");
     let update = doc! {"username": username};
     let filter = doc! {"$set": doc! {"username": new_username}};

@@ -59,29 +59,17 @@ pub async fn register(
 ) -> Result<String, (StatusCode, String)> {
     match crate::models::User::try_from(body) {
         Ok(user) => {
-            // checking email availability
-            let x = crate::database::is_email_available(state.as_ref(), &user.email).await;
-            if let Ok(false) = x {
-                return Err((StatusCode::BAD_REQUEST, format!("Email already taken")));
-            } else if let Err(e) = x {
-                eprintln!("{e}");
-                return Err((StatusCode::INTERNAL_SERVER_ERROR, format!("")));
-            }
-            // checking username availability
-            let y = crate::database::is_username_available(state.as_ref(), &user.username).await;
-            if let Ok(false) = y {
-                return Err((StatusCode::BAD_REQUEST, format!("Username already taken")));
-            } else if let Err(e) = y {
-                eprintln!("{e}");
-                return Err((StatusCode::INTERNAL_SERVER_ERROR, format!("")));
-            }
             // creating user
-            if let Err(e) = crate::database::add_user(state.as_ref(), &user).await {
+            if let Err(e) = crate::database::check_and_add_user(state.as_ref(), &user).await {
                 eprintln!("{e}");
-                return Err((
-                    StatusCode::INTERNAL_SERVER_ERROR,
-                    format!("Failed to create user"),
-                ));
+                if let Some(s) = e.get_custom::<&str>() {
+                    return Err((StatusCode::BAD_REQUEST, s.to_string()));
+                } else {
+                    return Err((
+                        StatusCode::INTERNAL_SERVER_ERROR,
+                        format!("Failed to create user"),
+                    ));
+                }
             }
             // creating token
             match crate::sessions::make_token(user.username.as_str()) {
