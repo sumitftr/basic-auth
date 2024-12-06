@@ -13,11 +13,11 @@ pub struct User {
     pub created: DateTime,
 }
 
-pub fn is_name_valid() -> bool {
+pub fn is_name_valid(value: &str) -> bool {
     todo!()
 }
 
-pub fn is_email_valid() -> bool {
+pub fn is_email_valid(value: &str) -> bool {
     todo!()
 }
 
@@ -29,10 +29,10 @@ pub fn into_gender(value: &mut String) {
     }
 }
 
-pub fn is_username_valid() -> bool {
+pub fn is_username_valid(value: &str) -> bool {
     todo!()
 }
 
-pub fn is_date_valid() -> bool {
+pub fn is_date_valid(value: &str) -> bool {
     todo!()
 }

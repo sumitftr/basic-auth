@@ -1,6 +1,5 @@
+mod account;
 mod auth;
-mod profile;
-mod settings;
 
 use axum::{
     http::HeaderMap,
@@ -11,16 +10,19 @@ use axum::{
 pub async fn routes() -> Router {
     Router::new()
         .route("/", get(home_page))
-        .route("/register", post(auth::register).get(auth::register_page))
-        .route("/login", post(auth::login).get(auth::login_page))
-        .route("/logout", post(auth::logout))
-        .route("/profile", get(profile::profile))
-        .route("/settings", get(settings::settings))
-        .route("/update/email", post(settings::change_email))
-        .route("/update/username", post(settings::change_username))
-        .route("/update/password", post(settings::reset_password))
-        .route("/update/metadata", post(settings::change_metadata))
-        .route("/delete/account", post(settings::delete_account))
+        .route("/register", get(register_page))
+        .route("/login", get(login_page))
+        .route("/profile", get(profile))
+        .route("/settings", get(settings))
+        // api routes
+        .route("/api/user/register", post(auth::register))
+        .route("/api/user/login", post(auth::login))
+        .route("/api/user/logout", post(auth::logout))
+        .route("/api/update/email", post(account::change_email))
+        .route("/api/update/username", post(account::change_username))
+        .route("/api/update/password", post(account::reset_password))
+        .route("/api/update/metadata", post(account::change_metadata))
+        .route("/api/delete/account", post(account::delete_account))
         .with_state(crate::database::db_init().await)
 }
 
@@ -31,3 +33,7 @@ pub async fn home_page(headers_map: HeaderMap) -> String {
         "bad".to_string()
     }
 }
+pub async fn login_page() {}
+pub async fn register_page() {}
+pub async fn profile() {}
+pub async fn settings() {}

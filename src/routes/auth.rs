@@ -128,6 +128,3 @@ pub struct LogoutRequest {
 pub async fn logout(Json(body): Json<LogoutRequest>) {
     println!("{body:?}");
 }
-
-pub async fn login_page() {}
-pub async fn register_page() {}

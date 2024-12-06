@@ -3,7 +3,6 @@
 //     Router,
 // };
 
-pub async fn settings() {}
 pub async fn change_email() {}
 pub async fn change_username() {}
 pub async fn reset_password() {}
