@@ -1,10 +1,15 @@
-use axum::{extract::State, http::StatusCode, Json};
-use mongodb::{
-    bson::{oid::ObjectId, DateTime},
-    Database,
-};
+use crate::database::WebDB;
+use axum::{extract::State, http::StatusCode, routing::post, Json, Router};
+use mongodb::bson::{oid::ObjectId, DateTime};
 use serde::Deserialize;
 use std::sync::Arc;
+
+pub fn auth_routes(webdb: Arc<WebDB>) -> Router {
+    Router::new()
+        .route("/api/user/register", post(register))
+        .route("/api/user/login", post(login))
+        .with_state(webdb)
+}
 
 #[derive(Deserialize, Debug)]
 pub struct RegisterRequest {
@@ -30,14 +35,13 @@ impl std::convert::TryFrom<RegisterRequest> for crate::models::User {
         }
         crate::models::into_gender(&mut item.gender);
 
-        let date_of_birth = match mongodb::bson::DateTime::builder()
+        let Ok(date_of_birth) = DateTime::builder()
             .year(item.year)
             .month(item.month)
             .day(item.day)
             .build()
-        {
-            Ok(v) => v,
-            Err(_) => return Err("Invalid Date of Birth".to_string()),
+        else {
+            return Err("Invalid Date of Birth".to_string());
         };
 
         Ok(Self {
@@ -54,13 +58,13 @@ impl std::convert::TryFrom<RegisterRequest> for crate::models::User {
 }
 
 pub async fn register(
-    State(state): State<Arc<Database>>,
+    State(state): State<Arc<WebDB>>,
     Json(body): Json<RegisterRequest>,
 ) -> Result<String, (StatusCode, String)> {
     match crate::models::User::try_from(body) {
         Ok(user) => {
             // creating user
-            if let Err(e) = crate::database::check_and_add_user(state.as_ref(), &user).await {
+            if let Err(e) = state.check_and_add_user(&user).await {
                 eprintln!("{e}");
                 if let Some(s) = e.get_custom::<&str>() {
                     return Err((StatusCode::BAD_REQUEST, s.to_string()));
@@ -72,7 +76,7 @@ pub async fn register(
                 }
             }
             // creating token
-            match crate::sessions::make_token(user.username.as_str()) {
+            match crate::utils::jwt::make_token(user.username.as_str()) {
                 Ok(token) => return Ok(token),
                 Err(e) => {
                     eprintln!("{e}");
@@ -96,7 +100,7 @@ pub struct LoginRequest {
 pub async fn login(Json(body): Json<LoginRequest>) -> Result<String, StatusCode> {
     let is_valid = body.username != "" && body.password.len() >= 8;
     if is_valid {
-        match crate::sessions::make_token(body.username.as_str()) {
+        match crate::utils::jwt::make_token(body.username.as_str()) {
             Ok(token) => return Ok(token),
             Err(e) => {
                 eprintln!("{e}");
@@ -106,13 +110,4 @@ pub async fn login(Json(body): Json<LoginRequest>) -> Result<String, StatusCode>
     } else {
         Err(StatusCode::UNAUTHORIZED)
     }
-}
-
-#[derive(Deserialize, Debug)]
-pub struct LogoutRequest {
-    username: String,
-}
-
-pub async fn logout(Json(body): Json<LogoutRequest>) {
-    println!("{body:?}");
 }

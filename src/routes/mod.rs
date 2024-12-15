@@ -1,5 +1,6 @@
 mod account;
 mod auth;
+mod session;
 
 use axum::{
     http::HeaderMap,
@@ -8,32 +9,28 @@ use axum::{
 };
 
 pub async fn routes() -> Router {
-    Router::new()
+    let webdb = crate::database::WebDB::init().await;
+    let main_router = Router::new()
         .route("/", get(home_page))
-        .route("/register", get(register_page))
-        .route("/login", get(login_page))
-        .route("/profile", get(profile))
-        .route("/settings", get(settings))
-        // api routes
-        .route("/api/user/register", post(auth::register))
-        .route("/api/user/login", post(auth::login))
-        .route("/api/user/logout", post(auth::logout))
-        .route("/api/update/email", post(account::change_email))
-        .route("/api/update/username", post(account::change_username))
-        .route("/api/update/password", post(account::reset_password))
-        .route("/api/update/metadata", post(account::change_metadata))
-        .route("/api/delete/account", post(account::delete_account))
-        .with_state(crate::database::db_init().await)
+        // session handling routes
+        .route("/api/user/logout", post(session::logout))
+        .route("/api/session/refresh", post(session::refresh_session))
+        // user update routes
+        .route("/api/email/update", post(account::change_email))
+        .route("/api/username/update", post(account::change_username))
+        .route("/api/password/update", post(account::change_password))
+        .route("/api/password/reset", post(account::reset_password))
+        .route("/api/metadata/update", post(account::change_metadata))
+        .route("/api/account/delete", post(account::delete_account))
+        .with_state(std::sync::Arc::clone(&webdb));
+
+    main_router.merge(auth::auth_routes(webdb))
 }
 
 pub async fn home_page(headers_map: HeaderMap) -> String {
-    if crate::sessions::check_token(&headers_map) {
+    if crate::utils::jwt::check_token(&headers_map).unwrap() {
         "good".to_string()
     } else {
         "bad".to_string()
     }
 }
-pub async fn login_page() {}
-pub async fn register_page() {}
-pub async fn profile() {}
-pub async fn settings() {}

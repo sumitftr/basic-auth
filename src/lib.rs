@@ -1,8 +1,7 @@
 pub mod database;
-pub mod extensions;
 pub mod models;
 pub mod routes;
-pub mod sessions;
+pub mod utils;
 
 use std::sync::LazyLock;
 

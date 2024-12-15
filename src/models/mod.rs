@@ -10,7 +10,14 @@ pub struct User {
     pub dob: DateTime,
     pub username: String,
     pub password: String,
+    // pub sessions: Vec<UserSession>,
     pub created: DateTime,
+}
+
+#[derive(Serialize, Deserialize, Debug)]
+pub struct UserSession {
+    token: String,
+    description: String,
 }
 
 pub fn is_name_valid(value: &str) -> bool {
