@@ -16,6 +16,7 @@ pub async fn routes() -> Router {
         .route("/api/user/logout", post(session::logout))
         .route("/api/session/refresh", post(session::refresh_session))
         // user update routes
+        .route("/api/email/verify", post(auth::verify_email))
         .route("/api/email/update", post(account::change_email))
         .route("/api/username/update", post(account::change_username))
         .route("/api/password/update", post(account::change_password))
@@ -25,10 +26,11 @@ pub async fn routes() -> Router {
         .with_state(std::sync::Arc::clone(&webdb));
 
     main_router.merge(auth::auth_routes(webdb))
+    // .layer(tower_http::trace::TraceLayer::new_for_http())
 }
 
 pub async fn home_page(headers_map: HeaderMap) -> String {
-    if crate::utils::jwt::check_token(&headers_map).unwrap() {
+    if let Ok(true) = crate::utils::jwt::check_token(&headers_map) {
         "good".to_string()
     } else {
         "bad".to_string()

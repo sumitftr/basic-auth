@@ -27,32 +27,39 @@ impl std::convert::TryFrom<RegisterRequest> for crate::models::User {
     type Error = String;
 
     fn try_from(mut item: RegisterRequest) -> Result<Self, Self::Error> {
-        if item.username.len() < 4 {
-            return Err("Username too short".to_string());
-        }
+        let name = crate::models::is_name_valid(&item.name)?;
+        let email = if crate::models::is_email_valid(&item.email) {
+            item.email
+        } else {
+            return Err("Invalid Email".to_string());
+        };
+        let username = crate::models::is_username_valid(&item.username).map(|_| item.username)?;
         if item.password.len() < 8 {
             return Err("Password too short".to_string());
         }
         crate::models::into_gender(&mut item.gender);
 
-        let Ok(date_of_birth) = DateTime::builder()
+        let dob = match DateTime::builder()
             .year(item.year)
             .month(item.month)
             .day(item.day)
             .build()
-        else {
-            return Err("Invalid Date of Birth".to_string());
+        {
+            Ok(v) if v > DateTime::now() => return Err("Invalid Date of Birth".to_string()),
+            Ok(v) => v,
+            Err(e) => return Err(e.to_string()),
         };
 
         Ok(Self {
             _id: ObjectId::new(),
-            name: item.name,
-            email: item.email,
+            name,
+            email,
             gender: item.gender,
-            dob: date_of_birth,
-            username: item.username,
+            dob,
+            username,
             password: item.password,
             created: DateTime::now(),
+            last_login: DateTime::now(),
         })
     }
 }
@@ -111,3 +118,5 @@ pub async fn login(Json(body): Json<LoginRequest>) -> Result<String, StatusCode>
         Err(StatusCode::UNAUTHORIZED)
     }
 }
+
+pub async fn verify_email() {}
