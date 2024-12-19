@@ -6,12 +6,13 @@ pub struct Claims {
     iss: String, // issuer
     iat: String, // issued at
     exp: String, // expiration time
+    ip: String,
 }
 
 // For more information on claims visit:
 // https://www.iana.org/assignments/jwt/jwt.xhtml
 
-pub fn make_token(username: &str) -> Result<String, jsonwebtoken::errors::Error> {
+pub fn make_token(username: &str, ip: String) -> Result<String, jsonwebtoken::errors::Error> {
     let cur_time = SystemTime::now();
     let claims = Claims {
         iss: username.to_string(),
@@ -19,6 +20,7 @@ pub fn make_token(username: &str) -> Result<String, jsonwebtoken::errors::Error>
             .try_to_rfc3339_string()
             .unwrap(),
         exp: DateTime::from_system_time(cur_time + Duration::new(3600, 0)).to_string(),
+        ip,
     };
 
     jsonwebtoken::encode(

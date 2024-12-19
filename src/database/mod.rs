@@ -1,6 +1,7 @@
 use crate::models::User;
 use mongodb::{
     bson::{doc, DateTime},
+    error::ErrorKind,
     Collection,
 };
 use std::sync::{Arc, Mutex};
@@ -18,26 +19,21 @@ impl WebDB {
             .unwrap()
             .database("web_db");
 
-        // check and create all specified collections in `target_c`
-        let target_c = ["users"];
-        let current_c = db.list_collection_names().await.unwrap();
-        if current_c.len() != 0 {
-            let mut j = 0;
-            for i in 0..current_c.len() {
-                while current_c[i] != target_c[j] {
-                    db.create_collection(target_c[j]).await.unwrap();
-                    j += 1;
+        // check and create all specified collections in `collections`
+        let collections = ["users"];
+        for i in 0..collections.len() {
+            if let Err(e) = db.create_collection(collections[i]).await {
+                match e.kind.as_ref() {
+                    ErrorKind::Command(_) => tracing::error!("`{}` already exists", collections[i]),
+                    _ => std::process::exit(1),
                 }
-                j += 1;
-            }
-        } else {
-            for i in 0..target_c.len() {
-                db.create_collection(target_c[i]).await.unwrap();
+            } else {
+                tracing::info!("`{}` created", collections[i]);
             }
         }
 
         Arc::new(WebDB {
-            users: db.collection(target_c[0]),
+            users: db.collection(collections[0]),
             deleted_sessions: Mutex::new(Vec::new()),
         })
     }

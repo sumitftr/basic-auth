@@ -1,5 +1,10 @@
 use crate::database::WebDB;
-use axum::{extract::State, http::StatusCode, routing::post, Json, Router};
+use axum::{
+    extract::{ConnectInfo, State},
+    http::StatusCode,
+    routing::post,
+    Json, Router,
+};
 use mongodb::bson::{oid::ObjectId, DateTime};
 use serde::Deserialize;
 use std::sync::Arc;
@@ -35,7 +40,7 @@ impl std::convert::TryFrom<RegisterRequest> for crate::models::User {
         };
         let username = crate::models::is_username_valid(&item.username).map(|_| item.username)?;
         if item.password.len() < 8 {
-            return Err("Password too short".to_string());
+            return Err("Password should be of atleast 8 characters".to_string());
         }
         crate::models::into_gender(&mut item.gender);
 
@@ -65,12 +70,13 @@ impl std::convert::TryFrom<RegisterRequest> for crate::models::User {
 }
 
 pub async fn register(
+    ConnectInfo(conn_info): ConnectInfo<crate::utils::ClientConnInfo>,
     State(state): State<Arc<WebDB>>,
     Json(body): Json<RegisterRequest>,
 ) -> Result<String, (StatusCode, String)> {
     match crate::models::User::try_from(body) {
         Ok(user) => {
-            // creating user
+            // checking and creating user
             if let Err(e) = state.check_and_add_user(&user).await {
                 eprintln!("{e}");
                 if let Some(s) = e.get_custom::<&str>() {
@@ -83,7 +89,7 @@ pub async fn register(
                 }
             }
             // creating token
-            match crate::utils::jwt::make_token(user.username.as_str()) {
+            match crate::utils::jwt::make_token(user.username.as_str(), conn_info.ip()) {
                 Ok(token) => return Ok(token),
                 Err(e) => {
                     eprintln!("{e}");
@@ -104,10 +110,13 @@ pub struct LoginRequest {
     password: String,
 }
 
-pub async fn login(Json(body): Json<LoginRequest>) -> Result<String, StatusCode> {
+pub async fn login(
+    ConnectInfo(conn_info): ConnectInfo<crate::utils::ClientConnInfo>,
+    Json(body): Json<LoginRequest>,
+) -> Result<String, StatusCode> {
     let is_valid = body.username != "" && body.password.len() >= 8;
     if is_valid {
-        match crate::utils::jwt::make_token(body.username.as_str()) {
+        match crate::utils::jwt::make_token(body.username.as_str(), conn_info.ip()) {
             Ok(token) => return Ok(token),
             Err(e) => {
                 eprintln!("{e}");
