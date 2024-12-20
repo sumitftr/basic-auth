@@ -3,7 +3,7 @@ use std::time::{Duration, SystemTime};
 
 #[derive(serde::Serialize, serde::Deserialize)]
 pub struct Claims {
-    iss: String, // issuer
+    sub: String, // username
     iat: String, // issued at
     exp: String, // expiration time
     ip: String,  // client ip
@@ -12,10 +12,10 @@ pub struct Claims {
 // For more information on claims visit:
 // https://www.iana.org/assignments/jwt/jwt.xhtml
 
-pub fn make_token(username: &str, ip: String) -> Result<String, jsonwebtoken::errors::Error> {
+pub fn make_token(username: &str, ip: String) -> Result<String, String> {
     let cur_time = SystemTime::now();
     let claims = Claims {
-        iss: username.to_string(),
+        sub: username.to_string(),
         iat: DateTime::from_system_time(cur_time)
             .try_to_rfc3339_string()
             .unwrap(),
@@ -28,34 +28,44 @@ pub fn make_token(username: &str, ip: String) -> Result<String, jsonwebtoken::er
         &claims,
         &jsonwebtoken::EncodingKey::from_secret(&*crate::SECRET_KEY.as_bytes()),
     )
+    .map_err(|e| {
+        let result = format!("Failed to create token");
+        tracing::error!(result, username, "{e:?}");
+        result
+    })
 }
 
-pub fn check_token(headers_map: &axum::http::HeaderMap) -> Result<bool, String> {
+pub fn check_token(headers_map: &axum::http::HeaderMap, ip: String) -> Result<bool, String> {
     if let Some(auth_header) = headers_map.get("Authorization") {
         if let Ok(token) = auth_header.to_str() {
-            // if auth_header_str.starts_with("Bearer ") {
-            //     let token = auth_header_str.trim_start_matches("Bearer ").to_string();
-            match jsonwebtoken::decode::<Claims>(
+            let token = if token.starts_with("Bearer ") {
+                token.trim_start_matches("Bearer ").to_string()
+            } else {
+                return Err("Bearer prefix not added".to_string());
+            };
+
+            // decoding token
+            let tokendata = jsonwebtoken::decode::<Claims>(
                 &token,
                 &jsonwebtoken::DecodingKey::from_secret(&*crate::SECRET_KEY.as_ref()),
                 &jsonwebtoken::Validation::default(),
-            ) {
-                Ok(tokendata) => {
-                    // time expiration check
-                    let exp_time = DateTime::parse_rfc3339_str(tokendata.claims.exp)
-                        .unwrap()
-                        .to_system_time();
-                    if SystemTime::now() > exp_time {
-                        return Ok(false);
-                    }
+            )
+            .map_err(|e| e.to_string())?;
 
-                    // ip check
-
-                    return Ok(true);
-                }
-                Err(e) => return Err(e.to_string()),
+            // time expiration check
+            let exp_time = DateTime::parse_rfc3339_str(tokendata.claims.exp)
+                .unwrap()
+                .to_system_time();
+            if SystemTime::now() > exp_time {
+                return Ok(false);
             }
-            // }
+
+            // ip check
+            if tokendata.claims.ip != ip {
+                return Ok(false);
+            }
+
+            return Ok(true);
         }
     }
 

@@ -29,8 +29,13 @@ pub async fn routes() -> Router {
     // .layer(tower_http::trace::TraceLayer::new_for_http())
 }
 
-pub async fn home_page(headers_map: HeaderMap) -> String {
-    if let Ok(true) = crate::utils::jwt::check_token(&headers_map) {
+pub async fn home_page(
+    axum::extract::connect_info::ConnectInfo(conn_info): axum::extract::connect_info::ConnectInfo<
+        crate::utils::ClientConnInfo,
+    >,
+    headers_map: HeaderMap,
+) -> String {
+    if let Ok(true) = crate::utils::jwt::check_token(&headers_map, conn_info.ip()) {
         "good".to_string()
     } else {
         "bad".to_string()

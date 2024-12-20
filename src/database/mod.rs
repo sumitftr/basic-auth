@@ -1,16 +1,20 @@
-use crate::models::User;
+use crate::models::user::User;
 use mongodb::{
     bson::{doc, DateTime},
     error::ErrorKind,
     Collection,
 };
-use std::sync::{Arc, Mutex};
+use std::{
+    collections::HashSet,
+    sync::{Arc, Mutex},
+};
 
 pub struct WebDB {
     users: Collection<User>,
-    deleted_sessions: Mutex<Vec<String>>,
+    deleted_sessions: Mutex<HashSet<String>>,
 }
 
+// impl block for mutating users
 impl WebDB {
     pub async fn init() -> Arc<WebDB> {
         // establishing connection with local mongodb database
@@ -36,7 +40,7 @@ impl WebDB {
 
         Arc::new(WebDB {
             users: db.collection(collections[0]),
-            deleted_sessions: Mutex::new(Vec::new()),
+            deleted_sessions: Mutex::new(HashSet::new()),
         })
     }
 
@@ -71,9 +75,28 @@ impl WebDB {
         self.is_username_available(&user.username).await?;
         match self.users.insert_one(user).await {
             Ok(v) => {
-                println!("Inserted User: {}", v.inserted_id);
+                tracing::info!("Inserted User: {}", v.inserted_id);
                 Ok(())
             }
+            Err(e) => Err(e),
+        }
+    }
+
+    // matches database user's password with requested password
+    pub async fn check_password(
+        self: Arc<Self>,
+        username: &str,
+        password: &str,
+    ) -> mongodb::error::Result<()> {
+        match self.users.find_one(doc! { "username": username }).await {
+            Ok(Some(v)) => {
+                if v.password == password {
+                    Ok(())
+                } else {
+                    Err(mongodb::error::Error::custom("Password didn't match"))
+                }
+            }
+            Ok(None) => Err(mongodb::error::Error::custom("Username not available")),
             Err(e) => Err(e),
         }
     }
@@ -89,7 +112,7 @@ impl WebDB {
         let filter = doc! {"$set": doc! {"email": new_email}};
         match self.users.update_one(filter, update).await {
             Ok(v) => {
-                println!("Updated User Email: {:?}", v.upserted_id);
+                tracing::info!("Updated User Email: {:?}", v.upserted_id);
                 Ok(())
             }
             Err(e) => Err(e),
@@ -107,7 +130,7 @@ impl WebDB {
         let filter = doc! {"$set": doc! {"username": new_username}};
         match self.users.update_one(filter, update).await {
             Ok(v) => {
-                println!("Updated Username: {:?}", v.upserted_id);
+                tracing::info!("Updated Username: {:?}", v.upserted_id);
                 Ok(())
             }
             Err(e) => Err(e),
@@ -126,7 +149,7 @@ impl WebDB {
         let filter = doc! {"$set": doc! {"name": name, "gender": gender, "dob": dob}};
         match self.users.update_one(filter, update).await {
             Ok(v) => {
-                println!("Updated User Metadata: {:?}", v.upserted_id);
+                tracing::info!("Updated User Metadata: {:?}", v.upserted_id);
                 Ok(())
             }
             Err(e) => Err(e),
@@ -149,7 +172,7 @@ impl WebDB {
                 } else {
                     match self.users.update_one(filter, update).await {
                         Ok(v) => {
-                            println!("Updated User Password: {:?}", v.upserted_id);
+                            tracing::info!("Updated User Password: {:?}", v.upserted_id);
                             return Ok(());
                         }
                         Err(e) => return Err(e),

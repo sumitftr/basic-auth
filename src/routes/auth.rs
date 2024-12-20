@@ -1,4 +1,4 @@
-use crate::database::WebDB;
+use crate::{database::WebDB, models::user};
 use axum::{
     extract::{ConnectInfo, State},
     http::StatusCode,
@@ -28,21 +28,21 @@ pub struct RegisterRequest {
     password: String,
 }
 
-impl std::convert::TryFrom<RegisterRequest> for crate::models::User {
+impl std::convert::TryFrom<RegisterRequest> for user::User {
     type Error = String;
 
     fn try_from(mut item: RegisterRequest) -> Result<Self, Self::Error> {
-        let name = crate::models::is_name_valid(&item.name)?;
-        let email = if crate::models::is_email_valid(&item.email) {
+        let name = user::is_name_valid(&item.name)?;
+        let email = if user::is_email_valid(&item.email) {
             item.email
         } else {
             return Err("Invalid Email".to_string());
         };
-        let username = crate::models::is_username_valid(&item.username).map(|_| item.username)?;
+        let username = user::is_username_valid(&item.username).map(|_| item.username)?;
         if item.password.len() < 8 {
             return Err("Password should be of atleast 8 characters".to_string());
         }
-        crate::models::into_gender(&mut item.gender);
+        user::into_gender(&mut item.gender);
 
         let dob = match DateTime::builder()
             .year(item.year)
@@ -70,37 +70,27 @@ impl std::convert::TryFrom<RegisterRequest> for crate::models::User {
 }
 
 pub async fn register(
-    ConnectInfo(conn_info): ConnectInfo<crate::utils::ClientConnInfo>,
     State(state): State<Arc<WebDB>>,
+    ConnectInfo(conn_info): ConnectInfo<crate::utils::ClientConnInfo>,
     Json(body): Json<RegisterRequest>,
 ) -> Result<String, (StatusCode, String)> {
-    match crate::models::User::try_from(body) {
-        Ok(user) => {
-            // checking and creating user
-            if let Err(e) = state.check_and_add_user(&user).await {
-                tracing::error!("Failed to create user {e:?}");
-                if let Some(s) = e.get_custom::<&str>() {
-                    return Err((StatusCode::BAD_REQUEST, s.to_string()));
-                } else {
-                    return Err((
-                        StatusCode::INTERNAL_SERVER_ERROR,
-                        format!("Failed to create user"),
-                    ));
-                }
-            }
-            // creating token
-            match crate::utils::jwt::make_token(user.username.as_str(), conn_info.ip()) {
-                Ok(token) => return Ok(token),
-                Err(e) => {
-                    tracing::error!("Failed to create token {e:?}");
-                    return Err((
-                        StatusCode::INTERNAL_SERVER_ERROR,
-                        String::from("Failed to create token"),
-                    ));
-                }
-            };
+    let user = user::User::try_from(body).map_err(|e| (StatusCode::BAD_REQUEST, e))?;
+    // checking and creating user
+    if let Err(e) = state.check_and_add_user(&user).await {
+        tracing::error!("Failed to create user {e:?}");
+        if let Some(s) = e.get_custom::<&str>() {
+            return Err((StatusCode::BAD_REQUEST, s.to_string()));
+        } else {
+            return Err((
+                StatusCode::INTERNAL_SERVER_ERROR,
+                format!("Failed to create user"),
+            ));
         }
-        Err(e) => return Err((StatusCode::BAD_REQUEST, e)),
+    }
+    // creating token
+    match crate::utils::jwt::make_token(user.username.as_str(), conn_info.ip()) {
+        Ok(token) => return Ok(token),
+        Err(e) => return Err((StatusCode::INTERNAL_SERVER_ERROR, e)),
     };
 }
 
@@ -111,20 +101,24 @@ pub struct LoginRequest {
 }
 
 pub async fn login(
+    State(state): State<Arc<WebDB>>,
     ConnectInfo(conn_info): ConnectInfo<crate::utils::ClientConnInfo>,
     Json(body): Json<LoginRequest>,
-) -> Result<String, StatusCode> {
-    let is_valid = body.username != "" && body.password.len() >= 8;
-    if is_valid {
-        match crate::utils::jwt::make_token(body.username.as_str(), conn_info.ip()) {
-            Ok(token) => return Ok(token),
-            Err(e) => {
-                eprintln!("{e}");
-                return Err(StatusCode::INTERNAL_SERVER_ERROR);
+) -> Result<String, (StatusCode, String)> {
+    // validating username and password
+    if body.username.len() >= 3 && body.password.len() >= 8 {
+        if let Err(e) = state.check_password(&body.username, &body.password).await {
+            if let Some(s) = e.get_custom::<&str>() {
+                return Err((StatusCode::BAD_REQUEST, s.to_string()));
+            } else {
+                return Err((StatusCode::INTERNAL_SERVER_ERROR, format!("")));
             }
         }
-    } else {
-        Err(StatusCode::UNAUTHORIZED)
+    }
+    // creating token
+    match crate::utils::jwt::make_token(body.username.as_str(), conn_info.ip()) {
+        Ok(token) => return Ok(token),
+        Err(e) => return Err((StatusCode::INTERNAL_SERVER_ERROR, e)),
     }
 }
 
