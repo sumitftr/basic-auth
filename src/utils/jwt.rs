@@ -6,7 +6,7 @@ pub struct Claims {
     iss: String, // issuer
     iat: String, // issued at
     exp: String, // expiration time
-    ip: String,
+    ip: String,  // client ip
 }
 
 // For more information on claims visit:

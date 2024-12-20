@@ -12,6 +12,11 @@
   SUPER_SECRET_KEY=<your_jwt_secret_key>
 ```
 
+> Set your **`INTERFACE`** and **`PORT`**
+```
+  INTERFACE_PORT=<IP>:<PORT>
+```
+
 > Run your project
 ```
   cargo run --release

@@ -24,7 +24,9 @@ impl WebDB {
         for i in 0..collections.len() {
             if let Err(e) = db.create_collection(collections[i]).await {
                 match e.kind.as_ref() {
-                    ErrorKind::Command(_) => tracing::error!("`{}` already exists", collections[i]),
+                    ErrorKind::Command(_) => {
+                        tracing::error!("Collection `{}` already exists", collections[i])
+                    }
                     _ => std::process::exit(1),
                 }
             } else {

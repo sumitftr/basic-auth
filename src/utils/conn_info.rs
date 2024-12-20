@@ -1,21 +1,27 @@
 use axum::serve::IncomingStream;
-use std::net::SocketAddr;
 
 #[derive(Clone, Debug)]
 pub struct ClientConnInfo {
-    remote: SocketAddr,
+    ip: String,
+    // port: u16,
 }
 
 impl ClientConnInfo {
-    pub fn ip(&self) -> String {
-        self.remote.ip().to_string()
+    pub fn ip(self) -> String {
+        self.ip
     }
+
+    // pub fn port(&self) -> u16 {
+    //     self.port
+    // }
 }
 
 impl<'a> axum::extract::connect_info::Connected<IncomingStream<'a>> for ClientConnInfo {
     fn connect_info(target: IncomingStream<'a>) -> Self {
+        let remote_addr = target.remote_addr();
         Self {
-            remote: target.remote_addr(),
+            ip: remote_addr.ip().to_string(),
+            // port: remote_addr.port(),
         }
     }
 }

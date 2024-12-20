@@ -78,7 +78,7 @@ pub async fn register(
         Ok(user) => {
             // checking and creating user
             if let Err(e) = state.check_and_add_user(&user).await {
-                eprintln!("{e}");
+                tracing::error!("Failed to create user {e:?}");
                 if let Some(s) = e.get_custom::<&str>() {
                     return Err((StatusCode::BAD_REQUEST, s.to_string()));
                 } else {
@@ -92,7 +92,7 @@ pub async fn register(
             match crate::utils::jwt::make_token(user.username.as_str(), conn_info.ip()) {
                 Ok(token) => return Ok(token),
                 Err(e) => {
-                    eprintln!("{e}");
+                    tracing::error!("Failed to create token {e:?}");
                     return Err((
                         StatusCode::INTERNAL_SERVER_ERROR,
                         String::from("Failed to create token"),
