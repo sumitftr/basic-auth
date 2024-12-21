@@ -1,4 +1,3 @@
-pub mod auth_guard;
 mod conn_info;
 pub mod jwt;
 

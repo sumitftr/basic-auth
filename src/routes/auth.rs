@@ -1,4 +1,4 @@
-use crate::{database::WebDB, models::user};
+use crate::{database::DBConf, models::user};
 use axum::{
     extract::{ConnectInfo, State},
     http::StatusCode,
@@ -9,7 +9,7 @@ use mongodb::bson::{oid::ObjectId, DateTime};
 use serde::Deserialize;
 use std::sync::Arc;
 
-pub fn auth_routes(webdb: Arc<WebDB>) -> Router {
+pub fn auth_routes(webdb: Arc<DBConf>) -> Router {
     Router::new()
         .route("/api/user/register", post(register))
         .route("/api/user/login", post(login))
@@ -33,10 +33,8 @@ impl std::convert::TryFrom<RegisterRequest> for user::User {
 
     fn try_from(mut item: RegisterRequest) -> Result<Self, Self::Error> {
         let name = user::is_name_valid(&item.name)?;
-        let email = if user::is_email_valid(&item.email) {
-            item.email
-        } else {
-            return Err("Invalid Email".to_string());
+        if !user::is_email_valid(&item.email) {
+            return Err("Invalid Email Format".to_string());
         };
         let username = user::is_username_valid(&item.username).map(|_| item.username)?;
         if item.password.len() < 8 {
@@ -58,7 +56,7 @@ impl std::convert::TryFrom<RegisterRequest> for user::User {
         Ok(Self {
             _id: ObjectId::new(),
             name,
-            email,
+            email: item.email,
             gender: item.gender,
             dob,
             username,
@@ -70,7 +68,7 @@ impl std::convert::TryFrom<RegisterRequest> for user::User {
 }
 
 pub async fn register(
-    State(state): State<Arc<WebDB>>,
+    State(state): State<Arc<DBConf>>,
     ConnectInfo(conn_info): ConnectInfo<crate::utils::ClientConnInfo>,
     Json(body): Json<RegisterRequest>,
 ) -> Result<String, (StatusCode, String)> {
@@ -88,7 +86,7 @@ pub async fn register(
         }
     }
     // creating token
-    match crate::utils::jwt::make_token(user.username.as_str(), conn_info.ip()) {
+    match crate::utils::jwt::generate(user.username.as_str(), conn_info.ip()) {
         Ok(token) => return Ok(token),
         Err(e) => return Err((StatusCode::INTERNAL_SERVER_ERROR, e)),
     };
@@ -101,7 +99,7 @@ pub struct LoginRequest {
 }
 
 pub async fn login(
-    State(state): State<Arc<WebDB>>,
+    State(state): State<Arc<DBConf>>,
     ConnectInfo(conn_info): ConnectInfo<crate::utils::ClientConnInfo>,
     Json(body): Json<LoginRequest>,
 ) -> Result<String, (StatusCode, String)> {
@@ -116,7 +114,7 @@ pub async fn login(
         }
     }
     // creating token
-    match crate::utils::jwt::make_token(body.username.as_str(), conn_info.ip()) {
+    match crate::utils::jwt::generate(body.username.as_str(), conn_info.ip()) {
         Ok(token) => return Ok(token),
         Err(e) => return Err((StatusCode::INTERNAL_SERVER_ERROR, e)),
     }
