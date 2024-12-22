@@ -1,9 +1,9 @@
+use std::sync::LazyLock;
+
 pub mod database;
 pub mod models;
 pub mod routes;
 pub mod utils;
-
-use std::sync::LazyLock;
 
 pub static DATABASE_URI: LazyLock<String> =
     LazyLock::new(|| std::env::var("DATABASE_URI").unwrap());

@@ -8,4 +8,4 @@ pub async fn change_username() {}
 pub async fn reset_password() {}
 pub async fn change_password() {}
 pub async fn change_metadata() {}
-pub async fn delete_account() {}
+pub async fn deactivate_account() {}

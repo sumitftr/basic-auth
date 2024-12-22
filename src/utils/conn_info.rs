@@ -7,7 +7,11 @@ pub struct ClientConnInfo {
 }
 
 impl ClientConnInfo {
-    pub fn ip(self) -> String {
+    pub fn ip(&self) -> &str {
+        &self.ip
+    }
+
+    pub fn into_ip(self) -> String {
         self.ip
     }
 

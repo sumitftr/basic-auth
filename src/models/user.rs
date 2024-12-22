@@ -1,34 +1,21 @@
-use mongodb::bson::{oid::ObjectId, DateTime};
-use serde::{Deserialize, Serialize};
+use mongodb::bson::DateTime;
+use serde::Deserialize;
 
-#[derive(Serialize, Deserialize, Debug)]
-pub struct User {
-    pub _id: ObjectId,
+#[derive(Deserialize, Debug)]
+pub struct RegisterUser {
     pub name: String,
     pub email: String,
-    pub gender: String,
     pub dob: DateTime,
-    pub username: String,
-    pub password: String,
-    // status: UserStatus,
-    // followers: Vec<String>,
-    // following: Vec<String>,
-    // pub sessions: Vec<UserSession>,
-    pub created: DateTime,
-    pub last_login: DateTime,
+    pub password: Option<String>,
+    pub username: Option<String>,
+    pub register_status: RegisterStatus,
 }
 
-#[derive(Serialize, Deserialize, Debug)]
-pub enum UserStatus {
-    Public,
-    Private,
-    Blocked,
-}
-
-#[derive(Serialize, Deserialize, Debug)]
-pub struct UserSession {
-    token: String,
-    description: String,
+#[derive(Deserialize, PartialEq, Debug)]
+pub enum RegisterStatus {
+    Created,
+    EmailVerified,
+    PasswordSet,
 }
 
 // a valid name contains two or more words
@@ -118,18 +105,6 @@ pub fn is_email_valid(s: &str) -> bool {
         return false;
     }
     true
-}
-
-pub fn into_gender(value: &mut String) {
-    let _ = value
-        .to_lowercase()
-        .chars()
-        .next()
-        .unwrap()
-        .to_ascii_uppercase();
-    if value != "Male" && value != "Female" {
-        let _ = std::mem::replace(value, String::from("Other"));
-    }
 }
 
 pub fn is_username_valid(s: &str) -> Result<(), String> {

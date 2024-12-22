@@ -1,70 +1,84 @@
-use crate::{database::DBConf, models::user};
+use crate::database::DBConf;
 use axum::{
     extract::{ConnectInfo, State},
     http::StatusCode,
     routing::post,
     Json, Router,
 };
-use mongodb::bson::{oid::ObjectId, DateTime};
 use serde::Deserialize;
 use std::sync::Arc;
 
 pub fn auth_routes(webdb: Arc<DBConf>) -> Router {
     Router::new()
+        .route("/api/user/create_user", post(create_user))
+        .route("/api/user/verify_email", post(verify_email))
+        .route("/api/user/set_password", post(set_password))
         .route("/api/user/register", post(register))
         .route("/api/user/login", post(login))
         .with_state(webdb)
 }
 
-#[derive(Deserialize, Debug)]
-pub struct RegisterRequest {
+/// first step of registering an user
+
+#[derive(Deserialize)]
+pub struct CreateUserRequest {
     name: String,
     email: String,
-    gender: String,
     year: i32,
     month: u8,
     day: u8,
-    username: String,
+}
+
+pub async fn create_user(
+    State(state): State<Arc<DBConf>>,
+    ConnectInfo(conn_info): ConnectInfo<crate::utils::ClientConnInfo>,
+    Json(body): Json<CreateUserRequest>,
+) -> Result<String, (StatusCode, String)> {
+    state
+        .create_user(body.name, body.email, body.day, body.month, body.year)
+        .await
+        .map_err(|e| (StatusCode::BAD_REQUEST, e))?;
+    todo!()
+}
+
+/// second step of registering an user
+
+#[derive(Deserialize)]
+pub struct VerifyEmailRequest {
+    email: String,
+    otp: u32,
+}
+
+pub async fn verify_email(
+    State(state): State<Arc<DBConf>>,
+    ConnectInfo(conn_info): ConnectInfo<crate::utils::ClientConnInfo>,
+    Json(body): Json<VerifyEmailRequest>,
+) -> Result<String, (StatusCode, String)> {
+    todo!()
+}
+
+/// third step of registering an user
+
+#[derive(Deserialize)]
+pub struct SetPasswordRequest {
+    email: String,
     password: String,
 }
 
-impl std::convert::TryFrom<RegisterRequest> for user::User {
-    type Error = String;
+pub async fn set_password(
+    State(state): State<Arc<DBConf>>,
+    ConnectInfo(conn_info): ConnectInfo<crate::utils::ClientConnInfo>,
+    Json(body): Json<SetPasswordRequest>,
+) -> Result<String, (StatusCode, String)> {
+    todo!()
+}
 
-    fn try_from(mut item: RegisterRequest) -> Result<Self, Self::Error> {
-        let name = user::is_name_valid(&item.name)?;
-        if !user::is_email_valid(&item.email) {
-            return Err("Invalid Email Format".to_string());
-        };
-        let username = user::is_username_valid(&item.username).map(|_| item.username)?;
-        if item.password.len() < 8 {
-            return Err("Password should be of atleast 8 characters".to_string());
-        }
-        user::into_gender(&mut item.gender);
+/// last step of registering an user
 
-        let dob = match DateTime::builder()
-            .year(item.year)
-            .month(item.month)
-            .day(item.day)
-            .build()
-        {
-            Ok(v) if v > DateTime::now() => return Err("Invalid Date of Birth".to_string()),
-            Ok(v) => v,
-            Err(e) => return Err(e.to_string()),
-        };
-
-        Ok(Self {
-            _id: ObjectId::new(),
-            name,
-            email: item.email,
-            gender: item.gender,
-            dob,
-            username,
-            password: item.password,
-            created: DateTime::now(),
-            last_login: DateTime::now(),
-        })
-    }
+#[derive(Deserialize)]
+pub struct RegisterRequest {
+    email: String,
+    username: String,
 }
 
 pub async fn register(
@@ -72,9 +86,8 @@ pub async fn register(
     ConnectInfo(conn_info): ConnectInfo<crate::utils::ClientConnInfo>,
     Json(body): Json<RegisterRequest>,
 ) -> Result<String, (StatusCode, String)> {
-    let user = user::User::try_from(body).map_err(|e| (StatusCode::BAD_REQUEST, e))?;
     // checking and creating user
-    if let Err(e) = state.check_and_add_user(&user).await {
+    if let Err(e) = state.add_user(&user).await {
         tracing::error!("Failed to create user {e:?}");
         if let Some(s) = e.get_custom::<&str>() {
             return Err((StatusCode::BAD_REQUEST, s.to_string()));
@@ -86,13 +99,13 @@ pub async fn register(
         }
     }
     // creating token
-    match crate::utils::jwt::generate(user.username.as_str(), conn_info.ip()) {
+    match crate::utils::jwt::generate(user.username.as_str(), conn_info.into_ip()) {
         Ok(token) => return Ok(token),
         Err(e) => return Err((StatusCode::INTERNAL_SERVER_ERROR, e)),
     };
 }
 
-#[derive(Deserialize, Debug)]
+#[derive(Deserialize)]
 pub struct LoginRequest {
     username: String,
     password: String,
@@ -114,10 +127,8 @@ pub async fn login(
         }
     }
     // creating token
-    match crate::utils::jwt::generate(body.username.as_str(), conn_info.ip()) {
+    match crate::utils::jwt::generate(body.username.as_str(), conn_info.into_ip()) {
         Ok(token) => return Ok(token),
         Err(e) => return Err((StatusCode::INTERNAL_SERVER_ERROR, e)),
     }
 }
-
-pub async fn verify_email() {}

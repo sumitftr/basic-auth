@@ -1,4 +1,4 @@
-use crate::models::user::User;
+use crate::models::User;
 use mongodb::bson::{doc, DateTime};
 use std::sync::Arc;
 
@@ -30,9 +30,7 @@ impl super::DBConf {
     }
 
     // adds a user to the database
-    pub async fn check_and_add_user(self: Arc<Self>, user: &User) -> mongodb::error::Result<()> {
-        self.is_email_available(&user.email).await?;
-        self.is_username_available(&user.username).await?;
+    pub async fn add_user(self: Arc<Self>, user: &User) -> mongodb::error::Result<()> {
         match self.users.insert_one(user).await {
             Ok(v) => {
                 tracing::info!("Inserted User: {}", v.inserted_id);

@@ -1,15 +1,17 @@
-mod banned_tokens;
-mod users;
-
 use mongodb::{error::ErrorKind, Collection};
 use std::{
-    collections::HashSet,
-    sync::{Arc, Mutex},
+    collections::{HashMap, HashSet},
+    sync::Arc,
 };
 
+mod banned_tokens;
+mod registration;
+mod users;
+
 pub struct DBConf {
-    users: Collection<crate::models::user::User>,
-    banned_tokens: Mutex<HashSet<String>>,
+    users: Collection<crate::models::User>,
+    registration: std::sync::Mutex<HashMap<String, crate::models::user::RegisterUser>>,
+    banned_tokens: std::sync::Mutex<HashSet<String>>,
 }
 
 impl DBConf {
@@ -37,7 +39,8 @@ impl DBConf {
 
         Arc::new(Self {
             users: db.collection(collections[0]),
-            banned_tokens: Mutex::new(HashSet::new()),
+            registration: std::sync::Mutex::new(HashMap::new()),
+            banned_tokens: std::sync::Mutex::new(HashSet::new()),
         })
     }
 }
