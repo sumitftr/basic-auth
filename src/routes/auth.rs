@@ -10,10 +10,10 @@ use std::sync::Arc;
 
 pub fn auth_routes(webdb: Arc<DBConf>) -> Router {
     Router::new()
-        .route("/api/user/create_user", post(create_user))
-        .route("/api/user/verify_email", post(verify_email))
-        .route("/api/user/set_password", post(set_password))
-        .route("/api/user/register", post(register))
+        .route("/api/register/create_user", post(create_user))
+        .route("/api/register/verify_email", post(verify_email))
+        .route("/api/register/set_password", post(set_password))
+        .route("/api/register/set_username", post(set_username))
         .route("/api/user/login", post(login))
         .with_state(webdb)
 }
@@ -81,25 +81,13 @@ pub struct RegisterRequest {
     username: String,
 }
 
-pub async fn register(
+pub async fn set_username(
     State(state): State<Arc<DBConf>>,
     ConnectInfo(conn_info): ConnectInfo<crate::utils::ClientConnInfo>,
     Json(body): Json<RegisterRequest>,
 ) -> Result<String, (StatusCode, String)> {
-    // checking and creating user
-    if let Err(e) = state.add_user(&user).await {
-        tracing::error!("Failed to create user {e:?}");
-        if let Some(s) = e.get_custom::<&str>() {
-            return Err((StatusCode::BAD_REQUEST, s.to_string()));
-        } else {
-            return Err((
-                StatusCode::INTERNAL_SERVER_ERROR,
-                format!("Failed to create user"),
-            ));
-        }
-    }
     // creating token
-    match crate::utils::jwt::generate(user.username.as_str(), conn_info.into_ip()) {
+    match crate::utils::jwt::generate(body.username.as_str(), conn_info.into_ip()) {
         Ok(token) => return Ok(token),
         Err(e) => return Err((StatusCode::INTERNAL_SERVER_ERROR, e)),
     };

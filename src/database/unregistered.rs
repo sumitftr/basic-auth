@@ -30,10 +30,10 @@ impl super::DBConf {
             Ok(v) => v,
             Err(e) => return Err(e.to_string()),
         };
-        let mut guard = self.registration.lock().unwrap();
+        let mut guard = self.unregistered.lock().unwrap();
         guard.insert(
             email.clone(),
-            RegisterUser {
+            UnregisteredUser {
                 name,
                 email,
                 dob,
@@ -46,7 +46,7 @@ impl super::DBConf {
     }
 
     pub fn verify_email(self: Arc<Self>, email: String, otp: u32) -> Result<(), String> {
-        let mut guard = self.registration.lock().unwrap();
+        let mut guard = self.unregistered.lock().unwrap();
         let entry = guard.entry(email);
         if let Entry::Occupied(mut v) = entry {
             if v.get().register_status != RegisterStatus::Created {
@@ -62,7 +62,7 @@ impl super::DBConf {
     }
 
     pub fn set_password(self: Arc<Self>, email: String, password: String) -> Result<(), String> {
-        let mut guard = self.registration.lock().unwrap();
+        let mut guard = self.unregistered.lock().unwrap();
         let entry = guard.entry(email);
         if let Entry::Occupied(mut v) = entry {
             if v.get().register_status != RegisterStatus::EmailVerified {
@@ -80,9 +80,9 @@ impl super::DBConf {
     }
 
     pub async fn register(self: Arc<Self>, email: String, username: String) -> Result<(), String> {
-        let value: RegisterUser;
+        let value: UnregisteredUser;
 
-        let mut guard = self.registration.lock().unwrap();
+        let mut guard = self.unregistered.lock().unwrap();
         let entry = guard.entry(email);
         if let Entry::Occupied(v) = entry {
             if v.get().register_status != RegisterStatus::PasswordSet {
@@ -104,16 +104,21 @@ impl super::DBConf {
 
         self.add_user(&crate::models::User {
             _id: ObjectId::new(),
-            name: value.name,
+            legal_name: value.name.clone(),
             email: value.email,
             dob: value.dob,
             password: value.password.unwrap(),
             username,
+            display_name: value.name,
+            bio: None,
             gender: None,
             phone: None,
-            created: DateTime::now(),
-            last_login: DateTime::now(),
-        });
+            country: None,
+            // created: DateTime::now(),
+            // last_login: DateTime::now(),
+        })
+        .await
+        .map_err(|e| e.to_string())?;
         Ok(())
     }
 }

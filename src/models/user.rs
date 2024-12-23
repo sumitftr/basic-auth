@@ -2,7 +2,7 @@ use mongodb::bson::DateTime;
 use serde::Deserialize;
 
 #[derive(Deserialize, Debug)]
-pub struct RegisterUser {
+pub struct UnregisteredUser {
     pub name: String,
     pub email: String,
     pub dob: DateTime,

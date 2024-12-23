@@ -5,12 +5,12 @@ use std::{
 };
 
 mod banned_tokens;
-mod registration;
+mod unregistered;
 mod users;
 
 pub struct DBConf {
     users: Collection<crate::models::User>,
-    registration: std::sync::Mutex<HashMap<String, crate::models::user::RegisterUser>>,
+    unregistered: std::sync::Mutex<HashMap<String, crate::models::user::UnregisteredUser>>,
     banned_tokens: std::sync::Mutex<HashSet<String>>,
 }
 
@@ -39,7 +39,7 @@ impl DBConf {
 
         Arc::new(Self {
             users: db.collection(collections[0]),
-            registration: std::sync::Mutex::new(HashMap::new()),
+            unregistered: std::sync::Mutex::new(HashMap::new()),
             banned_tokens: std::sync::Mutex::new(HashSet::new()),
         })
     }

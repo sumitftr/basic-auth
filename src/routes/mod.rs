@@ -11,7 +11,6 @@ mod session;
 pub async fn routes() -> Router {
     let webdb = crate::database::DBConf::init().await;
     let main_router = Router::new()
-        .route("/", get(home_page))
         // session handling routes
         .route("/api/user/logout", post(session::logout))
         .route("/api/session/refresh", post(session::refresh_session))
@@ -28,8 +27,4 @@ pub async fn routes() -> Router {
 
     main_router.merge(auth::auth_routes(webdb))
     // .layer(tower_http::trace::TraceLayer::new_for_http())
-}
-
-pub async fn home_page() -> String {
-    format!("Hello, World!")
 }
