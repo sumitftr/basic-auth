@@ -1,4 +1,5 @@
-use crate::models::user::*;
+use crate::models::user::RegisterStatus;
+use crate::utils::validation;
 use mongodb::bson::{oid::ObjectId, DateTime};
 use std::collections::hash_map::Entry;
 use std::sync::Arc;
@@ -13,8 +14,8 @@ impl super::DBConf {
         month: u8,
         year: i32,
     ) -> Result<(), String> {
-        let name = is_name_valid(&name)?;
-        if !is_email_valid(&email) {
+        let name = validation::is_name_valid(&name)?;
+        if !validation::is_email_valid(&email) {
             return Err("Invalid Email Format".to_string());
         };
         // checking if the email is already used or not
@@ -30,18 +31,45 @@ impl super::DBConf {
             Ok(v) => v,
             Err(e) => return Err(e.to_string()),
         };
+        // generating otp
+        let otp = crate::utils::mail::generate_otp(email.as_bytes());
+
         let mut guard = self.unregistered.lock().unwrap();
         guard.insert(
-            email.clone(),
-            UnregisteredUser {
+            email,
+            crate::models::user::UnregisteredEntry {
                 name,
-                email,
                 dob,
+                otp,
                 password: None,
-                username: None,
                 register_status: RegisterStatus::Created,
             },
         );
+        drop(guard);
+
+        // sending mail
+
+        Ok(())
+    }
+
+    pub fn resend_otp(self: Arc<Self>, email: String) -> Result<(), String> {
+        // generating otp
+        let otp = crate::utils::mail::generate_otp(email.as_bytes());
+
+        let mut guard = self.unregistered.lock().unwrap();
+        let entry = guard.entry(email);
+        if let Entry::Occupied(mut v) = entry {
+            if v.get().register_status != RegisterStatus::Created {
+                return Err("OTP can't be sent multiple times".to_string());
+            }
+            v.get_mut().otp = otp;
+        } else {
+            return Err("User not found".to_string());
+        }
+        drop(guard);
+
+        // sending mail
+
         Ok(())
     }
 
@@ -52,8 +80,9 @@ impl super::DBConf {
             if v.get().register_status != RegisterStatus::Created {
                 return Err("OTP can't be sent multiple times".to_string());
             }
-            // not finished
-            // otp checking
+            if v.get().otp != otp {
+                return Err("OTP doesn't match".to_string());
+            }
             v.get_mut().register_status = RegisterStatus::EmailVerified;
         } else {
             return Err("User not found".to_string());
@@ -80,7 +109,8 @@ impl super::DBConf {
     }
 
     pub async fn register(self: Arc<Self>, email: String, username: String) -> Result<(), String> {
-        let value: UnregisteredUser;
+        let metadata: crate::models::user::UnregisteredEntry;
+        let user_email: String;
 
         let mut guard = self.unregistered.lock().unwrap();
         let entry = guard.entry(email);
@@ -89,27 +119,27 @@ impl super::DBConf {
                 return Err("User password not set".to_string());
             }
             // have to use tokio::sync::Mutex for this
-            is_username_valid(&username)?;
+            validation::is_username_valid(&username)?;
             if let Err(e) = self.is_username_available(&username).await {
                 if let Some(s) = e.get_custom::<&str>() {
                     return Err(s.to_string());
                 }
                 return Err(e.to_string());
             }
-            value = v.remove_entry().1;
+            (user_email, metadata) = v.remove_entry();
         } else {
             return Err("User not found".to_string());
         }
         drop(guard);
 
-        self.add_user(&crate::models::User {
+        self.add_user(&crate::models::user::User {
             _id: ObjectId::new(),
-            legal_name: value.name.clone(),
-            email: value.email,
-            dob: value.dob,
-            password: value.password.unwrap(),
+            legal_name: metadata.name.clone(),
+            email: user_email,
+            dob: metadata.dob,
+            password: metadata.password.unwrap(),
             username,
-            display_name: value.name,
+            display_name: metadata.name,
             bio: None,
             gender: None,
             phone: None,

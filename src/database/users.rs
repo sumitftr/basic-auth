@@ -1,4 +1,4 @@
-use crate::models::User;
+use crate::models::user::User;
 use mongodb::bson::{doc, DateTime};
 use std::sync::Arc;
 

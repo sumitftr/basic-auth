@@ -2,7 +2,7 @@ use std::sync::Arc;
 
 // implementation block for deleted sessions
 impl super::DBConf {
-    pub async fn is_token_banned(self: Arc<Self>, token: &str) -> bool {
+    pub fn is_token_banned(self: Arc<Self>, token: &str) -> bool {
         let guard = self.banned_tokens.lock().unwrap();
 
         match guard.get(token) {

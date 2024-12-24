@@ -8,9 +8,10 @@ use axum::{
 use serde::Deserialize;
 use std::sync::Arc;
 
-pub fn auth_routes(webdb: Arc<DBConf>) -> Router {
+pub(super) fn auth_routes(webdb: Arc<DBConf>) -> Router {
     Router::new()
         .route("/api/register/create_user", post(create_user))
+        .route("/api/register/resend_otp", post(resend_otp))
         .route("/api/register/verify_email", post(verify_email))
         .route("/api/register/set_password", post(set_password))
         .route("/api/register/set_username", post(set_username))
@@ -38,6 +39,19 @@ pub async fn create_user(
         .create_user(body.name, body.email, body.day, body.month, body.year)
         .await
         .map_err(|e| (StatusCode::BAD_REQUEST, e))?;
+    todo!()
+}
+
+#[derive(Deserialize)]
+pub struct ResendOtpRequest {
+    email: String,
+}
+
+pub async fn resend_otp(
+    State(state): State<Arc<DBConf>>,
+    ConnectInfo(conn_info): ConnectInfo<crate::utils::ClientConnInfo>,
+    Json(body): Json<ResendOtpRequest>,
+) -> Result<String, (StatusCode, String)> {
     todo!()
 }
 

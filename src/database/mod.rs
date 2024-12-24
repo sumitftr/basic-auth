@@ -9,8 +9,8 @@ mod unregistered;
 mod users;
 
 pub struct DBConf {
-    users: Collection<crate::models::User>,
-    unregistered: std::sync::Mutex<HashMap<String, crate::models::user::UnregisteredUser>>,
+    users: Collection<crate::models::user::User>,
+    unregistered: std::sync::Mutex<HashMap<String, crate::models::user::UnregisteredEntry>>,
     banned_tokens: std::sync::Mutex<HashSet<String>>,
 }
 

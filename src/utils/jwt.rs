@@ -61,7 +61,7 @@ pub async fn authenticate(
         .map_err(|_| (StatusCode::INTERNAL_SERVER_ERROR, "".to_string()))?;
 
     // checking if the token is banned
-    if state.is_token_banned(token).await {
+    if state.is_token_banned(token) {
         return Err((StatusCode::BAD_REQUEST, format!("Token has expired")));
     }
 
