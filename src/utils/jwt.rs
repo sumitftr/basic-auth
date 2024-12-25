@@ -1,7 +1,7 @@
-use crate::database::DBConf;
+use crate::{database::DBConf, utils::AppError};
 use axum::{
     extract::{ConnectInfo, State},
-    http::{header, Request, StatusCode},
+    http::{header, Request},
     response::Response,
 };
 use jsonwebtoken::errors::ErrorKind;
@@ -18,7 +18,7 @@ pub struct Claims {
 // For more information on claims visit:
 // https://www.iana.org/assignments/jwt/jwt.xhtml
 
-pub fn generate(username: &str, ip: String) -> Result<String, String> {
+pub fn generate(username: &str, ip: String) -> Result<String, AppError> {
     let now = chrono::Utc::now();
     let claims = Claims {
         sub: username.to_string(),
@@ -33,9 +33,9 @@ pub fn generate(username: &str, ip: String) -> Result<String, String> {
         &jsonwebtoken::EncodingKey::from_secret(&*crate::SECRET_KEY.as_bytes()),
     )
     .map_err(|e| {
-        let result = format!("Failed to create token");
-        tracing::error!(result, username, "{e:?}");
-        result
+        let s = "Failed to create token";
+        tracing::error!(s, username, "{e:?}");
+        AppError::Server(s)
     })
 }
 
@@ -45,24 +45,23 @@ pub async fn authenticate(
     ConnectInfo(conn_info): ConnectInfo<crate::utils::ClientConnInfo>,
     mut req: Request<axum::body::Body>,
     next: axum::middleware::Next,
-) -> Result<Response, (StatusCode, String)> {
+) -> Result<Response, AppError> {
     // checking for the authorization header
     let Some(auth_header) = req.headers().get(header::AUTHORIZATION) else {
-        return Err((
-            StatusCode::BAD_REQUEST,
-            format!("Authorization header not set"),
-        ));
+        return Err(AppError::BadReq("Authorization header not set"));
     };
 
     // stripping bearer from the authorization header
-    let token = auth_header
+    let Ok(token) = auth_header
         .to_str()
         .map(|v| v.strip_prefix("Bearer ").unwrap())
-        .map_err(|_| (StatusCode::INTERNAL_SERVER_ERROR, "".to_string()))?;
+    else {
+        return Err(AppError::ServerDefault);
+    };
 
     // checking if the token is banned
     if state.is_token_banned(token) {
-        return Err((StatusCode::BAD_REQUEST, format!("Token has expired")));
+        return Err(AppError::Auth("Token has expired"));
     }
 
     // decoding jwt token
@@ -72,17 +71,14 @@ pub async fn authenticate(
         &jsonwebtoken::Validation::default(),
     )
     .map_err(|e| match e.into_kind() {
-        ErrorKind::InvalidToken => (StatusCode::BAD_REQUEST, format!("Token Invalid")),
-        ErrorKind::InvalidSignature => (StatusCode::BAD_REQUEST, format!("Token has expired")),
-        _ => (
-            StatusCode::INTERNAL_SERVER_ERROR,
-            format!("Authentication Failed"),
-        ),
+        ErrorKind::InvalidToken => AppError::Auth("Token Invalid"),
+        ErrorKind::InvalidSignature => AppError::Auth("Token has expired"),
+        _ => AppError::Server("Authentication Failed"),
     })?;
 
     // checking ip
     if tokendata.claims.ip != conn_info.ip() {
-        return Err((StatusCode::BAD_REQUEST, format!("Token Invalid")));
+        return Err(AppError::BadReq("Token Invalid"));
     }
 
     req.extensions_mut().insert(tokendata.claims);

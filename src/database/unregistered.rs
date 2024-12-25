@@ -1,5 +1,5 @@
 use crate::models::user::RegisterStatus;
-use crate::utils::validation;
+use crate::utils::{validation, AppError};
 use mongodb::bson::{oid::ObjectId, DateTime};
 use std::collections::hash_map::Entry;
 use std::sync::Arc;
@@ -13,23 +13,21 @@ impl super::DBConf {
         day: u8,
         month: u8,
         year: i32,
-    ) -> Result<(), String> {
+    ) -> Result<(), AppError> {
         let name = validation::is_name_valid(&name)?;
         if !validation::is_email_valid(&email) {
-            return Err("Invalid Email Format".to_string());
+            return Err(AppError::BadReq("Invalid Email Format"));
         };
         // checking if the email is already used or not
-        if let Err(e) = self.is_email_available(&email).await {
-            if let Some(s) = e.get_custom::<&str>() {
-                return Err(s.to_string());
-            }
-            return Err(e.to_string());
-        }
+        self.is_email_available(&email).await?;
         // checking if the date of birth is valid or not
         let dob = match DateTime::builder().year(year).month(month).day(day).build() {
-            Ok(v) if v > DateTime::now() => return Err("Invalid Date of Birth".to_string()),
+            Ok(v) if v > DateTime::now() => return Err(AppError::BadReq("Invalid Date of Birth")),
             Ok(v) => v,
-            Err(e) => return Err(e.to_string()),
+            Err(e) => {
+                tracing::error!("{e:?}");
+                return Err(AppError::ServerDefault);
+            }
         };
         // generating otp
         let otp = crate::utils::mail::generate_otp(email.as_bytes());
@@ -52,7 +50,7 @@ impl super::DBConf {
         Ok(())
     }
 
-    pub async fn resend_otp(self: Arc<Self>, email: String) -> Result<(), String> {
+    pub async fn resend_otp(self: Arc<Self>, email: String) -> Result<(), AppError> {
         // generating otp
         let otp = crate::utils::mail::generate_otp(email.as_bytes());
 
@@ -60,11 +58,11 @@ impl super::DBConf {
         let entry = guard.entry(email);
         if let Entry::Occupied(mut v) = entry {
             if v.get().register_status != RegisterStatus::Created {
-                return Err("OTP can't be sent multiple times".to_string());
+                return Err(AppError::BadReq("OTP can't be sent multiple times"));
             }
             v.get_mut().otp = otp;
         } else {
-            return Err("User not found".to_string());
+            return Err(AppError::BadReq("User not found"));
         }
         drop(guard);
 
@@ -73,37 +71,39 @@ impl super::DBConf {
         Ok(())
     }
 
-    pub fn verify_email(self: Arc<Self>, email: String, otp: u32) -> Result<(), String> {
+    pub fn verify_email(self: Arc<Self>, email: String, otp: u32) -> Result<(), AppError> {
         let mut guard = self.unregistered.lock().unwrap();
         let entry = guard.entry(email);
         if let Entry::Occupied(mut v) = entry {
             if v.get().register_status != RegisterStatus::Created {
-                return Err("OTP can't be sent multiple times".to_string());
+                return Err(AppError::BadReq("OTP can't be sent multiple times"));
             }
             if v.get().otp != otp {
-                return Err("OTP doesn't match".to_string());
+                return Err(AppError::BadReq("OTP doesn't match"));
             }
             v.get_mut().register_status = RegisterStatus::EmailVerified;
         } else {
-            return Err("User not found".to_string());
+            return Err(AppError::UserNotFound);
         }
         Ok(())
     }
 
-    pub fn set_password(self: Arc<Self>, email: String, password: String) -> Result<(), String> {
+    pub fn set_password(self: Arc<Self>, email: String, password: String) -> Result<(), AppError> {
         let mut guard = self.unregistered.lock().unwrap();
         let entry = guard.entry(email);
         if let Entry::Occupied(mut v) = entry {
             if v.get().register_status != RegisterStatus::EmailVerified {
-                return Err("User email not verified".to_string());
+                return Err(AppError::BadReq("User email not verified"));
             }
             if password.len() < 8 {
-                return Err("Password should be of atleast 8 characters".to_string());
+                return Err(AppError::BadReq(
+                    "Password should be of atleast 8 characters",
+                ));
             }
             v.get_mut().password = Some(password);
             v.get_mut().register_status = RegisterStatus::PasswordSet;
         } else {
-            return Err("User not found".to_string());
+            return Err(AppError::UserNotFound);
         }
         Ok(())
     }
@@ -112,14 +112,9 @@ impl super::DBConf {
         self: Arc<Self>,
         email: String,
         username: String,
-    ) -> Result<crate::models::user::User, String> {
+    ) -> Result<crate::models::user::User, AppError> {
         validation::is_username_valid(&username)?;
-        if let Err(e) = self.is_username_available(&username).await {
-            if let Some(s) = e.get_custom::<&str>() {
-                return Err(s.to_string());
-            }
-            return Err("Something went wrong".to_string());
-        }
+        self.is_username_available(&username).await?;
 
         let metadata: crate::models::user::UnregisteredEntry;
         let user_email: String;
@@ -128,11 +123,11 @@ impl super::DBConf {
         let entry = guard.entry(email);
         if let Entry::Occupied(v) = entry {
             if v.get().register_status != RegisterStatus::PasswordSet {
-                return Err("User password not set".to_string());
+                return Err(AppError::BadReq("User password not set"));
             }
             (user_email, metadata) = v.remove_entry();
         } else {
-            return Err("User not found".to_string());
+            return Err(AppError::UserNotFound);
         }
         drop(guard);
 

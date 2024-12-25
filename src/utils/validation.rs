@@ -1,11 +1,13 @@
+use super::AppError;
+
 // a valid name contains two or more words
 // each words should only contain english alphabets
-pub fn is_name_valid(s: &str) -> Result<String, String> {
+pub fn is_name_valid(s: &str) -> Result<String, AppError> {
     let mut result = "".to_string();
     let mut count = 0;
     for part in s.split_whitespace() {
         if part.bytes().any(|b| !b.is_ascii_alphabetic()) {
-            return Err("Only alphabets are allowed inside name".to_string());
+            return Err(AppError::BadReq("Only alphabets are allowed inside name"));
         }
         if !result.is_empty() {
             result.push(' ');
@@ -16,7 +18,7 @@ pub fn is_name_valid(s: &str) -> Result<String, String> {
     if !result.is_empty() && count >= 2 {
         Ok(result)
     } else {
-        Err("Name must contain two or more words".to_string())
+        Err(AppError::BadReq("Name must contain two or more words"))
     }
 }
 
@@ -87,26 +89,32 @@ pub fn is_email_valid(s: &str) -> bool {
     true
 }
 
-pub fn is_username_valid(s: &str) -> Result<(), String> {
+pub fn is_username_valid(s: &str) -> Result<(), AppError> {
     if s.len() < 3 && s.len() > 16 {
-        return Err("Username should be between 3 and 16 characters".to_string());
+        return Err(AppError::BadReq(
+            "Username should be between 3 and 16 characters",
+        ));
     }
     if !s
         .chars()
         .all(|c| c.is_ascii_alphabetic() || c.is_ascii_digit() || c == '_' || c == '-')
     {
-        return Err("Only alphabets, digits, underscores and hyphens are allowed".to_string());
+        return Err(AppError::BadReq(
+            "Only alphabets, digits, underscores and hyphens are allowed",
+        ));
     }
     if !s.chars().next().unwrap().is_ascii_alphabetic() {
-        return Err("Username should start with alphabetic character".to_string());
+        return Err(AppError::BadReq(
+            "Username should start with alphabetic character",
+        ));
     }
     if ["__", "_-", "-_", "--"].into_iter().any(|p| s.contains(p)) {
-        return Err(
-            "Username can not contain more than one hypen or underscore together".to_string(),
-        );
+        return Err(AppError::BadReq(
+            "Username can not contain more than one hypen or underscore together",
+        ));
     }
     if s.chars().next_back().unwrap() == '-' {
-        return Err("Username can't be ended with hyphen".to_string());
+        return Err(AppError::BadReq("Username can't be ended with hyphen"));
     }
     Ok(())
 }

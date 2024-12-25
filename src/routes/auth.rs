@@ -1,7 +1,6 @@
-use crate::database::DBConf;
+use crate::{database::DBConf, utils::AppError};
 use axum::{
     extract::{ConnectInfo, State},
-    http::StatusCode,
     routing::post,
     Json, Router,
 };
@@ -33,11 +32,10 @@ pub struct CreateUserRequest {
 pub async fn create_user(
     State(state): State<Arc<DBConf>>,
     Json(body): Json<CreateUserRequest>,
-) -> Result<String, (StatusCode, String)> {
+) -> Result<String, AppError> {
     state
         .create_user(body.name, body.email, body.day, body.month, body.year)
-        .await
-        .map_err(|e| (StatusCode::BAD_REQUEST, e))?;
+        .await?;
     Ok(format!(""))
 }
 
@@ -49,11 +47,8 @@ pub struct ResendOtpRequest {
 pub async fn resend_otp(
     State(state): State<Arc<DBConf>>,
     Json(body): Json<ResendOtpRequest>,
-) -> Result<String, (StatusCode, String)> {
-    state
-        .resend_otp(body.email)
-        .await
-        .map_err(|e| (StatusCode::BAD_REQUEST, e))?;
+) -> Result<String, AppError> {
+    state.resend_otp(body.email).await?;
     Ok(format!("The email has been sent"))
 }
 
@@ -68,10 +63,8 @@ pub struct VerifyEmailRequest {
 pub async fn verify_email(
     State(state): State<Arc<DBConf>>,
     Json(body): Json<VerifyEmailRequest>,
-) -> Result<String, (StatusCode, String)> {
-    state
-        .verify_email(body.email, body.otp)
-        .map_err(|e| (StatusCode::BAD_REQUEST, e))?;
+) -> Result<String, AppError> {
+    state.verify_email(body.email, body.otp)?;
     Ok(format!("Email Verified"))
 }
 
@@ -86,10 +79,8 @@ pub struct SetPasswordRequest {
 pub async fn set_password(
     State(state): State<Arc<DBConf>>,
     Json(body): Json<SetPasswordRequest>,
-) -> Result<String, (StatusCode, String)> {
-    state
-        .set_password(body.email, body.password)
-        .map_err(|e| (StatusCode::BAD_REQUEST, e))?;
+) -> Result<String, AppError> {
+    state.set_password(body.email, body.password)?;
     Ok(format!("Password has been set"))
 }
 
@@ -105,21 +96,15 @@ pub async fn set_username(
     State(state): State<Arc<DBConf>>,
     ConnectInfo(conn_info): ConnectInfo<crate::utils::ClientConnInfo>,
     Json(body): Json<SetUsernameRequest>,
-) -> Result<String, (StatusCode, String)> {
+) -> Result<String, AppError> {
     let u = Arc::clone(&state)
         .set_username(body.email, body.username.clone())
-        .await
-        .map_err(|e| (StatusCode::BAD_REQUEST, e))?;
-    state.add_user(&u).await.map_err(|_| {
-        (
-            StatusCode::INTERNAL_SERVER_ERROR,
-            format!("Something went wrong"),
-        )
-    })?;
+        .await?;
+    state.add_user(&u).await?;
     // creating token
     match crate::utils::jwt::generate(body.username.as_str(), conn_info.into_ip()) {
         Ok(token) => return Ok(token),
-        Err(e) => return Err((StatusCode::INTERNAL_SERVER_ERROR, e)),
+        Err(e) => return Err(e),
     };
 }
 
@@ -133,20 +118,14 @@ pub async fn login(
     State(state): State<Arc<DBConf>>,
     ConnectInfo(conn_info): ConnectInfo<crate::utils::ClientConnInfo>,
     Json(body): Json<LoginRequest>,
-) -> Result<String, (StatusCode, String)> {
+) -> Result<String, AppError> {
     // validating username and password
     if body.username.len() >= 3 && body.password.len() >= 8 {
-        if let Err(e) = state.check_password(&body.username, &body.password).await {
-            if let Some(s) = e.get_custom::<&str>() {
-                return Err((StatusCode::BAD_REQUEST, s.to_string()));
-            } else {
-                return Err((StatusCode::INTERNAL_SERVER_ERROR, format!("")));
-            }
-        }
+        state.check_password(&body.username, &body.password).await?;
     }
     // creating token
     match crate::utils::jwt::generate(body.username.as_str(), conn_info.into_ip()) {
         Ok(token) => return Ok(token),
-        Err(e) => return Err((StatusCode::INTERNAL_SERVER_ERROR, e)),
+        Err(e) => return Err(e),
     }
 }

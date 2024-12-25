@@ -1,42 +1,30 @@
-use crate::models::user::User;
+use crate::{models::user::User, utils::AppError};
 use mongodb::bson::{doc, DateTime};
 use std::sync::Arc;
 
-// implementation block for mutating users
+// implementation block for checking user attributes
 impl super::DBConf {
     // checks if the email is available or not
-    pub async fn is_email_available(self: &Arc<Self>, email: &str) -> mongodb::error::Result<()> {
+    pub async fn is_email_available(self: &Arc<Self>, email: &str) -> Result<(), AppError> {
         match self.users.find_one(doc! { "email": email }).await {
-            Ok(v) => match v {
-                Some(_) => Err(mongodb::error::Error::custom("Email not available")),
-                None => Ok(()),
-            },
-            Err(e) => Err(e),
+            Ok(Some(_)) => Err(AppError::BadReq("Email not available")),
+            Ok(None) => Ok(()),
+            Err(e) => {
+                tracing::error!("{e:?}");
+                Err(AppError::ServerDefault)
+            }
         }
     }
 
     // checks if the username is available or not
-    pub async fn is_username_available(
-        self: &Arc<Self>,
-        username: &str,
-    ) -> mongodb::error::Result<()> {
+    pub async fn is_username_available(self: &Arc<Self>, username: &str) -> Result<(), AppError> {
         match self.users.find_one(doc! { "username": username }).await {
-            Ok(v) => match v {
-                Some(_) => Err(mongodb::error::Error::custom("Username not available")),
-                None => Ok(()),
-            },
-            Err(e) => Err(e),
-        }
-    }
-
-    // adds a user to the database
-    pub async fn add_user(self: Arc<Self>, user: &User) -> mongodb::error::Result<()> {
-        match self.users.insert_one(user).await {
-            Ok(v) => {
-                tracing::info!("Inserted User: {}", v.inserted_id);
-                Ok(())
+            Ok(Some(_)) => Err(AppError::BadReq("Username not available")),
+            Ok(None) => Ok(()),
+            Err(e) => {
+                tracing::error!("{e:?}");
+                Err(AppError::ServerDefault)
             }
-            Err(e) => Err(e),
         }
     }
 
@@ -45,26 +33,41 @@ impl super::DBConf {
         self: Arc<Self>,
         username: &str,
         password: &str,
-    ) -> mongodb::error::Result<()> {
+    ) -> Result<(), AppError> {
         match self.users.find_one(doc! { "username": username }).await {
-            Ok(Some(v)) => {
-                if v.password == password {
-                    Ok(())
-                } else {
-                    Err(mongodb::error::Error::custom("Password didn't match"))
-                }
+            Ok(Some(v)) if v.password == password => Ok(()),
+            Ok(Some(_)) => Err(AppError::BadReq("Password didn't match")),
+            Ok(None) => Err(AppError::UserNotFound),
+            Err(e) => {
+                tracing::error!("{e:?}");
+                Err(AppError::ServerDefault)
             }
-            Ok(None) => Err(mongodb::error::Error::custom("Username not available")),
-            Err(e) => Err(e),
         }
     }
 
+    // adds a user to the database
+    pub async fn add_user(self: Arc<Self>, user: &User) -> Result<(), AppError> {
+        match self.users.insert_one(user).await {
+            Ok(v) => {
+                tracing::info!("Inserted User: {}", v.inserted_id);
+                Ok(())
+            }
+            Err(e) => {
+                tracing::error!("{e:?}");
+                Err(AppError::ServerDefault)
+            }
+        }
+    }
+}
+
+// implementation block for checking and updating user attributes
+impl super::DBConf {
     // updates email of the given user to new email
     pub async fn check_and_update_email(
         self: Arc<Self>,
         email: &str,
         new_email: &str,
-    ) -> mongodb::error::Result<()> {
+    ) -> Result<(), AppError> {
         self.is_email_available(email).await?;
         let update = doc! {"email": email};
         let filter = doc! {"$set": doc! {"email": new_email}};
@@ -73,7 +76,10 @@ impl super::DBConf {
                 tracing::info!("Updated User Email: {:?}", v.upserted_id);
                 Ok(())
             }
-            Err(e) => Err(e),
+            Err(e) => {
+                tracing::error!("{e:?}");
+                Err(AppError::ServerDefault)
+            }
         }
     }
 
@@ -82,7 +88,7 @@ impl super::DBConf {
         self: Arc<Self>,
         username: &str,
         new_username: &str,
-    ) -> mongodb::error::Result<()> {
+    ) -> Result<(), AppError> {
         self.is_username_available(username).await?;
         let update = doc! {"username": username};
         let filter = doc! {"$set": doc! {"username": new_username}};
@@ -91,26 +97,10 @@ impl super::DBConf {
                 tracing::info!("Updated Username: {:?}", v.upserted_id);
                 Ok(())
             }
-            Err(e) => Err(e),
-        }
-    }
-
-    // updates metadata for the given user
-    pub async fn update_metadata(
-        self: Arc<Self>,
-        username: &str,
-        name: &str,
-        gender: &str,
-        dob: &DateTime,
-    ) -> mongodb::error::Result<()> {
-        let update = doc! {"username": username};
-        let filter = doc! {"$set": doc! {"name": name, "gender": gender, "dob": dob}};
-        match self.users.update_one(filter, update).await {
-            Ok(v) => {
-                tracing::info!("Updated User Metadata: {:?}", v.upserted_id);
-                Ok(())
+            Err(e) => {
+                tracing::error!("{e:?}");
+                Err(AppError::ServerDefault)
             }
-            Err(e) => Err(e),
         }
     }
 
@@ -120,25 +110,56 @@ impl super::DBConf {
         username: &str,
         password: &str,
         new_password: &str,
-    ) -> mongodb::error::Result<()> {
+    ) -> Result<(), AppError> {
         let update = doc! {"username": username};
         let filter = doc! {"$set": doc! {"password": new_password}};
         match self.users.find_one(update.clone()).await {
             Ok(Some(u)) => {
                 if u.password != password {
-                    return Err(mongodb::error::Error::custom("Password didn't match"));
+                    Err(AppError::BadReq("Password didn't match"))
                 } else {
                     match self.users.update_one(filter, update).await {
                         Ok(v) => {
                             tracing::info!("Updated User Password: {:?}", v.upserted_id);
-                            return Ok(());
+                            Ok(())
                         }
-                        Err(e) => return Err(e),
+                        Err(e) => {
+                            tracing::error!("{e:?}");
+                            Err(AppError::ServerDefault)
+                        }
                     }
                 }
             }
-            Ok(None) => return Err(mongodb::error::Error::custom("User not found")),
-            Err(e) => return Err(e),
-        };
+            Ok(None) => Err(AppError::UserNotFound),
+            Err(e) => {
+                tracing::error!("{e:?}");
+                Err(AppError::ServerDefault)
+            }
+        }
+    }
+}
+
+// implementation block for just updating user attributes
+impl super::DBConf {
+    // updates metadata for the given user
+    pub async fn update_metadata(
+        self: Arc<Self>,
+        username: &str,
+        name: &str,
+        gender: &str,
+        dob: &DateTime,
+    ) -> Result<(), AppError> {
+        let update = doc! {"username": username};
+        let filter = doc! {"$set": doc! {"name": name, "gender": gender, "dob": dob}};
+        match self.users.update_one(filter, update).await {
+            Ok(v) => {
+                tracing::info!("Updated User Metadata: {:?}", v.upserted_id);
+                Ok(())
+            }
+            Err(e) => {
+                tracing::error!("{e:?}");
+                Err(AppError::ServerDefault)
+            }
+        }
     }
 }
