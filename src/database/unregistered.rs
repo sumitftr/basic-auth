@@ -52,7 +52,7 @@ impl super::DBConf {
         Ok(())
     }
 
-    pub fn resend_otp(self: Arc<Self>, email: String) -> Result<(), String> {
+    pub async fn resend_otp(self: Arc<Self>, email: String) -> Result<(), String> {
         // generating otp
         let otp = crate::utils::mail::generate_otp(email.as_bytes());
 
@@ -108,7 +108,19 @@ impl super::DBConf {
         Ok(())
     }
 
-    pub async fn register(self: Arc<Self>, email: String, username: String) -> Result<(), String> {
+    pub async fn set_username(
+        self: Arc<Self>,
+        email: String,
+        username: String,
+    ) -> Result<crate::models::user::User, String> {
+        validation::is_username_valid(&username)?;
+        if let Err(e) = self.is_username_available(&username).await {
+            if let Some(s) = e.get_custom::<&str>() {
+                return Err(s.to_string());
+            }
+            return Err("Something went wrong".to_string());
+        }
+
         let metadata: crate::models::user::UnregisteredEntry;
         let user_email: String;
 
@@ -118,21 +130,13 @@ impl super::DBConf {
             if v.get().register_status != RegisterStatus::PasswordSet {
                 return Err("User password not set".to_string());
             }
-            // have to use tokio::sync::Mutex for this
-            validation::is_username_valid(&username)?;
-            if let Err(e) = self.is_username_available(&username).await {
-                if let Some(s) = e.get_custom::<&str>() {
-                    return Err(s.to_string());
-                }
-                return Err(e.to_string());
-            }
             (user_email, metadata) = v.remove_entry();
         } else {
             return Err("User not found".to_string());
         }
         drop(guard);
 
-        self.add_user(&crate::models::user::User {
+        Ok(crate::models::user::User {
             _id: ObjectId::new(),
             legal_name: metadata.name.clone(),
             email: user_email,
@@ -147,8 +151,5 @@ impl super::DBConf {
             // created: DateTime::now(),
             // last_login: DateTime::now(),
         })
-        .await
-        .map_err(|e| e.to_string())?;
-        Ok(())
     }
 }

@@ -1,4 +1,9 @@
 use hmac::{Hmac, Mac};
+use lettre::{
+    message::Mailbox,
+    transport::smtp::authentication::Credentials,
+    {Message, SmtpTransport, Transport},
+};
 use sha1::Sha1;
 
 pub fn generate_otp(secret: &[u8]) -> u32 {
@@ -35,4 +40,32 @@ pub fn generate_otp(secret: &[u8]) -> u32 {
         | (hash[dynamic_offset + 1] as u32) << 16
         | (hash[dynamic_offset + 2] as u32) << 8
         | (hash[dynamic_offset + 3] as u32)) as u32
+}
+
+// this function is incomplete
+pub async fn send_otp(to_email: &str, otp: u32) -> Result<(), String> {
+    let smtp_key: &str = "<your-smtp-key>";
+    let from_email: &str = "<your-email>";
+    let smtp_host: &str = "smtp-relay.sendinblue.com";
+
+    let creds: Credentials = Credentials::new(from_email.to_string(), smtp_key.to_string());
+
+    // Open a remote connection
+    let mailer: SmtpTransport = SmtpTransport::relay(&smtp_host)
+        .unwrap()
+        .credentials(creds)
+        .build();
+
+    let to_email: Mailbox = to_email.parse().map_err(|_| format!("Invalid Email"))?;
+    let email: Message = Message::builder()
+        .from(from_email.parse().unwrap())
+        .to(to_email)
+        .subject(format!("{otp} is your <SERVICE_NAME> verification code"))
+        .body(format!(
+            "Confirm your email address\n {otp}\n Thanks,\n <SERVICE_NAME>"
+        ))
+        .map_err(|e| e.to_string())?;
+
+    // Send the email
+    mailer.send(&email).map_err(|e| e.to_string()).map(|_| ())
 }
