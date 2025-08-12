@@ -3,7 +3,7 @@ use serde::Deserialize;
 
 #[derive(Deserialize, Debug)]
 pub struct LogoutRequest {
-    username: String,
+    // username: String,
 }
 
 pub async fn logout(Json(body): Json<LogoutRequest>) {

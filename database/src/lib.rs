@@ -1,23 +1,25 @@
-use mongodb::{error::ErrorKind, Collection};
+use mongodb::{Collection, error::ErrorKind};
 use std::{
     collections::{HashMap, HashSet},
     sync::Arc,
 };
 
-mod banned_tokens;
-mod unregistered;
-mod users;
+pub mod session;
+pub mod user;
 
-pub struct DBConf {
-    users: Collection<crate::models::user::User>,
-    unregistered: std::sync::Mutex<HashMap<String, crate::models::user::UnregisteredEntry>>,
+pub static DATABASE_URI: std::sync::LazyLock<String> =
+    std::sync::LazyLock::new(|| std::env::var("DATABASE_URI").unwrap());
+
+pub struct Db {
+    users: Collection<crate::user::User>,
+    unregistered: std::sync::Mutex<HashMap<String, crate::user::UnregisteredEntry>>,
     banned_tokens: std::sync::Mutex<HashSet<String>>,
 }
 
-impl DBConf {
+impl Db {
     pub async fn init() -> Arc<Self> {
         // establishing connection with local mongodb database
-        let db = mongodb::Client::with_uri_str(&*crate::DATABASE_URI)
+        let db = mongodb::Client::with_uri_str(&*DATABASE_URI)
             .await
             .unwrap()
             .database("web_db");

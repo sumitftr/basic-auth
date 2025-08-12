@@ -20,8 +20,10 @@ impl ClientConnInfo {
     // }
 }
 
-impl<'a> axum::extract::connect_info::Connected<IncomingStream<'a>> for ClientConnInfo {
-    fn connect_info(target: IncomingStream<'a>) -> Self {
+impl<'a, TcpListener> axum::extract::connect_info::Connected<IncomingStream<'a, TcpListener>>
+    for ClientConnInfo
+{
+    fn connect_info(target: IncomingStream<'a, TcpListener>) -> Self {
         let remote_addr = target.remote_addr();
         Self {
             ip: remote_addr.ip().to_string(),

@@ -1,67 +1,9 @@
-use crate::{models::user::User, utils::AppError};
-use mongodb::bson::{doc, DateTime};
+use common::AppError;
+use mongodb::bson::{DateTime, doc};
 use std::sync::Arc;
 
-// implementation block for checking user attributes
-impl super::DBConf {
-    // checks if the email is available or not
-    pub async fn is_email_available(self: &Arc<Self>, email: &str) -> Result<(), AppError> {
-        match self.users.find_one(doc! { "email": email }).await {
-            Ok(Some(_)) => Err(AppError::BadReq("Email not available")),
-            Ok(None) => Ok(()),
-            Err(e) => {
-                tracing::error!("{e:?}");
-                Err(AppError::ServerDefault)
-            }
-        }
-    }
-
-    // checks if the username is available or not
-    pub async fn is_username_available(self: &Arc<Self>, username: &str) -> Result<(), AppError> {
-        match self.users.find_one(doc! { "username": username }).await {
-            Ok(Some(_)) => Err(AppError::BadReq("Username not available")),
-            Ok(None) => Ok(()),
-            Err(e) => {
-                tracing::error!("{e:?}");
-                Err(AppError::ServerDefault)
-            }
-        }
-    }
-
-    // matches database user's password with requested password
-    pub async fn check_password(
-        self: Arc<Self>,
-        username: &str,
-        password: &str,
-    ) -> Result<(), AppError> {
-        match self.users.find_one(doc! { "username": username }).await {
-            Ok(Some(v)) if v.password == password => Ok(()),
-            Ok(Some(_)) => Err(AppError::BadReq("Password didn't match")),
-            Ok(None) => Err(AppError::UserNotFound),
-            Err(e) => {
-                tracing::error!("{e:?}");
-                Err(AppError::ServerDefault)
-            }
-        }
-    }
-
-    // adds a user to the database
-    pub async fn add_user(self: Arc<Self>, user: &User) -> Result<(), AppError> {
-        match self.users.insert_one(user).await {
-            Ok(v) => {
-                tracing::info!("Inserted User: {}", v.inserted_id);
-                Ok(())
-            }
-            Err(e) => {
-                tracing::error!("{e:?}");
-                Err(AppError::ServerDefault)
-            }
-        }
-    }
-}
-
 // implementation block for checking and updating user attributes
-impl super::DBConf {
+impl crate::Db {
     // updates email of the given user to new email
     pub async fn check_and_update_email(
         self: Arc<Self>,
@@ -140,7 +82,7 @@ impl super::DBConf {
 }
 
 // implementation block for just updating user attributes
-impl super::DBConf {
+impl crate::Db {
     // updates metadata for the given user
     pub async fn update_metadata(
         self: Arc<Self>,

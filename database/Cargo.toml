@@ -1,0 +1,16 @@
+[package]
+name = "database"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+repository.workspace = true
+license.workspace = true
+readme.workspace = true
+
+[dependencies]
+common = { path = "../common" }
+
+mongodb = "3.2.4"
+serde = { workspace = true }
+tokio = { workspace = true }
+tracing = { workspace = true }

@@ -1,4 +1,4 @@
-use super::AppError;
+use crate::AppError;
 
 // a valid name contains two or more words
 // each words should only contain english alphabets

@@ -1,5 +1,11 @@
-use mongodb::bson::{oid::ObjectId, DateTime};
+use mongodb::bson::{DateTime, oid::ObjectId};
 use serde::{Deserialize, Serialize};
+
+mod create;
+mod delete;
+mod read;
+mod unregistered;
+mod update;
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct User {

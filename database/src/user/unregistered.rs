@@ -1,11 +1,11 @@
-use crate::models::user::RegisterStatus;
-use crate::utils::{validation, AppError};
-use mongodb::bson::{oid::ObjectId, DateTime};
+use crate::user::RegisterStatus;
+use common::{AppError, validation};
+use mongodb::bson::{DateTime, oid::ObjectId};
 use std::collections::hash_map::Entry;
 use std::sync::Arc;
 
 // sub steps for registering an user
-impl super::DBConf {
+impl crate::Db {
     pub async fn create_user(
         self: Arc<Self>,
         name: String,
@@ -30,12 +30,12 @@ impl super::DBConf {
             }
         };
         // generating otp
-        let otp = crate::utils::mail::generate_otp(email.as_bytes());
+        let otp = common::mail::generate_otp(email.as_bytes());
 
         let mut guard = self.unregistered.lock().unwrap();
         guard.insert(
             email,
-            crate::models::user::UnregisteredEntry {
+            crate::user::UnregisteredEntry {
                 name,
                 dob,
                 otp,
@@ -52,7 +52,7 @@ impl super::DBConf {
 
     pub async fn resend_otp(self: Arc<Self>, email: String) -> Result<(), AppError> {
         // generating otp
-        let otp = crate::utils::mail::generate_otp(email.as_bytes());
+        let otp = common::mail::generate_otp(email.as_bytes());
 
         let mut guard = self.unregistered.lock().unwrap();
         let entry = guard.entry(email);
@@ -112,11 +112,11 @@ impl super::DBConf {
         self: Arc<Self>,
         email: String,
         username: String,
-    ) -> Result<crate::models::user::User, AppError> {
+    ) -> Result<crate::user::User, AppError> {
         validation::is_username_valid(&username)?;
         self.is_username_available(&username).await?;
 
-        let metadata: crate::models::user::UnregisteredEntry;
+        let metadata: crate::user::UnregisteredEntry;
         let user_email: String;
 
         let mut guard = self.unregistered.lock().unwrap();
@@ -131,7 +131,7 @@ impl super::DBConf {
         }
         drop(guard);
 
-        Ok(crate::models::user::User {
+        Ok(crate::user::User {
             _id: ObjectId::new(),
             legal_name: metadata.name.clone(),
             email: user_email,

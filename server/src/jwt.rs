@@ -1,9 +1,10 @@
-use crate::{database::DBConf, utils::AppError};
 use axum::{
-    extract::{ConnectInfo, State},
-    http::{header, Request},
+    extract::State,
+    http::{Request, header},
     response::Response,
 };
+use common::AppError;
+use database::Db;
 use jsonwebtoken::errors::ErrorKind;
 use std::sync::Arc;
 
@@ -12,19 +13,18 @@ pub struct Claims {
     pub sub: String, // subject (username)
     pub iat: usize,  // issued at
     pub exp: usize,  // expiration time
-    pub ip: String,  // client ip
 }
 
 // For more information on claims visit:
 // https://www.iana.org/assignments/jwt/jwt.xhtml
 
-pub fn generate(username: &str, ip: String) -> Result<String, AppError> {
+/// this function generates `Json Web Token` for a particular user at a particular ip
+pub fn generate(username: &str) -> Result<String, AppError> {
     let now = chrono::Utc::now();
     let claims = Claims {
         sub: username.to_string(),
         iat: now.timestamp() as usize,
         exp: (now + chrono::Duration::minutes(60)).timestamp() as usize,
-        ip,
     };
 
     jsonwebtoken::encode(
@@ -39,10 +39,9 @@ pub fn generate(username: &str, ip: String) -> Result<String, AppError> {
     })
 }
 
-// the middleware that validates requested user tokens
+/// the middleware that validates requested user tokens
 pub async fn authenticate(
-    State(state): State<Arc<DBConf>>,
-    ConnectInfo(conn_info): ConnectInfo<crate::utils::ClientConnInfo>,
+    State(state): State<Arc<Db>>,
     mut req: Request<axum::body::Body>,
     next: axum::middleware::Next,
 ) -> Result<Response, AppError> {
@@ -60,7 +59,7 @@ pub async fn authenticate(
     };
 
     // checking if the token is banned
-    if state.is_token_banned(token) {
+    if state.is_session_revoked(token) {
         return Err(AppError::Auth("Token has expired"));
     }
 
@@ -77,9 +76,9 @@ pub async fn authenticate(
     })?;
 
     // checking ip
-    if tokendata.claims.ip != conn_info.ip() {
-        return Err(AppError::BadReq("Token Invalid"));
-    }
+    // if tokendata.claims.ip != conn_info.ip() {
+    //     return Err(AppError::BadReq("Token Invalid"));
+    // }
 
     req.extensions_mut().insert(tokendata.claims);
     Ok(next.run(req).await)
