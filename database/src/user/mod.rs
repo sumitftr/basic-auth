@@ -20,6 +20,7 @@ pub struct User {
     pub gender: Option<String>,
     pub phone: Option<String>,
     pub country: Option<String>,
+    pub sessions: Vec<Vec<String>>,
     // status: UserStatus,
     // pub created: DateTime,
     // pub last_login: DateTime,
@@ -41,6 +42,7 @@ pub struct UnregisteredEntry {
     pub otp: u32,
     pub password: Option<String>,
     pub register_status: RegisterStatus,
+    pub session: Vec<String>,
 }
 
 #[derive(Deserialize, PartialEq, Debug)]

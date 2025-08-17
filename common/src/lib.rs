@@ -3,3 +3,4 @@ pub use error::AppError;
 
 pub mod mail;
 pub mod validation;
+pub mod session;

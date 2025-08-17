@@ -97,10 +97,10 @@ pub fn is_username_valid(s: &str) -> Result<(), AppError> {
     }
     if !s
         .chars()
-        .all(|c| c.is_ascii_alphabetic() || c.is_ascii_digit() || c == '_' || c == '-')
+        .all(|c| c.is_ascii_alphabetic() || c.is_ascii_digit() || c == '.')
     {
         return Err(AppError::BadReq(
-            "Only alphabets, digits, underscores and hyphens are allowed",
+            "Only alphabets, digits and periods are allowed",
         ));
     }
     if !s.chars().next().unwrap().is_ascii_alphabetic() {
@@ -108,13 +108,13 @@ pub fn is_username_valid(s: &str) -> Result<(), AppError> {
             "Username should start with alphabetic character",
         ));
     }
-    if ["__", "_-", "-_", "--"].into_iter().any(|p| s.contains(p)) {
+    if s.contains("..") {
         return Err(AppError::BadReq(
-            "Username can not contain more than one hypen or underscore together",
+            "Username can't contain more than one period together",
         ));
     }
-    if s.chars().next_back().unwrap() == '-' {
-        return Err(AppError::BadReq("Username can't be ended with hyphen"));
+    if s.chars().next_back().unwrap() == '.' {
+        return Err(AppError::BadReq("Username can't be ended with a period"));
     }
     Ok(())
 }
@@ -190,13 +190,14 @@ mod tests {
     }
 
     username_test! {
-        username_test1: ("su-xe_ij_", Some(())),
+        username_test1: ("su-xe_ij_", None),
         username_test2: ("su-x-_ij_", None),
-        username_test3: ("su-x32-ij_", Some(())),
+        username_test3: ("su-x32-ij_", None),
         username_test4: ("su-x32-", None),
         username_test5: ("ab-_re", None),
-        username_test6: ("ab___resno", None),
+        username_test6: ("ab...resno", None),
         username_test7: ("ab---re", None),
-        username_test8: ("a-7-8-8", Some(())),
+        username_test8: ("a-7-8-8", None),
+        username_test9: ("a.7.b.xetn", Some(())),
     }
 }

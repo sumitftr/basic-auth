@@ -1,14 +1,11 @@
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 // mod conn_info;
-// mod jwt;
 
 pub static SOCKET: std::sync::LazyLock<String> =
     std::sync::LazyLock::new(|| std::env::var("SOCKET").unwrap());
 
 #[tokio::main]
 async fn main() {
-    // let config_content = std::fs::read_to_string("../config.toml").unwrap();
-    // let cfg: common::Config = toml::from_str(&config_content).unwrap();
     dotenv::dotenv().ok();
 
     tracing_subscriber::registry()

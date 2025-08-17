@@ -41,6 +41,7 @@ impl crate::Db {
                 otp,
                 password: None,
                 register_status: RegisterStatus::Created,
+                session: vec![],
             },
         );
         drop(guard);
@@ -112,6 +113,7 @@ impl crate::Db {
         self: Arc<Self>,
         email: String,
         username: String,
+        new_session: &Vec<String>,
     ) -> Result<crate::user::User, AppError> {
         validation::is_username_valid(&username)?;
         self.is_username_available(&username).await?;
@@ -143,6 +145,7 @@ impl crate::Db {
             gender: None,
             phone: None,
             country: None,
+            sessions: vec![new_session.clone()],
             // created: DateTime::now(),
             // last_login: DateTime::now(),
         })

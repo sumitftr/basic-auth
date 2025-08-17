@@ -22,3 +22,5 @@ tower-http = { version = "0.6.2", features = ["trace"] }
 tracing = "0.1"
 tracing-subscriber = "0.3.19"
 chrono = "0.4.41"
+cookie = { version = "0.18.1", features = ["signed"] }
+uuid = "1.18.0"

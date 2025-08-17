@@ -2,19 +2,24 @@
 
 > Create `.env` file
 
+> Set your **`INTERFACE IP`** and **`PORT`**
+```
+  SOCKET=<INTERFACE_IP>:<PORT>
+```
+
 > Paste your **`DATABASE URI`**
 ```
   DATABASE_URI=<your_database_uri>
 ```
 
-> Set your **`JWT SECRET KEY`**
+> Set your **`DATABASE NAME`**
 ```
-  SUPER_SECRET_KEY=<your_jwt_secret_key>
+  DATABASE_NAME=<your_database_name>
 ```
 
-> Set your **`INTERFACE`** and **`PORT`**
+> Set your **`SECRET KEY`**
 ```
-  INTERFACE_PORT=<IP>:<PORT>
+  SECRET_KEY=<your_secret_key>
 ```
 
 > Run your project
