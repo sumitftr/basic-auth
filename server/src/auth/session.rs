@@ -16,3 +16,14 @@ pub async fn login(
 ) -> Result<String, AppError> {
     todo!()
 }
+
+#[derive(Deserialize, Debug)]
+pub struct LogoutRequest {
+    // username: String,
+}
+
+pub async fn logout(Json(body): Json<LogoutRequest>) {
+    println!("{body:?}");
+}
+
+pub async fn refresh() {}

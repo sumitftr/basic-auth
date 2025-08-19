@@ -1,13 +1,14 @@
-# Project Setup
+## Project Setup
 
-> Create `.env` file
+> Create a `.env` file inside project root
+> And set the following environment variables inside `.env` file
 
-> Set your **`INTERFACE IP`** and **`PORT`**
+> Set your **`SERVER SOCKET IP`** and **`PORT`**
 ```
-  SOCKET=<INTERFACE_IP>:<PORT>
+  SOCKET=<socket_ip>:<port>
 ```
 
-> Paste your **`DATABASE URI`**
+> Set your **`DATABASE URI`**
 ```
   DATABASE_URI=<your_database_uri>
 ```
@@ -22,7 +23,11 @@
   SECRET_KEY=<your_secret_key>
 ```
 
-> Run your project
+## Run your project
 ```
   cargo run --release
+```
+> For hot reloading use:
+```
+  cargo watch -x run
 ```

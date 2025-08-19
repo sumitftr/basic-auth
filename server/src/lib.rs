@@ -4,8 +4,6 @@ use axum::{
 };
 
 mod auth;
-// mod jwt;
-mod session;
 mod user;
 
 pub static SECRET_KEY: std::sync::LazyLock<String> =
@@ -15,9 +13,6 @@ pub static SECRET_KEY: std::sync::LazyLock<String> =
 pub async fn routes() -> Router {
     let db = database::Db::init().await;
     let main_router = Router::new()
-        // session handling routes
-        .route("/api/user/logout", post(session::logout))
-        .route("/api/session/refresh", post(session::refresh_session))
         // user read routes
         .route("/api/user/:id", get(user::get_user))
         // user update routes

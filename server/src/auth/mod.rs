@@ -2,8 +2,8 @@ use axum::{Router, routing::post};
 use database::Db;
 use std::sync::Arc;
 
-mod login;
 mod register;
+mod session;
 
 pub(super) fn auth_routes(db: Arc<Db>) -> Router {
     Router::new()
@@ -12,6 +12,8 @@ pub(super) fn auth_routes(db: Arc<Db>) -> Router {
         .route("/api/register/verify_email", post(register::verify_email))
         .route("/api/register/set_password", post(register::set_password))
         .route("/api/register/set_username", post(register::set_username))
-        .route("/api/user/login", post(login::login))
+        .route("/api/login", post(session::login))
+        .route("/api/logout", post(session::logout))
+        .route("/api/refresh", post(session::refresh))
         .with_state(db)
 }
