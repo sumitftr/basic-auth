@@ -1,7 +1,9 @@
+use moka::sync::Cache;
 use mongodb::{Collection, error::ErrorKind};
-use std::{collections::HashMap, sync::Arc};
+use std::{sync::Arc, time::Duration};
 
-pub mod session;
+pub mod active;
+pub mod unregistered;
 pub mod user;
 
 pub static DATABASE_URI: std::sync::LazyLock<String> =
@@ -9,7 +11,9 @@ pub static DATABASE_URI: std::sync::LazyLock<String> =
 
 pub struct Db {
     users: Collection<crate::user::User>,
-    unregistered: std::sync::Mutex<HashMap<String, crate::user::UnregisteredEntry>>,
+    // in memory stores
+    active: Cache<common::user_session::UserSession, crate::user::User>,
+    unregistered: Cache<String, crate::user::UnregisteredEntry>,
 }
 
 impl Db {
@@ -37,7 +41,11 @@ impl Db {
 
         Arc::new(Self {
             users: db.collection(collections[0]),
-            unregistered: std::sync::Mutex::new(HashMap::new()),
+            active: Cache::builder()
+                .max_capacity(32728)
+                .time_to_live(Duration::from_secs(3600))
+                .build(),
+            unregistered: Cache::builder().max_capacity(8192).build(),
         })
     }
 }

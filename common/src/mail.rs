@@ -5,11 +5,15 @@ use lettre::{
     {Message, SmtpTransport, Transport},
 };
 use sha1::Sha1;
+use std::time::{SystemTime, UNIX_EPOCH};
 
 pub fn generate_otp(secret: &[u8]) -> u32 {
     const SHA1_DIGEST_BYTES: usize = 20;
 
-    let counter = chrono::Utc::now().timestamp() as u64;
+    let counter = SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .expect("Time went backwards")
+        .as_millis() as u64;
 
     // build hmac key from counter
     let message: &[u8; 8] = &[
@@ -20,7 +24,7 @@ pub fn generate_otp(secret: &[u8]) -> u32 {
         ((counter >> 24) & 0xff) as u8,
         ((counter >> 16) & 0xff) as u8,
         ((counter >> 8) & 0xff) as u8,
-        ((counter >> 0) & 0xff) as u8,
+        ((counter) & 0xff) as u8,
     ];
 
     // Create the hasher with the key. We can use expect for Hmac algorithms as they allow arbitrary key sizes.
@@ -33,7 +37,7 @@ pub fn generate_otp(secret: &[u8]) -> u32 {
     let hash: [u8; SHA1_DIGEST_BYTES] = hasher.finalize().into_bytes().into();
 
     // calculate the dynamic offset for the value
-    let dynamic_offset = (hash[SHA1_DIGEST_BYTES - 1] & (0xf as u8)) as usize;
+    let dynamic_offset = (hash[SHA1_DIGEST_BYTES - 1] & (0xf_u8)) as usize;
 
     // build the u32 code from the hash
     ((hash[dynamic_offset] as u32) << 24

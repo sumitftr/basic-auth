@@ -2,7 +2,7 @@ use axum::{
     Json,
     extract::State,
     http::{HeaderValue, StatusCode, header, header::HeaderMap},
-    response::{AppendHeaders, IntoResponse},
+    response::IntoResponse,
 };
 use common::AppError;
 use database::Db;
@@ -85,17 +85,26 @@ pub struct SetUsernameRequest {
 
 pub async fn set_username(
     State(state): State<Arc<Db>>,
+    headers: HeaderMap,
     Json(body): Json<SetUsernameRequest>,
 ) -> Result<impl IntoResponse, AppError> {
+    // getting user-agent header
+    let user_agent = headers
+        .get("User-Agent")
+        .map(|v| v.to_str().unwrap_or_default().to_owned())
+        .unwrap_or_default();
     // creating session
-    let user_session = common::session::new_as_vec();
+    let user_session = common::user_session::UserSession::new(user_agent);
     let u = Arc::clone(&state)
         .set_username(body.email, body.username.clone(), &user_session)
         .await?;
     state.add_user(&u).await?;
+
+    // adding cookies to the http headers
     let mut cookies = HeaderMap::new();
-    user_session.iter().for_each(|c| {
+    user_session.cookie.iter().for_each(|c| {
         cookies.append(header::SET_COOKIE, HeaderValue::from_str(c).unwrap());
     });
+
     Ok((StatusCode::CREATED, cookies, "User Created".to_string()))
 }

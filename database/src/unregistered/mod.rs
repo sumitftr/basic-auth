@@ -1,5 +1,5 @@
 use crate::user::RegisterStatus;
-use common::{AppError, validation};
+use common::{AppError, user_session::UserSession, validation};
 use mongodb::bson::{DateTime, oid::ObjectId};
 use std::collections::hash_map::Entry;
 use std::sync::Arc;
@@ -32,8 +32,7 @@ impl crate::Db {
         // generating otp
         let otp = common::mail::generate_otp(email.as_bytes());
 
-        let mut guard = self.unregistered.lock().unwrap();
-        guard.insert(
+        self.unregistered.insert(
             email,
             crate::user::UnregisteredEntry {
                 name,
@@ -44,7 +43,6 @@ impl crate::Db {
                 session: vec![],
             },
         );
-        drop(guard);
 
         // sending mail
 
@@ -55,17 +53,15 @@ impl crate::Db {
         // generating otp
         let otp = common::mail::generate_otp(email.as_bytes());
 
-        let mut guard = self.unregistered.lock().unwrap();
-        let entry = guard.entry(email);
-        if let Entry::Occupied(mut v) = entry {
-            if v.get().register_status != RegisterStatus::Created {
+        if let Some(mut entry) = self.unregistered.get(&email) {
+            if entry.register_status != RegisterStatus::Created {
                 return Err(AppError::BadReq("OTP can't be sent multiple times"));
             }
-            v.get_mut().otp = otp;
+            entry.otp = otp;
+            self.unregistered.insert(email, entry);
         } else {
             return Err(AppError::BadReq("User not found"));
         }
-        drop(guard);
 
         // sending mail
 
@@ -73,16 +69,15 @@ impl crate::Db {
     }
 
     pub fn verify_email(self: Arc<Self>, email: String, otp: u32) -> Result<(), AppError> {
-        let mut guard = self.unregistered.lock().unwrap();
-        let entry = guard.entry(email);
-        if let Entry::Occupied(mut v) = entry {
-            if v.get().register_status != RegisterStatus::Created {
+        if let Some(mut entry) = self.unregistered.get(&email) {
+            if entry.register_status != RegisterStatus::Created {
                 return Err(AppError::BadReq("OTP can't be sent multiple times"));
             }
-            if v.get().otp != otp {
+            if entry.otp != otp {
                 return Err(AppError::BadReq("OTP doesn't match"));
             }
-            v.get_mut().register_status = RegisterStatus::EmailVerified;
+            entry.register_status = RegisterStatus::EmailVerified;
+            self.unregistered.insert(email, entry);
         } else {
             return Err(AppError::UserNotFound);
         }
@@ -90,10 +85,8 @@ impl crate::Db {
     }
 
     pub fn set_password(self: Arc<Self>, email: String, password: String) -> Result<(), AppError> {
-        let mut guard = self.unregistered.lock().unwrap();
-        let entry = guard.entry(email);
-        if let Entry::Occupied(mut v) = entry {
-            if v.get().register_status != RegisterStatus::EmailVerified {
+        if let Some(mut entry) = self.unregistered.get(&email) {
+            if entry.register_status != RegisterStatus::EmailVerified {
                 return Err(AppError::BadReq("User email not verified"));
             }
             if password.len() < 8 {
@@ -101,8 +94,9 @@ impl crate::Db {
                     "Password should be of atleast 8 characters",
                 ));
             }
-            v.get_mut().password = Some(password);
-            v.get_mut().register_status = RegisterStatus::PasswordSet;
+            entry.password = Some(password);
+            entry.register_status = RegisterStatus::PasswordSet;
+            self.unregistered.insert(email, entry);
         } else {
             return Err(AppError::UserNotFound);
         }
@@ -113,30 +107,29 @@ impl crate::Db {
         self: Arc<Self>,
         email: String,
         username: String,
-        new_session: &Vec<String>,
+        new_session: &UserSession,
     ) -> Result<crate::user::User, AppError> {
         validation::is_username_valid(&username)?;
+
+        // checking if the username is already used or not
         self.is_username_available(&username).await?;
 
         let metadata: crate::user::UnregisteredEntry;
-        let user_email: String;
 
-        let mut guard = self.unregistered.lock().unwrap();
-        let entry = guard.entry(email);
-        if let Entry::Occupied(v) = entry {
-            if v.get().register_status != RegisterStatus::PasswordSet {
+        if let Some(v) = self.unregistered.get(&email) {
+            if v.register_status != RegisterStatus::PasswordSet {
                 return Err(AppError::BadReq("User password not set"));
             }
-            (user_email, metadata) = v.remove_entry();
+            // SAFETY: This will not panic since the entry is already present
+            metadata = self.unregistered.remove(&email).unwrap();
         } else {
             return Err(AppError::UserNotFound);
         }
-        drop(guard);
 
         Ok(crate::user::User {
             _id: ObjectId::new(),
             legal_name: metadata.name.clone(),
-            email: user_email,
+            email,
             dob: metadata.dob,
             password: metadata.password.unwrap(),
             username,

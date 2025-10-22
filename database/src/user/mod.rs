@@ -1,13 +1,13 @@
+use common::user_session::UserSession;
 use mongodb::bson::{DateTime, oid::ObjectId};
 use serde::{Deserialize, Serialize};
 
 mod create;
 mod delete;
 mod read;
-mod unregistered;
 mod update;
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct User {
     pub _id: ObjectId,
     pub legal_name: String,
@@ -20,7 +20,7 @@ pub struct User {
     pub gender: Option<String>,
     pub phone: Option<String>,
     pub country: Option<String>,
-    pub sessions: Vec<Vec<String>>,
+    pub sessions: Vec<UserSession>,
     // status: UserStatus,
     // pub created: DateTime,
     // pub last_login: DateTime,
@@ -34,7 +34,7 @@ pub enum UserStatus {
     Deactivated,
 }
 
-#[derive(Deserialize, Debug)]
+#[derive(Deserialize, Debug, Clone)]
 pub struct UnregisteredEntry {
     pub name: String,
     // pub email: String,
@@ -45,7 +45,7 @@ pub struct UnregisteredEntry {
     pub session: Vec<String>,
 }
 
-#[derive(Deserialize, PartialEq, Debug)]
+#[derive(Deserialize, PartialEq, Debug, Clone)]
 pub enum RegisterStatus {
     Created,
     EmailVerified,

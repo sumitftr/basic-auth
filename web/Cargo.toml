@@ -12,7 +12,7 @@ common = { path = "../common" }
 server = { path = "../server" }
 
 axum = { workspace = true }
-dotenv = "0.15.0"
+dotenv = { workspace = true }
 tokio = { workspace = true }
 tracing = { workspace = true }
 tracing-subscriber = { workspace = true }

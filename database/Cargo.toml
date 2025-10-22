@@ -10,7 +10,9 @@ readme.workspace = true
 [dependencies]
 common = { path = "../common" }
 
-mongodb = "3.2.4"
+cookie = { workspace = true }
+moka = { workspace = true }
+mongodb = { workspace = true }
 serde = { workspace = true }
 tokio = { workspace = true }
 tracing = { workspace = true }
