@@ -45,7 +45,10 @@ impl Db {
                 .max_capacity(32728)
                 .time_to_live(Duration::from_secs(3600))
                 .build(),
-            unregistered: Cache::builder().max_capacity(8192).build(),
+            unregistered: Cache::builder()
+                .max_capacity(8192)
+                .time_to_live(Duration::from_secs(1800))
+                .build(),
         })
     }
 }

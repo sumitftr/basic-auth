@@ -1,7 +1,6 @@
 use crate::user::RegisterStatus;
 use common::{AppError, user_session::UserSession, validation};
 use mongodb::bson::{DateTime, oid::ObjectId};
-use std::collections::hash_map::Entry;
 use std::sync::Arc;
 
 // sub steps for registering an user
@@ -14,6 +13,7 @@ impl crate::Db {
         month: u8,
         year: i32,
     ) -> Result<(), AppError> {
+        // checking whether the name and email is valid or not
         let name = validation::is_name_valid(&name)?;
         if !validation::is_email_valid(&email) {
             return Err(AppError::BadReq("Invalid Email Format"));
@@ -32,6 +32,18 @@ impl crate::Db {
         // generating otp
         let otp = common::mail::generate_otp(email.as_bytes());
 
+        // sending otp to the email
+        common::mail::send_mail(
+            email.as_str(),
+            format!("{otp} is your {} verification code", &*common::SERVICE_NAME),
+            format!(
+                "Confirm your email address\n {otp}\n Thanks,\n {}",
+                &*common::SERVICE_NAME
+            ),
+        )
+        .await?;
+
+        // inserting `UnregisteredEntry` to memory store
         self.unregistered.insert(
             email,
             crate::user::UnregisteredEntry {
@@ -43,8 +55,6 @@ impl crate::Db {
                 session: vec![],
             },
         );
-
-        // sending mail
 
         Ok(())
     }
@@ -58,17 +68,26 @@ impl crate::Db {
                 return Err(AppError::BadReq("OTP can't be sent multiple times"));
             }
             entry.otp = otp;
+            // resending otp to the email
+            common::mail::send_mail(
+                email.as_str(),
+                format!("{otp} is your {} verification code", &*common::SERVICE_NAME),
+                format!(
+                    "Confirm your email address\n {otp}\n Thanks,\n {}",
+                    &*common::SERVICE_NAME
+                ),
+            )
+            .await?;
+            // inserting new entry to memory store
             self.unregistered.insert(email, entry);
         } else {
             return Err(AppError::BadReq("User not found"));
         }
 
-        // sending mail
-
         Ok(())
     }
 
-    pub fn verify_email(self: Arc<Self>, email: String, otp: u32) -> Result<(), AppError> {
+    pub async fn verify_email(self: Arc<Self>, email: String, otp: u32) -> Result<(), AppError> {
         if let Some(mut entry) = self.unregistered.get(&email) {
             if entry.register_status != RegisterStatus::Created {
                 return Err(AppError::BadReq("OTP can't be sent multiple times"));
@@ -77,10 +96,22 @@ impl crate::Db {
                 return Err(AppError::BadReq("OTP doesn't match"));
             }
             entry.register_status = RegisterStatus::EmailVerified;
+            // sending email verification success
+            common::mail::send_mail(
+                email.as_str(),
+                format!("Your email {email} has been verified successfully"),
+                format!(
+                    "Your email {email} has been verified successfully\n Thanks,\n {}",
+                    &*common::SERVICE_NAME
+                ),
+            )
+            .await?;
+            // inserting new entry to memory store
             self.unregistered.insert(email, entry);
         } else {
             return Err(AppError::UserNotFound);
         }
+
         Ok(())
     }
 
@@ -108,7 +139,7 @@ impl crate::Db {
         email: String,
         username: String,
         new_session: &UserSession,
-    ) -> Result<crate::user::User, AppError> {
+    ) -> Result<(), AppError> {
         validation::is_username_valid(&username)?;
 
         // checking if the username is already used or not
@@ -126,7 +157,7 @@ impl crate::Db {
             return Err(AppError::UserNotFound);
         }
 
-        Ok(crate::user::User {
+        self.add_user(&crate::user::User {
             _id: ObjectId::new(),
             legal_name: metadata.name.clone(),
             email,
@@ -139,8 +170,11 @@ impl crate::Db {
             phone: None,
             country: None,
             sessions: vec![new_session.clone()],
-            // created: DateTime::now(),
+            created: DateTime::now(),
             // last_login: DateTime::now(),
         })
+        .await?;
+
+        Ok(())
     }
 }

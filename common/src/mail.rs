@@ -1,3 +1,4 @@
+use crate::AppError;
 use hmac::{Hmac, Mac};
 use lettre::{
     message::Mailbox,
@@ -5,7 +6,10 @@ use lettre::{
     {Message, SmtpTransport, Transport},
 };
 use sha1::Sha1;
-use std::time::{SystemTime, UNIX_EPOCH};
+use std::{
+    sync::LazyLock,
+    time::{SystemTime, UNIX_EPOCH},
+};
 
 pub fn generate_otp(secret: &[u8]) -> u32 {
     const SHA1_DIGEST_BYTES: usize = 20;
@@ -46,30 +50,37 @@ pub fn generate_otp(secret: &[u8]) -> u32 {
         | (hash[dynamic_offset + 3] as u32)) as u32
 }
 
-// this function is incomplete
-pub async fn send_otp(to_email: &str, otp: u32) -> Result<(), String> {
-    let smtp_key: &str = "<your-smtp-key>";
-    let from_email: &str = "<your-email>";
-    let smtp_host: &str = "smtp-relay.sendinblue.com";
-
-    let creds: Credentials = Credentials::new(from_email.to_string(), smtp_key.to_string());
-
-    // Open a remote connection
-    let mailer: SmtpTransport = SmtpTransport::relay(&smtp_host)
+// this is initialized in this static to not drop the connection after each mail send
+static MAILER: LazyLock<SmtpTransport> = LazyLock::new(|| {
+    let creds = Credentials::new(
+        std::env::var("NOREPLY_EMAIL").unwrap(),
+        std::env::var("SMTP_KEY").unwrap(),
+    );
+    // opening a remote connection to the mail server
+    SmtpTransport::relay(&std::env::var("SMTP_HOST").unwrap())
         .unwrap()
         .credentials(creds)
-        .build();
+        .build()
+});
 
-    let to_email: Mailbox = to_email.parse().map_err(|_| format!("Invalid Email"))?;
-    let email: Message = Message::builder()
-        .from(from_email.parse().unwrap())
-        .to(to_email)
-        .subject(format!("{otp} is your <SERVICE_NAME> verification code"))
-        .body(format!(
-            "Confirm your email address\n {otp}\n Thanks,\n <SERVICE_NAME>"
-        ))
-        .map_err(|e| e.to_string())?;
+// the noreply email is stored in this static variable to avoid parsing on every send
+static NOREPLY_EMAIL: LazyLock<Mailbox> =
+    LazyLock::new(|| std::env::var("NOREPLY_EMAIL").unwrap().parse().unwrap());
 
-    // Send the email
-    mailer.send(&email).map_err(|e| e.to_string()).map(|_| ())
+// function to send any mail to the given mail address
+pub async fn send_mail(to_email: &str, subject: String, body: String) -> Result<(), AppError> {
+    let msg: Message = Message::builder()
+        .from(NOREPLY_EMAIL.clone())
+        .to(to_email
+            .parse()
+            .map_err(|_| AppError::BadReq("Invalid Email"))?)
+        .subject(subject)
+        .body(body)
+        .map_err(|e| AppError::Server(Box::new(e)))?;
+
+    // sending the email
+    MAILER
+        .send(&msg)
+        .map_err(|e| AppError::Server(Box::new(e)))
+        .map(|_| ())
 }

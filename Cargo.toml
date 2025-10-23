@@ -14,7 +14,7 @@ readme = "README.md"
 
 [workspace.dependencies]
 axum       = { version = "0.8", features = ["tokio"] }
-cookie     = { version = "0.18", features = ["signed"] }
+cookie     = { version = "0.18", features = ["signed", "private"] }
 dotenv     = { version = "0.15" }
 hmac       = { version = "0.12" }
 lettre     = { version = "0.11" }

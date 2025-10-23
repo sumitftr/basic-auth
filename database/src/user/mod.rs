@@ -21,8 +21,8 @@ pub struct User {
     pub phone: Option<String>,
     pub country: Option<String>,
     pub sessions: Vec<UserSession>,
+    pub created: DateTime,
     // status: UserStatus,
-    // pub created: DateTime,
     // pub last_login: DateTime,
 }
 

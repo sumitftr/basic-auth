@@ -6,8 +6,11 @@ use std::sync::Arc;
 impl crate::Db {
     // checks if the email is available or not
     pub async fn is_email_available(self: &Arc<Self>, email: &str) -> Result<(), AppError> {
+        if self.unregistered.get(email).is_some() {
+            return Err(AppError::EmailTaken);
+        }
         match self.users.find_one(doc! { "email": email }).await {
-            Ok(Some(_)) => Err(AppError::BadReq("Email not available")),
+            Ok(Some(_)) => Err(AppError::EmailTaken),
             Ok(None) => Ok(()),
             Err(e) => {
                 tracing::error!("{e:?}");
@@ -19,7 +22,7 @@ impl crate::Db {
     // checks if the username is available or not
     pub async fn is_username_available(self: &Arc<Self>, username: &str) -> Result<(), AppError> {
         match self.users.find_one(doc! { "username": username }).await {
-            Ok(Some(_)) => Err(AppError::BadReq("Username not available")),
+            Ok(Some(_)) => Err(AppError::UsernameTaken),
             Ok(None) => Ok(()),
             Err(e) => {
                 tracing::error!("{e:?}");

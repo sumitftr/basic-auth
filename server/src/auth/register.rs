@@ -27,7 +27,7 @@ pub async fn create_user(
     state
         .create_user(body.name, body.email, body.day, body.month, body.year)
         .await?;
-    Ok(format!(""))
+    Ok("".to_string())
 }
 
 #[derive(Deserialize)]
@@ -40,7 +40,7 @@ pub async fn resend_otp(
     Json(body): Json<ResendOtpRequest>,
 ) -> Result<String, AppError> {
     state.resend_otp(body.email).await?;
-    Ok(format!("The email has been sent"))
+    Ok("The email has been sent".to_string())
 }
 
 /// second step of registering an user
@@ -55,8 +55,8 @@ pub async fn verify_email(
     State(state): State<Arc<Db>>,
     Json(body): Json<VerifyEmailRequest>,
 ) -> Result<String, AppError> {
-    state.verify_email(body.email, body.otp)?;
-    Ok(format!("Email Verified"))
+    state.verify_email(body.email, body.otp).await?;
+    Ok("Email Verified".to_string())
 }
 
 /// third step of registering an user
@@ -72,7 +72,7 @@ pub async fn set_password(
     Json(body): Json<SetPasswordRequest>,
 ) -> Result<String, AppError> {
     state.set_password(body.email, body.password)?;
-    Ok(format!("Password has been set"))
+    Ok("Password has been set".to_string())
 }
 
 /// last step of registering an user
@@ -93,18 +93,20 @@ pub async fn set_username(
         .get("User-Agent")
         .map(|v| v.to_str().unwrap_or_default().to_owned())
         .unwrap_or_default();
-    // creating session
-    let user_session = common::user_session::UserSession::new(user_agent);
-    let u = Arc::clone(&state)
+
+    // creating session and adding user
+    let (user_session, full_cookie_jar) =
+        common::user_session::UserSession::new_with_full(user_agent);
+    Arc::clone(&state)
         .set_username(body.email, body.username.clone(), &user_session)
         .await?;
-    state.add_user(&u).await?;
 
-    // adding cookies to the http headers
-    let mut cookies = HeaderMap::new();
-    user_session.cookie.iter().for_each(|c| {
-        cookies.append(header::SET_COOKIE, HeaderValue::from_str(c).unwrap());
-    });
-
-    Ok((StatusCode::CREATED, cookies, "User Created".to_string()))
+    Ok((
+        StatusCode::CREATED,
+        full_cookie_jar
+            .into_iter()
+            .map(|c| (header::SET_COOKIE, HeaderValue::from_str(&c).unwrap()))
+            .collect::<HeaderMap>(),
+        "User Created".to_string(),
+    ))
 }
