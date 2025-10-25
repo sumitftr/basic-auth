@@ -10,7 +10,6 @@ readme.workspace = true
 [dependencies]
 common = { path = "../common" }
 
-cookie = { workspace = true }
 moka = { workspace = true }
 mongodb = { workspace = true }
 serde = { workspace = true }

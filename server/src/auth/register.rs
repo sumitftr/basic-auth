@@ -95,18 +95,15 @@ pub async fn set_username(
         .unwrap_or_default();
 
     // creating session and adding user
-    let (user_session, full_cookie_jar) =
-        common::user_session::UserSession::new_with_full(user_agent);
+    let (user_session, active_user_session, set_cookie_headermap) =
+        common::user_session::create_session(user_agent);
     Arc::clone(&state)
         .set_username(body.email, body.username.clone(), &user_session)
         .await?;
 
     Ok((
         StatusCode::CREATED,
-        full_cookie_jar
-            .into_iter()
-            .map(|c| (header::SET_COOKIE, HeaderValue::from_str(&c).unwrap()))
-            .collect::<HeaderMap>(),
+        set_cookie_headermap,
         "User Created".to_string(),
     ))
 }

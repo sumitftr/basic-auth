@@ -12,7 +12,7 @@ pub static DATABASE_URI: std::sync::LazyLock<String> =
 pub struct Db {
     users: Collection<crate::user::User>,
     // in memory stores
-    active: Cache<common::user_session::UserSession, crate::user::User>,
+    active: Cache<common::user_session::ActiveUserSession, crate::user::User>,
     unregistered: Cache<String, crate::user::UnregisteredEntry>,
 }
 
