@@ -5,14 +5,13 @@ use lettre::{
     transport::smtp::authentication::Credentials,
     {Message, SmtpTransport, Transport},
 };
-use sha1::Sha1;
 use std::{
     sync::LazyLock,
     time::{SystemTime, UNIX_EPOCH},
 };
 
 pub fn generate_otp(secret: &[u8]) -> u32 {
-    const SHA1_DIGEST_BYTES: usize = 20;
+    const SHA256_DIGEST_BYTES: usize = 32;
 
     let counter = SystemTime::now()
         .duration_since(UNIX_EPOCH)
@@ -32,16 +31,16 @@ pub fn generate_otp(secret: &[u8]) -> u32 {
     ];
 
     // Create the hasher with the key. We can use expect for Hmac algorithms as they allow arbitrary key sizes.
-    let mut hasher: Hmac<Sha1> = Mac::new_from_slice(secret).unwrap();
+    let mut hasher: Hmac<sha2::Sha256> = Mac::new_from_slice(secret).unwrap();
 
     // hash the message
     hasher.update(message);
 
     // finalize the hash and convert to a static array
-    let hash: [u8; SHA1_DIGEST_BYTES] = hasher.finalize().into_bytes().into();
+    let hash = hasher.finalize().into_bytes();
 
     // calculate the dynamic offset for the value
-    let dynamic_offset = (hash[SHA1_DIGEST_BYTES - 1] & (0xf_u8)) as usize;
+    let dynamic_offset = (hash[SHA256_DIGEST_BYTES - 1] & (0xf_u8)) as usize;
 
     // build the u32 code from the hash
     ((hash[dynamic_offset] as u32) << 24

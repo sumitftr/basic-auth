@@ -1,11 +1,12 @@
-use axum::http::StatusCode;
+use axum::http::{HeaderMap, StatusCode};
 
 pub enum AppError {
     BadReq(&'static str),
-    Auth(&'static str),
     UserNotFound,
     UsernameTaken,
     EmailTaken,
+    Auth(&'static str),
+    InvalidSession(HeaderMap),
     Server(Box<dyn std::error::Error>),
     ServerDefault,
 }
@@ -13,17 +14,16 @@ pub enum AppError {
 impl axum::response::IntoResponse for AppError {
     fn into_response(self) -> axum::response::Response {
         match self {
-            AppError::BadReq(e) => (StatusCode::BAD_REQUEST, e).into_response(),
-            AppError::Auth(e) => (StatusCode::UNAUTHORIZED, e).into_response(),
-            AppError::UserNotFound => (StatusCode::BAD_REQUEST, "User not found").into_response(),
-            AppError::UsernameTaken => {
-                (StatusCode::CONFLICT, "Username already taken").into_response()
+            Self::BadReq(e) => (StatusCode::BAD_REQUEST, e).into_response(),
+            Self::UserNotFound => (StatusCode::BAD_REQUEST, "User not found").into_response(),
+            Self::UsernameTaken => (StatusCode::CONFLICT, "Username already taken").into_response(),
+            Self::EmailTaken => (StatusCode::CONFLICT, "Email already taken").into_response(),
+            Self::Auth(e) => (StatusCode::UNAUTHORIZED, e).into_response(),
+            Self::InvalidSession(h) => {
+                (StatusCode::UNAUTHORIZED, h, "Invalid Session").into_response()
             }
-            AppError::EmailTaken => (StatusCode::CONFLICT, "Email already taken").into_response(),
-            AppError::Server(e) => {
-                (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()).into_response()
-            }
-            AppError::ServerDefault => {
+            Self::Server(e) => (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()).into_response(),
+            Self::ServerDefault => {
                 (StatusCode::INTERNAL_SERVER_ERROR, "Something went wrong").into_response()
             }
         }

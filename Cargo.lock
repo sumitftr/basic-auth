@@ -234,7 +234,6 @@ dependencies = [
  "lettre",
  "mongodb",
  "serde",
- "sha1",
  "sha2",
  "tracing",
  "uuid",
