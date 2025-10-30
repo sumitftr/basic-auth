@@ -19,8 +19,8 @@ pub async fn routes() -> Router {
         .route("/api/password/reset", post(user::reset_password))
         .route("/api/metadata/update", post(user::change_metadata))
         .route("/api/account/deactivate", post(user::deactivate_account))
-        .with_state(database::Db::new().await)
-        .layer(axum::middleware::from_fn(middleware::auth_middleware));
+        .layer(axum::middleware::from_fn(middleware::auth_middleware))
+        .with_state(database::Db::new().await);
 
     main_router.merge(auth::auth_routes().await)
     // .layer(tower_http::trace::TraceLayer::new_for_http())

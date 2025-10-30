@@ -108,8 +108,25 @@ impl crate::Db {
     pub async fn update_sessions(
         self: &Arc<Self>,
         username: &str,
-        sessions: &Vec<UserSession>,
+        sessions: &[UserSession],
     ) -> Result<(), AppError> {
-        todo!()
+        // Serialize the sessions vec to Bson
+        let sessions_bson = mongodb::bson::to_bson(sessions).map_err(|e| {
+            tracing::error!("Failed to serialize sessions: {e}");
+            AppError::ServerDefault
+        })?;
+
+        let update = doc! {"username": username};
+        let filter = doc! {"$set": doc! {"sessions": sessions_bson}};
+        match self.users.update_one(filter, update).await {
+            Ok(v) => {
+                tracing::info!("Updated User Metadata: {:?}", v.upserted_id);
+                Ok(())
+            }
+            Err(e) => {
+                tracing::error!("{e:?}");
+                Err(AppError::ServerDefault)
+            }
+        }
     }
 }
