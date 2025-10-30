@@ -1,19 +1,17 @@
 use axum::{Router, routing::post};
-use database::Db;
-use std::sync::Arc;
 
 mod register;
 mod session;
 
-pub(super) fn auth_routes(db: Arc<Db>) -> Router {
+#[rustfmt::skip]
+pub async fn auth_routes() -> Router {
     Router::new()
-        .route("/api/register/create_user", post(register::create_user))
-        .route("/api/register/resend_otp", post(register::resend_otp))
-        .route("/api/register/verify_email", post(register::verify_email))
-        .route("/api/register/set_password", post(register::set_password))
-        .route("/api/register/set_username", post(register::set_username))
-        .route("/api/login", post(session::login))
-        .route("/api/logout", post(session::logout))
-        .route("/api/refresh", post(session::refresh))
-        .with_state(db)
+        .route("/api/user/register/start", post(register::start))
+        .route("/api/user/register/resend_otp", post(register::resend_otp))
+        .route("/api/user/register/verify_email", post(register::verify_email))
+        .route("/api/user/register/set_password", post(register::set_password))
+        .route("/api/user/register/set_username", post(register::set_username))
+        .route("/api/user/login", post(session::login))
+        .route("/api/user/logout", post(session::logout))
+        .with_state(database::Db::new().await)
 }

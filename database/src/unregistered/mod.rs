@@ -1,4 +1,4 @@
-use crate::user::RegisterStatus;
+use crate::user::{RegisterStatus, User};
 use common::{AppError, user_session::UserSession, validation};
 use mongodb::bson::{DateTime, oid::ObjectId};
 use std::sync::Arc;
@@ -139,7 +139,7 @@ impl crate::Db {
         email: String,
         username: String,
         new_session: &UserSession,
-    ) -> Result<(), AppError> {
+    ) -> Result<User, AppError> {
         validation::is_username_valid(&username)?;
 
         // checking if the username is already used or not
@@ -151,13 +151,14 @@ impl crate::Db {
             if v.register_status != RegisterStatus::PasswordSet {
                 return Err(AppError::BadReq("User password not set"));
             }
+            // removing the `UnregisteredEntry` from `Db::unregistered`
             // SAFETY: This will not panic since the entry is already present
             metadata = self.unregistered.remove(&email).unwrap();
         } else {
             return Err(AppError::UserNotFound);
         }
 
-        self.add_user(&crate::user::User {
+        let user = User {
             _id: ObjectId::new(),
             legal_name: metadata.name.clone(),
             email,
@@ -172,9 +173,9 @@ impl crate::Db {
             sessions: vec![new_session.clone()],
             created: DateTime::now(),
             // last_login: DateTime::now(),
-        })
-        .await?;
+        };
+        self.add_user(&user).await?;
 
-        Ok(())
+        Ok(user)
     }
 }

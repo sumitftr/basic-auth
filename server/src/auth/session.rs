@@ -6,7 +6,8 @@ use std::sync::Arc;
 
 #[derive(Deserialize)]
 pub struct LoginRequest {
-    username: String,
+    email: Option<String>,
+    username: Option<String>,
     password: String,
 }
 
@@ -17,13 +18,6 @@ pub async fn login(
     todo!()
 }
 
-#[derive(Deserialize, Debug)]
-pub struct LogoutRequest {
-    // username: String,
+pub async fn logout(State(state): State<Arc<Db>>) {
+    todo!()
 }
-
-pub async fn logout(Json(body): Json<LogoutRequest>) {
-    println!("{body:?}");
-}
-
-pub async fn refresh() {}

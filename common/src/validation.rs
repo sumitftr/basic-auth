@@ -61,29 +61,28 @@ pub fn is_email_valid(s: &str) -> bool {
         }
         let mut it = domain.split('.');
         // top level domain check
-        if let Some(tld) = it.next_back() {
-            if tld.len() < 2 || tld.len() > 6 || !tld.chars().all(|c| c.is_ascii_lowercase()) {
-                return false;
-            }
+        if let Some(tld) = it.next_back()
+            && (tld.len() < 2 || tld.len() > 6 || !tld.chars().all(|c| c.is_ascii_lowercase()))
+        {
+            return false;
         }
         // second and third level domain check
         for _ in 0..2 {
-            if let Some(ld) = it.next_back() {
-                if ld.len() < 1
+            if let Some(ld) = it.next_back()
+                && (ld.is_empty()
                     || !ld.chars().all(|c| c.is_ascii_lowercase() || c == '-')
                     || !ld.chars().next().unwrap().is_ascii_lowercase()
-                    || ld.chars().next_back().unwrap() == '-'
-                    || ld.contains("--")
-                {
-                    return false;
-                }
+                    || ld.ends_with('-')
+                    || ld.contains("--"))
+            {
+                return false;
             }
         }
-        if let Some(_) = it.next_back() {
+        if it.next_back().is_some() {
             return false;
         }
     }
-    if let Some(_) = it.next() {
+    if it.next().is_some() {
         return false;
     }
     true
@@ -113,7 +112,7 @@ pub fn is_username_valid(s: &str) -> Result<(), AppError> {
             "Username can't contain more than one period together",
         ));
     }
-    if s.chars().next_back().unwrap() == '.' {
+    if s.ends_with('.') {
         return Err(AppError::BadReq("Username can't be ended with a period"));
     }
     Ok(())

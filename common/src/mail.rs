@@ -10,6 +10,41 @@ use std::{
     time::{SystemTime, UNIX_EPOCH},
 };
 
+// this is initialized in this static to not drop the connection after each mail send
+static MAILER: LazyLock<SmtpTransport> = LazyLock::new(|| {
+    let creds = Credentials::new(
+        std::env::var("NOREPLY_EMAIL").unwrap(),
+        std::env::var("SMTP_KEY").unwrap(),
+    );
+    // opening a remote connection to the mail server
+    SmtpTransport::relay(&std::env::var("SMTP_HOST").unwrap())
+        .unwrap()
+        .credentials(creds)
+        .build()
+});
+
+// the noreply email is stored in this static variable to avoid parsing on every send
+static NOREPLY_EMAIL: LazyLock<Mailbox> =
+    LazyLock::new(|| std::env::var("NOREPLY_EMAIL").unwrap().parse().unwrap());
+
+// function to send any mail to the given mail address
+pub async fn send_mail(to_email: &str, subject: String, body: String) -> Result<(), AppError> {
+    let msg: Message = Message::builder()
+        .from(NOREPLY_EMAIL.clone())
+        .to(to_email
+            .parse()
+            .map_err(|_| AppError::BadReq("Invalid Email"))?)
+        .subject(subject)
+        .body(body)
+        .map_err(|e| AppError::Server(Box::new(e)))?;
+
+    // sending the email
+    MAILER
+        .send(&msg)
+        .map_err(|e| AppError::Server(Box::new(e)))
+        .map(|_| ())
+}
+
 pub fn generate_otp(secret: &[u8]) -> u32 {
     const SHA256_DIGEST_BYTES: usize = 32;
 
@@ -47,39 +82,4 @@ pub fn generate_otp(secret: &[u8]) -> u32 {
         | (hash[dynamic_offset + 1] as u32) << 16
         | (hash[dynamic_offset + 2] as u32) << 8
         | (hash[dynamic_offset + 3] as u32)) as u32
-}
-
-// this is initialized in this static to not drop the connection after each mail send
-static MAILER: LazyLock<SmtpTransport> = LazyLock::new(|| {
-    let creds = Credentials::new(
-        std::env::var("NOREPLY_EMAIL").unwrap(),
-        std::env::var("SMTP_KEY").unwrap(),
-    );
-    // opening a remote connection to the mail server
-    SmtpTransport::relay(&std::env::var("SMTP_HOST").unwrap())
-        .unwrap()
-        .credentials(creds)
-        .build()
-});
-
-// the noreply email is stored in this static variable to avoid parsing on every send
-static NOREPLY_EMAIL: LazyLock<Mailbox> =
-    LazyLock::new(|| std::env::var("NOREPLY_EMAIL").unwrap().parse().unwrap());
-
-// function to send any mail to the given mail address
-pub async fn send_mail(to_email: &str, subject: String, body: String) -> Result<(), AppError> {
-    let msg: Message = Message::builder()
-        .from(NOREPLY_EMAIL.clone())
-        .to(to_email
-            .parse()
-            .map_err(|_| AppError::BadReq("Invalid Email"))?)
-        .subject(subject)
-        .body(body)
-        .map_err(|e| AppError::Server(Box::new(e)))?;
-
-    // sending the email
-    MAILER
-        .send(&msg)
-        .map_err(|e| AppError::Server(Box::new(e)))
-        .map(|_| ())
 }

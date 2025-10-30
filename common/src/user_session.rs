@@ -4,6 +4,8 @@ use base64::Engine;
 use hmac::Mac;
 use std::time::{Duration, SystemTime};
 
+/// this function creates a session that is passed to the user
+/// and stored in both in-memory and primary database
 pub fn create_session(user_agent: String) -> (UserSession, ActiveUserSession, HeaderMap) {
     #[allow(clippy::identity_op)]
     let expires = 30 * 86400 + 0; // days * 86400 + secs
@@ -12,12 +14,12 @@ pub fn create_session(user_agent: String) -> (UserSession, ActiveUserSession, He
 
     (
         UserSession {
-            unsigned_values: vec![format!("SSID={uid}")],
+            unsigned_ssid: uid.clone(),
             expires: SystemTime::now() + Duration::from_secs(expires),
             user_agent,
         },
         ActiveUserSession {
-            cookies: vec![format!("SSID={signed_uid}{uid}")],
+            ssid: format!("{signed_uid}{uid}"),
         },
         HeaderMap::from_iter([(
             header::SET_COOKIE,
@@ -58,77 +60,115 @@ fn verify(value: &str) -> Option<String> {
     mac.verify_slice(&digest).map(|_| uid.to_string()).ok()
 }
 
+/// finds the current used session from a list of `UserSession`s
+pub fn get_session_index(
+    sessions: &[UserSession],
+    decrypted_ssid: String,
+) -> Result<usize, AppError> {
+    for (i, session) in sessions.iter().enumerate() {
+        if session.unsigned_ssid.contains(&decrypted_ssid) {
+            return Ok(i);
+        }
+    }
+    Err(AppError::BadReq("Session not found"))
+}
+
+/// this function syncs the `User { sessions }` that is stored in primary database
+/// and gives out a new `Vec<UserSession>` that can be replaced with
+pub fn clear_expired_sessions(sessions: Vec<UserSession>) -> Vec<UserSession> {
+    let mut synced_sessions = Vec::with_capacity(sessions.len());
+    let now = SystemTime::now();
+    for session in sessions {
+        if now < session.expires {
+            synced_sessions.push(session);
+        }
+    }
+    synced_sessions
+}
+
 #[derive(serde::Serialize, serde::Deserialize, Clone, Debug)]
 pub struct UserSession {
-    pub unsigned_values: Vec<String>,
+    pub unsigned_ssid: String,
     pub expires: SystemTime,
     pub user_agent: String,
 }
 
-impl UserSession {
-    // returns a reference to `UUID` part of the cookie as string slice
-    pub fn ssid_value(&self) -> &str {
-        &self.unsigned_values[0][5..self.unsigned_values[0].len()]
-    }
+pub enum UserSessionStatus {
+    Valid(u64),
+    Expiring(u64),
+    Refreshable(u64),
+    Invalid,
+}
 
-    // finds the current used session from a list of `UserSession`s
-    pub fn current_session_index(&self, sessions: &[UserSession]) -> Result<usize, AppError> {
-        let mut ssid_cookie_i = 0;
-        // finding the cookie that starts with SSID
-        for (i, cookie) in self.unsigned_values.iter().enumerate() {
-            if cookie.starts_with("SSID") {
-                ssid_cookie_i = i;
+impl UserSession {
+    // timestamp in seconds
+    pub const MEM_CACHE_DURATION: u64 = 10800; // 3 hours
+    pub const MAX_REFRESH_DURATION: u64 = 604800; // 7 days
+
+    /// returns the timestamp difference of the session with current time
+    pub fn session_status(&self) -> UserSessionStatus {
+        let diff = self
+            .expires
+            .duration_since(std::time::UNIX_EPOCH)
+            .unwrap()
+            .as_secs() as i64
+            - SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .unwrap()
+                .as_secs() as i64;
+
+        if diff > 0 {
+            if diff > Self::MEM_CACHE_DURATION as i64 {
+                UserSessionStatus::Valid(diff as u64)
+            } else {
+                UserSessionStatus::Expiring(diff as u64)
+            }
+        } else {
+            #[allow(clippy::collapsible_else_if)]
+            if -diff < Self::MAX_REFRESH_DURATION as i64 {
+                UserSessionStatus::Refreshable(diff as u64)
+            } else {
+                UserSessionStatus::Invalid
             }
         }
-        for (i, session) in sessions.iter().enumerate() {
-            if session
-                .unsigned_values
-                .contains(&self.unsigned_values[ssid_cookie_i])
-            {
-                return Ok(i);
-            }
-        }
-        Err(AppError::BadReq("Session not found"))
     }
 }
 
-#[derive(Hash, Eq, PartialEq, Debug)]
+#[derive(Hash, Eq, PartialEq, Clone, Debug)]
 pub struct ActiveUserSession {
-    pub cookies: Vec<String>,
+    pub ssid: String, // SSID=
 }
 
 impl ActiveUserSession {
-    // parses all the cookies sent by a client and creates an `ActiveUserSession`
-    pub fn parse(cookies: String) -> Self {
-        Self {
-            cookies: cookies
-                .split_ascii_whitespace()
-                .filter(|s| s.starts_with("SSID="))
-                .map(|s| {
-                    if let Some(';') = s.chars().last() {
-                        s[..s.len() - 1].to_string()
-                    } else {
-                        s.to_string()
-                    }
-                })
-                .collect::<Vec<String>>(),
+    /// parses all the cookies sent by a client and creates an `ActiveUserSession`
+    pub fn parse(cookies_list: &Vec<String>) -> Result<Self, AppError> {
+        for cookies in cookies_list {
+            if let Some(s) = cookies.split(';').find(|s| s.trim().starts_with("SSID=")) {
+                return Ok(Self {
+                    ssid: s.trim()[5..].to_string(),
+                });
+            }
+        }
+        Err(AppError::InvalidSession(HeaderMap::new()))
+    }
+
+    pub fn verify(&self) -> Result<String, AppError> {
+        if let Some(s) = verify(&self.ssid) {
+            Ok(s)
+        } else {
+            Err(AppError::InvalidSession(self.expire()))
         }
     }
 
-    pub fn verify(&self) -> Result<Vec<String>, AppError> {
-        let (_key, value) = self.cookies[0].split_at(4); // length of the key (here key = `SSID`)
-        if let Some(s) = verify(value) {
-            Ok(vec![s])
-        } else {
-            Err(AppError::InvalidSession(HeaderMap::from_iter([(
-                header::SET_COOKIE,
-                HeaderValue::from_str(&format!(
-                    "{}; HttpOnly; SameSite=Strict; Secure; Path=/; Max-Age=0",
-                    self.cookies[0]
-                ))
-                .unwrap(),
-            )])))
-        }
+    pub fn expire(&self) -> HeaderMap {
+        HeaderMap::from_iter([(
+            header::SET_COOKIE,
+            HeaderValue::from_str(&format!(
+                "SSID={}; HttpOnly; SameSite=Strict; Secure; Path=/; Max-Age=0",
+                self.ssid
+            ))
+            .unwrap(),
+        )])
     }
 }
 

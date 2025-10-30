@@ -1,4 +1,4 @@
-use common::AppError;
+use common::{AppError, user_session::UserSession};
 use mongodb::bson::doc;
 use std::sync::Arc;
 
@@ -31,9 +31,9 @@ impl crate::Db {
         }
     }
 
-    // matches database user's password with requested password
+    // matches database user's password with the specified password
     pub async fn check_password(
-        self: Arc<Self>,
+        self: &Arc<Self>,
         username: &str,
         password: &str,
     ) -> Result<(), AppError> {
@@ -46,5 +46,22 @@ impl crate::Db {
                 Err(AppError::ServerDefault)
             }
         }
+    }
+
+    // this function finds the user by decrypted ssid (unsigned ssid)
+    // but, this doesn't checks if the ssid is valid or not
+    pub async fn get_user_by_decrypted_ssid(
+        self: &Arc<Self>,
+        decrypted_ssid: &str,
+    ) -> Result<super::User, AppError> {
+        match self
+            .users
+            .find(doc! { "sessions": [ { "unsigned_ssid": decrypted_ssid } ]})
+            .await
+        {
+            Ok(v) => {}
+            Err(e) => {}
+        }
+        todo!()
     }
 }

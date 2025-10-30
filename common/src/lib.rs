@@ -6,7 +6,7 @@ pub mod user_session;
 pub mod validation;
 
 pub static SERVICE_NAME: std::sync::LazyLock<String> =
-    std::sync::LazyLock::new(|| std::env::var("DATABASE_URI").unwrap());
+    std::sync::LazyLock::new(|| std::env::var("SERVICE_NAME").unwrap());
 
 pub static SECRET_KEY: std::sync::LazyLock<Vec<u8>> =
     std::sync::LazyLock::new(|| Vec::from(std::env::var("SECRET_KEY").unwrap()));

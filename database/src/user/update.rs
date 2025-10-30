@@ -1,4 +1,4 @@
-use common::AppError;
+use common::{AppError, user_session::UserSession};
 use mongodb::bson::{DateTime, doc};
 use std::sync::Arc;
 
@@ -6,7 +6,7 @@ use std::sync::Arc;
 impl crate::Db {
     // updates email of the given user to new email
     pub async fn check_and_update_email(
-        self: Arc<Self>,
+        self: &Arc<Self>,
         email: &str,
         new_email: &str,
     ) -> Result<(), AppError> {
@@ -27,7 +27,7 @@ impl crate::Db {
 
     // updates username of the given user to new username
     pub async fn check_and_update_username(
-        self: Arc<Self>,
+        self: &Arc<Self>,
         username: &str,
         new_username: &str,
     ) -> Result<(), AppError> {
@@ -48,7 +48,7 @@ impl crate::Db {
 
     // updates password of the given user
     pub async fn check_and_update_password(
-        self: Arc<Self>,
+        self: &Arc<Self>,
         username: &str,
         password: &str,
         new_password: &str,
@@ -85,7 +85,7 @@ impl crate::Db {
 impl crate::Db {
     // updates metadata for the given user
     pub async fn update_metadata(
-        self: Arc<Self>,
+        self: &Arc<Self>,
         username: &str,
         name: &str,
         gender: &str,
@@ -103,5 +103,13 @@ impl crate::Db {
                 Err(AppError::ServerDefault)
             }
         }
+    }
+
+    pub async fn update_sessions(
+        self: &Arc<Self>,
+        username: &str,
+        sessions: &Vec<UserSession>,
+    ) -> Result<(), AppError> {
+        todo!()
     }
 }

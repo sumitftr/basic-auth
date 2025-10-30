@@ -1,7 +1,10 @@
 use axum::{
     Json,
     extract::State,
-    http::{StatusCode, header::HeaderMap},
+    http::{
+        StatusCode,
+        header::{self, HeaderMap},
+    },
     response::IntoResponse,
 };
 use common::AppError;
@@ -20,7 +23,7 @@ pub struct CreateUserRequest {
     day: u8,
 }
 
-pub async fn create_user(
+pub async fn start(
     State(state): State<Arc<Db>>,
     Json(body): Json<CreateUserRequest>,
 ) -> Result<String, AppError> {
@@ -90,16 +93,21 @@ pub async fn set_username(
 ) -> Result<impl IntoResponse, AppError> {
     // getting user-agent header
     let user_agent = headers
-        .get("User-Agent")
+        .get(header::USER_AGENT)
         .map(|v| v.to_str().unwrap_or_default().to_owned())
         .unwrap_or_default();
 
-    // creating session and adding user
+    // creating session
     let (user_session, active_user_session, set_cookie_headermap) =
         common::user_session::create_session(user_agent);
-    Arc::clone(&state)
+
+    // registering user to primary database
+    let user = Arc::clone(&state)
         .set_username(body.email, body.username.clone(), &user_session)
         .await?;
+
+    // activating session by adding it to `Db::active`
+    state.make_user_active(active_user_session, user);
 
     Ok((
         StatusCode::CREATED,
