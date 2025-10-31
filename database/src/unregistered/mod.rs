@@ -15,20 +15,21 @@ impl crate::Db {
     ) -> Result<(), AppError> {
         // checking whether the name and email is valid or not
         let name = validation::is_name_valid(&name)?;
-        if !validation::is_email_valid(&email) {
-            return Err(AppError::BadReq("Invalid Email Format"));
-        };
+        validation::is_email_valid(&email)?;
+
         // checking if the email is already used or not
         self.is_email_available(&email).await?;
+
         // checking if the date of birth is valid or not
         let dob = match DateTime::builder().year(year).month(month).day(day).build() {
             Ok(v) if v > DateTime::now() => return Err(AppError::BadReq("Invalid Date of Birth")),
             Ok(v) => v,
             Err(e) => {
                 tracing::error!("{e:?}");
-                return Err(AppError::ServerDefault);
+                return Err(AppError::ServerError);
             }
         };
+
         // generating otp
         let otp = common::mail::generate_otp(email.as_bytes());
 
@@ -81,7 +82,7 @@ impl crate::Db {
             // inserting new entry to memory store
             self.unregistered.insert(email, entry);
         } else {
-            return Err(AppError::BadReq("User not found"));
+            return Err(AppError::UserNotFound);
         }
 
         Ok(())

@@ -20,7 +20,7 @@ impl crate::Db {
             }
             Err(e) => {
                 tracing::error!("{e:?}");
-                Err(AppError::ServerDefault)
+                Err(AppError::ServerError)
             }
         }
     }
@@ -41,7 +41,7 @@ impl crate::Db {
             }
             Err(e) => {
                 tracing::error!("{e:?}");
-                Err(AppError::ServerDefault)
+                Err(AppError::ServerError)
             }
         }
     }
@@ -58,7 +58,7 @@ impl crate::Db {
         match self.users.find_one(update.clone()).await {
             Ok(Some(u)) => {
                 if u.password != password {
-                    Err(AppError::BadReq("Password didn't match"))
+                    Err(AppError::WrongPassword)
                 } else {
                     match self.users.update_one(filter, update).await {
                         Ok(v) => {
@@ -67,7 +67,7 @@ impl crate::Db {
                         }
                         Err(e) => {
                             tracing::error!("{e:?}");
-                            Err(AppError::ServerDefault)
+                            Err(AppError::ServerError)
                         }
                     }
                 }
@@ -75,7 +75,7 @@ impl crate::Db {
             Ok(None) => Err(AppError::UserNotFound),
             Err(e) => {
                 tracing::error!("{e:?}");
-                Err(AppError::ServerDefault)
+                Err(AppError::ServerError)
             }
         }
     }
@@ -100,7 +100,7 @@ impl crate::Db {
             }
             Err(e) => {
                 tracing::error!("{e:?}");
-                Err(AppError::ServerDefault)
+                Err(AppError::ServerError)
             }
         }
     }
@@ -110,22 +110,22 @@ impl crate::Db {
         username: &str,
         sessions: &[UserSession],
     ) -> Result<(), AppError> {
-        // Serialize the sessions vec to Bson
+        // Serialize the sessions array slice to Bson
         let sessions_bson = mongodb::bson::to_bson(sessions).map_err(|e| {
             tracing::error!("Failed to serialize sessions: {e}");
-            AppError::ServerDefault
+            AppError::ServerError
         })?;
 
         let update = doc! {"username": username};
         let filter = doc! {"$set": doc! {"sessions": sessions_bson}};
         match self.users.update_one(filter, update).await {
             Ok(v) => {
-                tracing::info!("Updated User Metadata: {:?}", v.upserted_id);
+                tracing::info!("Updated User Sessions: {:?}", v.upserted_id);
                 Ok(())
             }
             Err(e) => {
                 tracing::error!("{e:?}");
-                Err(AppError::ServerDefault)
+                Err(AppError::ServerError)
             }
         }
     }

@@ -22,49 +22,49 @@ pub fn is_name_valid(s: &str) -> Result<String, AppError> {
     }
 }
 
-pub fn is_email_valid(s: &str) -> bool {
+pub fn is_email_valid(s: &str) -> Result<(), AppError> {
     let mut it = s.split('@');
     // validating email prefix
     if let Some(id) = it.next() {
         if id.len() < 6 || id.len() > 64 {
-            return false;
+            return Err(AppError::InvalidEmailFormat);
         }
         // email prefix should only contain alphabets, digits and periods
         if !id.chars().all(|c| {
             c.is_ascii_alphabetic() || c.is_ascii_digit() || c == '.' || c == '-' || c == '_'
         }) {
-            return false;
+            return Err(AppError::InvalidEmailFormat);
         }
         // username should start with alphabetic character
         if !id.chars().next().unwrap().is_ascii_alphabetic() {
-            return false;
+            return Err(AppError::InvalidEmailFormat);
         }
         // username should not contain more than one period, hypen or underscore together
         if ["..", ".-", "-.", "--", "-_", "_-", "__", "._", "_."]
             .into_iter()
             .any(|p| id.contains(p))
         {
-            return false;
+            return Err(AppError::InvalidEmailFormat);
         }
         // no period, hypen or underscore at very end
         if ['.', '-', '_']
             .iter()
             .any(|&p| p == id.chars().next_back().unwrap())
         {
-            return false;
+            return Err(AppError::InvalidEmailFormat);
         }
     }
     // validating domain of email
     if let Some(domain) = it.next() {
         if domain.len() < 4 || domain.len() > 63 {
-            return false;
+            return Err(AppError::InvalidEmailFormat);
         }
         let mut it = domain.split('.');
         // top level domain check
         if let Some(tld) = it.next_back()
             && (tld.len() < 2 || tld.len() > 6 || !tld.chars().all(|c| c.is_ascii_lowercase()))
         {
-            return false;
+            return Err(AppError::InvalidEmailFormat);
         }
         // second and third level domain check
         for _ in 0..2 {
@@ -75,17 +75,17 @@ pub fn is_email_valid(s: &str) -> bool {
                     || ld.ends_with('-')
                     || ld.contains("--"))
             {
-                return false;
+                return Err(AppError::InvalidEmailFormat);
             }
         }
         if it.next_back().is_some() {
-            return false;
+            return Err(AppError::InvalidEmailFormat);
         }
     }
     if it.next().is_some() {
-        return false;
+        return Err(AppError::InvalidEmailFormat);
     }
-    true
+    Ok(())
 }
 
 pub fn is_username_valid(s: &str) -> Result<(), AppError> {
@@ -155,25 +155,25 @@ mod tests {
             $(
                 #[test]
                 fn $name() {
-                    let (haystack, expected) = $exp;
-                    assert_eq!(is_email_valid(haystack), expected);
+                    let (haystack, expected): (&str, Option<()>) = $exp;
+                    assert_eq!(is_email_valid(haystack).ok(), expected);
                 }
             )*
         };
     }
 
     email_test! {
-        email_test1: ("helo123@hello.com", true),
-        email_test2: ("helo123@mail.google.com", true),
-        email_test3: ("helo1@gmail.com", false),
-        email_test4: ("helo-.123@gmail.com", false),
-        email_test5: ("hello123@gmail1.com", false),
-        email_test6: ("hello123@x.co7", false),
-        email_test7: ("a0-0-0-0@y.x.in", true),
-        email_test8: ("a0-0-0.@hello.in", false),
-        email_test9: (".0.0.0@hello.in", false),
-        email_test10: ("u.0..0@hello.in", false),
-        email_test11: ("a1-4-7@hello.i", false),
+        email_test1: ("helo123@hello.com", None),
+        email_test2: ("helo123@mail.google.com", Some(())),
+        email_test3: ("helo1@gmail.com", None),
+        email_test4: ("helo-.123@gmail.com", None),
+        email_test5: ("hello123@gmail1.com", None),
+        email_test6: ("hello123@x.co7", None),
+        email_test7: ("a0-0-0-0@y.x.in", Some(())),
+        email_test8: ("a0-0-0.@hello.in", None),
+        email_test9: (".0.0.0@hello.in", None),
+        email_test10: ("u.0..0@hello.in", None),
+        email_test11: ("a1-4-7@hello.i", None),
     }
 
     macro_rules! username_test {

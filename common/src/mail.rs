@@ -31,17 +31,21 @@ static NOREPLY_EMAIL: LazyLock<Mailbox> =
 pub async fn send_mail(to_email: &str, subject: String, body: String) -> Result<(), AppError> {
     let msg: Message = Message::builder()
         .from(NOREPLY_EMAIL.clone())
-        .to(to_email
-            .parse()
-            .map_err(|_| AppError::BadReq("Invalid Email"))?)
+        .to(to_email.parse().map_err(|_| AppError::InvalidEmailFormat)?)
         .subject(subject)
         .body(body)
-        .map_err(|e| AppError::Server(Box::new(e)))?;
+        .map_err(|e| {
+            tracing::error!("{e:?}");
+            AppError::ServerError
+        })?;
 
     // sending the email
     MAILER
         .send(&msg)
-        .map_err(|e| AppError::Server(Box::new(e)))
+        .map_err(|e| {
+            tracing::error!("{e:?}");
+            AppError::ServerError
+        })
         .map(|_| ())
 }
 

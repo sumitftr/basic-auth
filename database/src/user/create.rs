@@ -12,7 +12,7 @@ impl crate::Db {
             }
             Err(e) => {
                 tracing::error!("{e:?}");
-                Err(AppError::ServerDefault)
+                Err(AppError::ServerError)
             }
         }
     }

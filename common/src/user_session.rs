@@ -70,7 +70,7 @@ pub fn get_session_index(
             return Ok(i);
         }
     }
-    Err(AppError::BadReq("Session not found"))
+    Err(AppError::AuthError("Session not found"))
 }
 
 /// this function syncs the `User { sessions }` that is stored in primary database

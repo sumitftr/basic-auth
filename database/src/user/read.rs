@@ -1,4 +1,4 @@
-use common::{AppError, user_session::UserSession};
+use common::AppError;
 use mongodb::bson::doc;
 use std::sync::Arc;
 
@@ -14,7 +14,7 @@ impl crate::Db {
             Ok(None) => Ok(()),
             Err(e) => {
                 tracing::error!("{e:?}");
-                Err(AppError::ServerDefault)
+                Err(AppError::ServerError)
             }
         }
     }
@@ -26,7 +26,7 @@ impl crate::Db {
             Ok(None) => Ok(()),
             Err(e) => {
                 tracing::error!("{e:?}");
-                Err(AppError::ServerDefault)
+                Err(AppError::ServerError)
             }
         }
     }
@@ -39,11 +39,11 @@ impl crate::Db {
     ) -> Result<(), AppError> {
         match self.users.find_one(doc! { "username": username }).await {
             Ok(Some(v)) if v.password == password => Ok(()),
-            Ok(Some(_)) => Err(AppError::BadReq("Password didn't match")),
+            Ok(Some(_)) => Err(AppError::WrongPassword),
             Ok(None) => Err(AppError::UserNotFound),
             Err(e) => {
                 tracing::error!("{e:?}");
-                Err(AppError::ServerDefault)
+                Err(AppError::ServerError)
             }
         }
     }
@@ -54,14 +54,14 @@ impl crate::Db {
         self: &Arc<Self>,
         decrypted_ssid: &str,
     ) -> Result<super::User, AppError> {
-        match self
-            .users
-            .find(doc! { "sessions": [ { "unsigned_ssid": decrypted_ssid } ]})
-            .await
-        {
-            Ok(v) => {}
-            Err(e) => {}
+        let filter = doc! { "sessions": { "$elemMatch": { "unsigned_ssid": decrypted_ssid } } };
+        match self.users.find_one(filter).await {
+            Ok(Some(user)) => Ok(user),
+            Ok(None) => Err(AppError::AuthError("Invalid Session")),
+            Err(e) => {
+                tracing::error!("{e:?}");
+                Err(AppError::ServerError)
+            }
         }
-        todo!()
     }
 }

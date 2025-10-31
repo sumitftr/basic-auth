@@ -11,7 +11,7 @@ mod user;
 pub async fn routes() -> Router {
     let main_router = Router::new()
         // user read routes
-        .route("/api/user/:id", get(user::get_user))
+        .route("/api/user/{id}", get(user::get_user))
         // user update routes
         .route("/api/email/update", post(user::update_email))
         .route("/api/username/update", post(user::update_username))
