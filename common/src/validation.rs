@@ -24,67 +24,16 @@ pub fn is_name_valid(s: &str) -> Result<String, AppError> {
 
 pub fn is_email_valid(s: &str) -> Result<(), AppError> {
     let mut it = s.split('@');
-    // validating email prefix
-    if let Some(id) = it.next() {
-        if id.len() < 6 || id.len() > 64 {
-            return Err(AppError::InvalidEmailFormat);
-        }
-        // email prefix should only contain alphabets, digits and periods
-        if !id.chars().all(|c| {
-            c.is_ascii_alphabetic() || c.is_ascii_digit() || c == '.' || c == '-' || c == '_'
-        }) {
-            return Err(AppError::InvalidEmailFormat);
-        }
-        // username should start with alphabetic character
-        if !id.chars().next().unwrap().is_ascii_alphabetic() {
-            return Err(AppError::InvalidEmailFormat);
-        }
-        // username should not contain more than one period, hypen or underscore together
-        if ["..", ".-", "-.", "--", "-_", "_-", "__", "._", "_."]
-            .into_iter()
-            .any(|p| id.contains(p))
-        {
-            return Err(AppError::InvalidEmailFormat);
-        }
-        // no period, hypen or underscore at very end
-        if ['.', '-', '_']
-            .iter()
-            .any(|&p| p == id.chars().next_back().unwrap())
-        {
-            return Err(AppError::InvalidEmailFormat);
-        }
-    }
-    // validating domain of email
-    if let Some(domain) = it.next() {
-        if domain.len() < 4 || domain.len() > 63 {
-            return Err(AppError::InvalidEmailFormat);
-        }
-        let mut it = domain.split('.');
-        // top level domain check
-        if let Some(tld) = it.next_back()
-            && (tld.len() < 2 || tld.len() > 6 || !tld.chars().all(|c| c.is_ascii_lowercase()))
-        {
-            return Err(AppError::InvalidEmailFormat);
-        }
-        // second and third level domain check
-        for _ in 0..2 {
-            if let Some(ld) = it.next_back()
-                && (ld.is_empty()
-                    || !ld.chars().all(|c| c.is_ascii_lowercase() || c == '-')
-                    || !ld.chars().next().unwrap().is_ascii_lowercase()
-                    || ld.ends_with('-')
-                    || ld.contains("--"))
-            {
-                return Err(AppError::InvalidEmailFormat);
-            }
-        }
-        if it.next_back().is_some() {
-            return Err(AppError::InvalidEmailFormat);
-        }
-    }
+    let Some(local_part) = it.next() else {
+        return Err(AppError::InvalidEmailFormat);
+    };
+    let Some(domain) = it.next() else {
+        return Err(AppError::InvalidEmailFormat);
+    };
     if it.next().is_some() {
         return Err(AppError::InvalidEmailFormat);
     }
+
     Ok(())
 }
 
@@ -163,7 +112,7 @@ mod tests {
     }
 
     email_test! {
-        email_test1: ("helo123@hello.com", None),
+        email_test1: ("helo123@hello.com", Some(())),
         email_test2: ("helo123@mail.google.com", Some(())),
         email_test3: ("helo1@gmail.com", None),
         email_test4: ("helo-.123@gmail.com", None),

@@ -24,11 +24,10 @@ pub struct CreateUserRequest {
 }
 
 pub async fn start(
-    State(state): State<Arc<Db>>,
+    State(db): State<Arc<Db>>,
     Json(body): Json<CreateUserRequest>,
 ) -> Result<String, AppError> {
-    state
-        .create_user(body.name, body.email, body.day, body.month, body.year)
+    db.create_user(body.name, body.email, body.day, body.month, body.year)
         .await?;
     Ok("".to_string())
 }
@@ -39,10 +38,10 @@ pub struct ResendOtpRequest {
 }
 
 pub async fn resend_otp(
-    State(state): State<Arc<Db>>,
+    State(db): State<Arc<Db>>,
     Json(body): Json<ResendOtpRequest>,
 ) -> Result<String, AppError> {
-    state.resend_otp(body.email).await?;
+    db.resend_otp(body.email).await?;
     Ok("The email has been sent".to_string())
 }
 
@@ -55,10 +54,10 @@ pub struct VerifyEmailRequest {
 }
 
 pub async fn verify_email(
-    State(state): State<Arc<Db>>,
+    State(db): State<Arc<Db>>,
     Json(body): Json<VerifyEmailRequest>,
 ) -> Result<String, AppError> {
-    state.verify_email(body.email, body.otp).await?;
+    db.verify_email(body.email, body.otp).await?;
     Ok("Email Verified".to_string())
 }
 
@@ -71,10 +70,10 @@ pub struct SetPasswordRequest {
 }
 
 pub async fn set_password(
-    State(state): State<Arc<Db>>,
+    State(db): State<Arc<Db>>,
     Json(body): Json<SetPasswordRequest>,
 ) -> Result<String, AppError> {
-    state.set_password(body.email, body.password)?;
+    db.set_password(body.email, body.password)?;
     Ok("Password has been set".to_string())
 }
 
@@ -87,7 +86,7 @@ pub struct SetUsernameRequest {
 }
 
 pub async fn set_username(
-    State(state): State<Arc<Db>>,
+    State(db): State<Arc<Db>>,
     headers: HeaderMap,
     Json(body): Json<SetUsernameRequest>,
 ) -> Result<impl IntoResponse, AppError> {
@@ -102,12 +101,12 @@ pub async fn set_username(
         common::user_session::create_session(user_agent);
 
     // registering user to primary database
-    let user = Arc::clone(&state)
-        .set_username(body.email, body.username.clone(), &user_session)
+    let user = Arc::clone(&db)
+        .set_username(body.email, body.username.clone(), user_session)
         .await?;
 
     // activating session by adding it to `Db::active`
-    state.make_user_active(active_user_session, user);
+    db.make_user_active(active_user_session, user);
 
     Ok((
         StatusCode::CREATED,

@@ -13,4 +13,11 @@ impl crate::Db {
     ) -> Option<User> {
         self.active.get(active_user_session)
     }
+
+    pub fn remove_active_user(
+        self: &Arc<Self>,
+        active_user_session: &ActiveUserSession,
+    ) -> Option<User> {
+        self.active.remove(active_user_session)
+    }
 }

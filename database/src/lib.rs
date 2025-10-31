@@ -12,7 +12,7 @@ pub struct Db {
     users: Collection<crate::user::User>,
     // in memory stores
     active: Cache<ActiveUserSession, crate::user::User>,
-    unregistered: Cache<String, crate::user::UnregisteredEntry>,
+    unregistered: Cache<String, crate::unregistered::UnregisteredEntry>,
 }
 
 static DB: OnceCell<Arc<Db>> = OnceCell::const_new();

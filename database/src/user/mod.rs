@@ -1,3 +1,5 @@
+use std::time::SystemTime;
+
 use common::user_session::UserSession;
 use mongodb::bson::{DateTime, oid::ObjectId};
 use serde::{Deserialize, Serialize};
@@ -34,20 +36,21 @@ pub enum UserStatus {
     Deactivated,
 }
 
-#[derive(Deserialize, Debug, Clone)]
-pub struct UnregisteredEntry {
-    pub name: String,
-    // pub email: String,
-    pub dob: DateTime,
-    pub otp: u32,
-    pub password: Option<String>,
-    pub register_status: RegisterStatus,
-    pub session: Vec<String>,
-}
-
-#[derive(Deserialize, PartialEq, Debug, Clone)]
-pub enum RegisterStatus {
-    Created,
-    EmailVerified,
-    PasswordSet,
+impl std::ops::Drop for User {
+    fn drop(&mut self) {
+        let mut synced_sessions = Vec::with_capacity(self.sessions.len());
+        let now = SystemTime::now();
+        for session in self.sessions.iter() {
+            if now < session.expires {
+                synced_sessions.push(session.to_owned());
+            }
+        }
+        self.sessions = synced_sessions;
+        // tokio::spawn(async move {
+        //     crate::Db::new()
+        //         .await
+        //         .update_sessions(&self.username, &self.sessions)
+        //         .await;
+        // });
+    }
 }

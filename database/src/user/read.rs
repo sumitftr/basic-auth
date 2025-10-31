@@ -2,6 +2,8 @@ use common::AppError;
 use mongodb::bson::doc;
 use std::sync::Arc;
 
+use crate::user::User;
+
 // implementation block for checking user attributes
 impl crate::Db {
     // checks if the email is available or not
@@ -31,14 +33,29 @@ impl crate::Db {
         }
     }
 
-    // matches database user's password with the specified password
-    pub async fn check_password(
+    pub async fn authenticate_user_by_username(
         self: &Arc<Self>,
         username: &str,
         password: &str,
-    ) -> Result<(), AppError> {
+    ) -> Result<User, AppError> {
         match self.users.find_one(doc! { "username": username }).await {
-            Ok(Some(v)) if v.password == password => Ok(()),
+            Ok(Some(user)) if user.password == password => Ok(user),
+            Ok(Some(_)) => Err(AppError::WrongPassword),
+            Ok(None) => Err(AppError::UserNotFound),
+            Err(e) => {
+                tracing::error!("{e:?}");
+                Err(AppError::ServerError)
+            }
+        }
+    }
+
+    pub async fn authenticate_user_by_email(
+        self: &Arc<Self>,
+        email: &str,
+        password: &str,
+    ) -> Result<User, AppError> {
+        match self.users.find_one(doc! { "email": email }).await {
+            Ok(Some(user)) if user.password == password => Ok(user),
             Ok(Some(_)) => Err(AppError::WrongPassword),
             Ok(None) => Err(AppError::UserNotFound),
             Err(e) => {

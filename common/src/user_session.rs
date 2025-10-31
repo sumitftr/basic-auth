@@ -73,19 +73,6 @@ pub fn get_session_index(
     Err(AppError::AuthError("Session not found"))
 }
 
-/// this function syncs the `User { sessions }` that is stored in primary database
-/// and gives out a new `Vec<UserSession>` that can be replaced with
-pub fn clear_expired_sessions(sessions: Vec<UserSession>) -> Vec<UserSession> {
-    let mut synced_sessions = Vec::with_capacity(sessions.len());
-    let now = SystemTime::now();
-    for session in sessions {
-        if now < session.expires {
-            synced_sessions.push(session);
-        }
-    }
-    synced_sessions
-}
-
 #[derive(serde::Serialize, serde::Deserialize, Clone, Debug)]
 pub struct UserSession {
     pub unsigned_ssid: String,

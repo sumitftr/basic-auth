@@ -1,4 +1,4 @@
-use axum::{Router, routing::post};
+use axum::{Router, middleware::from_fn, routing::post};
 
 mod register;
 mod session;
@@ -12,6 +12,6 @@ pub async fn auth_routes() -> Router {
         .route("/api/user/register/set_password", post(register::set_password))
         .route("/api/user/register/set_username", post(register::set_username))
         .route("/api/user/login", post(session::login))
-        .route("/api/user/logout", post(session::logout))
+        .route("/api/user/logout", post(session::logout).layer(from_fn(crate::middleware::auth_middleware)))
         .with_state(database::Db::new().await)
 }

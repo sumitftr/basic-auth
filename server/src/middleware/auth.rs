@@ -37,11 +37,8 @@ pub async fn auth_middleware(mut req: Request, next: Next) -> Result<Response, A
                         req.extensions_mut().insert(active_user_session);
                         req.extensions_mut().insert(user);
                     }
-                    UserSessionStatus::Expiring(_) => {
-                        // when the user session is about to expire
-                    }
-                    UserSessionStatus::Refreshable(_) => {
-                        // automatic session refresh if ssid expiration is not older than `UserSession::MAX_REFRESH_DURATION`
+                    UserSessionStatus::Expiring(_) | UserSessionStatus::Refreshable(_) => {
+                        // automatic session refresh code block
                         let user_agent = req
                             .headers()
                             .get(header::USER_AGENT)
@@ -49,7 +46,7 @@ pub async fn auth_middleware(mut req: Request, next: Next) -> Result<Response, A
                             .unwrap_or_default();
 
                         // creating session
-                        let (user_session, active_user_session, set_cookie_headermap) =
+                        let (user_session, new_active_user_session, set_cookie_headermap) =
                             user_session::create_session(user_agent);
 
                         // replacing the old session with new session
@@ -59,8 +56,9 @@ pub async fn auth_middleware(mut req: Request, next: Next) -> Result<Response, A
                         db.update_sessions(&user.username, &user.sessions).await?;
 
                         // activating session by adding it to `Db::active`
-                        db.make_user_active(active_user_session, user);
+                        db.make_user_active(new_active_user_session, user);
 
+                        // in the case of `Expiring` the new ssid will override the old one
                         return Err(AppError::RefreshSession(set_cookie_headermap));
                     }
                     UserSessionStatus::Invalid => {
