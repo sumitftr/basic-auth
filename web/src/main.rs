@@ -15,12 +15,12 @@ async fn main() {
         .with(tracing_subscriber::fmt::Layer::default())
         .init();
 
-    let app = server::routes().await;
+    let router = server::routes().await;
 
     let listener = tokio::net::TcpListener::bind(&*SOCKET).await.unwrap();
 
     tracing::info!("[+] listening on {}", listener.local_addr().unwrap());
-    axum::serve(listener, app) // app.into_make_service_with_connect_info::<conn_info::ClientConnInfo>(),
+    axum::serve(listener, router) // app.into_make_service_with_connect_info::<conn_info::ClientConnInfo>(),
         .await
         .unwrap();
 }

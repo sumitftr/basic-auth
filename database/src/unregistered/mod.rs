@@ -8,7 +8,7 @@ pub struct UnregisteredEntry {
     pub name: String,
     // pub email: String,
     pub dob: DateTime,
-    pub otp: u32,
+    pub otp: String,
     pub password: Option<String>,
     pub register_status: RegisterStatus,
     pub session: Vec<String>,

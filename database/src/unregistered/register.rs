@@ -71,7 +71,7 @@ impl crate::Db {
             if entry.register_status != RegisterStatus::Created {
                 return Err(AppError::BadReq("OTP can't be sent multiple times"));
             }
-            entry.otp = otp;
+            entry.otp = otp.clone();
             // resending otp to the email
             common::mail::send_mail(
                 email.as_str(),
@@ -91,7 +91,7 @@ impl crate::Db {
         Ok(())
     }
 
-    pub async fn verify_email(self: Arc<Self>, email: String, otp: u32) -> Result<(), AppError> {
+    pub async fn verify_email(self: Arc<Self>, email: String, otp: String) -> Result<(), AppError> {
         if let Some(mut entry) = self.unregistered.get(&email) {
             if entry.register_status != RegisterStatus::Created {
                 return Err(AppError::BadReq("OTP can't be sent multiple times"));

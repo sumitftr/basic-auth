@@ -3,10 +3,10 @@ use crate::AppError;
 // a valid name contains two or more words
 // each words should only contain english alphabets
 pub fn is_name_valid(s: &str) -> Result<String, AppError> {
-    let mut result = "".to_string();
+    let mut result = String::new();
     let mut count = 0;
     for part in s.split_whitespace() {
-        if part.bytes().any(|b| !b.is_ascii_alphabetic()) {
+        if part.chars().any(|b| !b.is_alphabetic()) {
             return Err(AppError::BadReq("Only alphabets are allowed inside name"));
         }
         if !result.is_empty() {
@@ -78,13 +78,13 @@ fn is_local_part_valid(local_part: &str) -> bool {
 }
 
 fn is_domain_valid(domain: &str) -> bool {
-    if domain.is_empty() || domain.len() > 255 || domain.contains("..") {
+    if domain.is_empty() || domain.len() > 255 || domain.contains("..") || !domain.contains(".") {
         return false;
     }
     let mut it = domain.split('.');
     // top level domain check
     if let Some(tld) = it.next_back()
-        && (tld.len() < 2 || !tld.chars().all(|c| c.is_ascii_alphabetic()))
+        && (tld.is_empty() || !tld.chars().all(|c| c.is_ascii_alphabetic()))
     {
         return false;
     }
@@ -99,6 +99,7 @@ fn is_domain_valid(domain: &str) -> bool {
             return false;
         }
     }
+    // no fifth level domain allowed
     if it.next_back().is_some() {
         return false;
     }
@@ -180,17 +181,23 @@ mod tests {
     }
 
     email_test! {
-        email_test1: ("helo123@hello.com", Some(())),
-        email_test2: ("helo123@mail.google.com", Some(())),
-        email_test3: ("helo1@gmail.com", None),
-        email_test4: ("helo-.123@gmail.com", None),
-        email_test5: ("hello123@gmail1.com", None),
-        email_test6: ("hello123@x.co7", None),
-        email_test7: ("a0-0-0-0@y.x.in", Some(())),
-        email_test8: ("a0-0-0.@hello.in", None),
-        email_test9: (".0.0.0@hello.in", None),
-        email_test10: ("u.0..0@hello.in", None),
-        email_test11: ("a1-4-7@hello.i", None),
+        email_test_01: ("gggggg@example.com", Some(())),
+        email_test_02: ("helo123@mail.google.com", Some(())),
+        email_test_03: ("my-email@hotmail.com", Some(())),
+        email_test_04: ("helo-.123@gmail.com", None),
+        email_test_05: ("hello123@gma1.haha", Some(())),
+        email_test_06: ("hello123@x.co7", None),
+        email_test_07: ("baj-1-3@y.x.in", Some(())),
+        email_test_08: ("a0-0-0.@hello.xyz", None),
+        email_test_09: (".0.0.0@hello.in", None),
+        email_test_10: ("u.0..0@example.in", None),
+        email_test_11: ("a1-4-7@hello.i", Some(())),
+        email_test_12: ("nana-7@hello", None),
+        email_test_13: ("a1-@foo.rs", None),
+        email_test_14: ("woosh@.foo", None),
+        email_test_15: ("rosent0--7-0@y.x.in", None),
+        email_test_16: ("hello0@example--com", None),
+        email_test_17: ("hi@sample-.com", None),
     }
 
     macro_rules! username_test {
@@ -206,14 +213,15 @@ mod tests {
     }
 
     username_test! {
-        username_test1: ("su-xe_ij_", None),
-        username_test2: ("su-x-_ij_", None),
-        username_test3: ("su-x32-ij_", None),
-        username_test4: ("su-x32-", None),
-        username_test5: ("ab-_re", None),
-        username_test6: ("ab...resno", None),
-        username_test7: ("ab---re", None),
-        username_test8: ("a-7-8-8", None),
-        username_test9: ("a.7.b.xetn", Some(())),
+        username_test_01: ("su-xe_ij_", None),
+        username_test_02: ("su-x-_ij_", None),
+        username_test_03: ("su-x32-ij_", None),
+        username_test_04: ("su-x32-", None),
+        username_test_05: ("ab-_re", None),
+        username_test_06: ("ab...resno", None),
+        username_test_07: ("ab---re", None),
+        username_test_08: ("a-7-8-8", None),
+        username_test_09: ("a.7.b.xetn", Some(())),
+        username_test_10: ("example.com", Some(())),
     }
 }

@@ -49,41 +49,69 @@ pub async fn send_mail(to_email: &str, subject: String, body: String) -> Result<
         .map(|_| ())
 }
 
-pub fn generate_otp(secret: &[u8]) -> u32 {
-    const SHA256_DIGEST_BYTES: usize = 32;
+pub fn generate_otp(secret: &[u8]) -> String {
+    const TIME_STEP: u64 = 30; // 30 seconds
+    const DIGITS_POWER: u32 = 1_000_000; // 10^6
 
+    // Get current time in seconds, divided into 30-second intervals
     let counter = SystemTime::now()
         .duration_since(UNIX_EPOCH)
         .expect("Time went backwards")
-        .as_millis() as u64;
+        .as_secs()
+        / TIME_STEP;
 
-    // build hmac key from counter
-    let message: &[u8; 8] = &[
-        ((counter >> 56) & 0xff) as u8,
-        ((counter >> 48) & 0xff) as u8,
-        ((counter >> 40) & 0xff) as u8,
-        ((counter >> 32) & 0xff) as u8,
-        ((counter >> 24) & 0xff) as u8,
-        ((counter >> 16) & 0xff) as u8,
-        ((counter >> 8) & 0xff) as u8,
-        ((counter) & 0xff) as u8,
+    // Convert counter to big-endian byte array
+    let message: [u8; 8] = [
+        (counter >> 56) as u8,
+        (counter >> 48) as u8,
+        (counter >> 40) as u8,
+        (counter >> 32) as u8,
+        (counter >> 24) as u8,
+        (counter >> 16) as u8,
+        (counter >> 8) as u8,
+        counter as u8,
     ];
 
-    // Create the hasher with the key. We can use expect for Hmac algorithms as they allow arbitrary key sizes.
-    let mut hasher: Hmac<sha2::Sha256> = Mac::new_from_slice(secret).unwrap();
+    // HMAC-SHA256
+    let mut mac = Hmac::<sha2::Sha256>::new_from_slice(secret).unwrap();
+    mac.update(&message);
+    let result = mac.finalize().into_bytes();
 
-    // hash the message
-    hasher.update(message);
+    // Dynamic truncation
+    let offset = (result[result.len() - 1] & 0xf) as usize;
+    let binary = ((result[offset] as u32 & 0x7f) << 24)
+        | ((result[offset + 1] as u32) << 16)
+        | ((result[offset + 2] as u32) << 8)
+        | (result[offset + 3] as u32);
 
-    // finalize the hash and convert to a static array
-    let hash = hasher.finalize().into_bytes();
+    // Truncate to 6 digits
+    let otp = binary % DIGITS_POWER;
 
-    // calculate the dynamic offset for the value
-    let dynamic_offset = (hash[SHA256_DIGEST_BYTES - 1] & (0xf_u8)) as usize;
+    // Return as zero-padded 6-digit string
+    format!("{:06}", otp)
+}
 
-    // build the u32 code from the hash
-    ((hash[dynamic_offset] as u32) << 24
-        | (hash[dynamic_offset + 1] as u32) << 16
-        | (hash[dynamic_offset + 2] as u32) << 8
-        | (hash[dynamic_offset + 3] as u32)) as u32
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn otp_test() {
+        for _ in 0..10 {
+            let secret = uuid::Uuid::new_v4().into_bytes();
+            let otp = generate_otp(&secret);
+            dbg!(&otp);
+            assert!(otp.len() == 6);
+        }
+    }
+
+    #[test]
+    fn otp_test_quick() {
+        let secret = uuid::Uuid::new_v4().into_bytes();
+        let otp = generate_otp(&secret);
+        dbg!(&otp);
+        for _ in 0..10 {
+            assert_eq!(otp, generate_otp(&secret));
+        }
+    }
 }

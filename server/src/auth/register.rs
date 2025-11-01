@@ -50,7 +50,7 @@ pub async fn resend_otp(
 #[derive(Deserialize)]
 pub struct VerifyEmailRequest {
     email: String,
-    otp: u32,
+    otp: String,
 }
 
 pub async fn verify_email(

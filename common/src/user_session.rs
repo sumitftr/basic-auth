@@ -167,28 +167,32 @@ mod tests {
     #[test]
     fn user_session_test() {
         dotenv::dotenv().ok();
-        let (user_session, active_user_session, jar) =
+        let (user_session, active_user_session, set_cookie_headermap) =
             create_session("Mozilla Firefox".to_string());
         dbg!(&user_session);
         dbg!(&active_user_session);
-        dbg!(&jar);
-        dbg!(&mongodb::bson::DateTime::from_system_time(
-            user_session.expires
-        ));
-        // for i in 0..jar.len() {
-        //     assert_eq!(user_session.uuids[i], jar[i][0..jar[i].find(';').unwrap()])
-        // }
+        dbg!(&set_cookie_headermap);
+        assert!(
+            active_user_session
+                .ssid
+                .ends_with(user_session.unsigned_ssid.as_str())
+        );
+        assert!(
+            active_user_session
+                .ssid
+                .starts_with(&sign(&user_session.unsigned_ssid))
+        );
     }
 
     #[test]
     fn sign_then_verify() {
         dotenv::dotenv().ok();
         let uid = uuid::Uuid::new_v4().to_string();
-        dbg!(&uid);
         let signed_uid = sign(&uid);
+        let decrypted_uid = verify(&format!("{signed_uid}{uid}")).unwrap();
+        dbg!(&uid);
         dbg!(&signed_uid);
-        let verified_uid = verify(&format!("{signed_uid}{uid}")).unwrap();
-        dbg!(&verified_uid);
-        assert_eq!(uid, verified_uid);
+        dbg!(&decrypted_uid);
+        assert_eq!(uid, decrypted_uid);
     }
 }
