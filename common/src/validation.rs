@@ -34,7 +34,75 @@ pub fn is_email_valid(s: &str) -> Result<(), AppError> {
         return Err(AppError::InvalidEmailFormat);
     }
 
-    Ok(())
+    if is_local_part_valid(local_part) && is_domain_valid(domain) {
+        Ok(())
+    } else {
+        Err(AppError::InvalidEmailFormat)
+    }
+}
+
+fn is_local_part_valid(local_part: &str) -> bool {
+    if local_part.is_empty() || local_part.len() > 64 {
+        return false;
+    }
+    // local part should only contain alphabets, digits and periods
+    if !local_part
+        .chars()
+        .all(|c| c.is_ascii_alphabetic() || c.is_ascii_digit() || c == '.' || c == '-' || c == '_')
+    {
+        return false;
+    }
+    // local part should start with alphabetic character
+    if !local_part.chars().next().unwrap().is_ascii_alphabetic() {
+        return false;
+    }
+    // local part should not contain more than one period, hypen or underscore together
+    let allowed_symbols = ['.', '-', '_'];
+    let mut it = local_part.chars();
+    let mut prev = it.next().unwrap();
+    for _ in 1..local_part.len() {
+        let curr = it.next().unwrap();
+        if allowed_symbols.contains(&prev) && allowed_symbols.contains(&curr) {
+            return false;
+        }
+        prev = curr;
+    }
+    // no period, hypen or underscore at very end of local part
+    if allowed_symbols
+        .iter()
+        .any(|&p| p == local_part.chars().next_back().unwrap())
+    {
+        return false;
+    }
+    true
+}
+
+fn is_domain_valid(domain: &str) -> bool {
+    if domain.is_empty() || domain.len() > 255 || domain.contains("..") {
+        return false;
+    }
+    let mut it = domain.split('.');
+    // top level domain check
+    if let Some(tld) = it.next_back()
+        && (tld.len() < 2 || !tld.chars().all(|c| c.is_ascii_alphabetic()))
+    {
+        return false;
+    }
+    // second, third and fourth level domain check
+    for _ in 0..3 {
+        if let Some(ld) = it.next_back()
+            && (ld.is_empty()
+                || !ld.chars().all(|c| c.is_ascii_alphanumeric() || c == '-')
+                || !ld.chars().next().unwrap().is_ascii_alphabetic()
+                || ld.ends_with('-'))
+        {
+            return false;
+        }
+    }
+    if it.next_back().is_some() {
+        return false;
+    }
+    true
 }
 
 pub fn is_username_valid(s: &str) -> Result<(), AppError> {
