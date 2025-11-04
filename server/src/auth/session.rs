@@ -49,6 +49,9 @@ pub async fn login(
     let (user_session, active_user_session, set_cookie_headermap) =
         common::user_session::create_session(user_agent);
 
+    // clearing expired sessions
+    common::user_session::clear_expired_sessions(&mut user.sessions);
+
     // adding `UserSession` to primary database
     user.sessions.push(user_session);
     db.update_sessions(&user.username, &user.sessions).await?;

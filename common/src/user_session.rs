@@ -73,6 +73,18 @@ pub fn get_session_index(
     Err(AppError::AuthError("Session not found"))
 }
 
+pub fn clear_expired_sessions(sessions: &mut Vec<UserSession>) {
+    let tmp_sessions = std::mem::take(sessions);
+
+    let now = SystemTime::now();
+    let synced_sessions = tmp_sessions
+        .into_iter()
+        .filter(|s| now < s.expires)
+        .collect::<Vec<UserSession>>();
+
+    let _ = std::mem::replace(sessions, synced_sessions);
+}
+
 #[derive(serde::Serialize, serde::Deserialize, Clone, Debug)]
 pub struct UserSession {
     pub unsigned_ssid: String,
@@ -194,5 +206,27 @@ mod tests {
         dbg!(&signed_uid);
         dbg!(&decrypted_uid);
         assert_eq!(uid, decrypted_uid);
+    }
+
+    #[test]
+    fn syncing_session_test() {
+        dotenv::dotenv().ok();
+        let (user_session1, _, _) = create_session("Mozilla Firefox".to_string());
+        let user_session2 = UserSession {
+            unsigned_ssid: create_session("Mozilla Firefox".to_string())
+                .0
+                .unsigned_ssid,
+            expires: SystemTime::now() - Duration::from_secs(348738749374),
+            user_agent: "some agent".to_string(),
+        };
+        let (user_session3, _, _) = create_session("chrome browser".to_string());
+        let user_session4 = UserSession {
+            unsigned_ssid: "ertnasotenoariesntoaiesnoa".to_string(),
+            expires: SystemTime::now() - Duration::from_secs(23829389283),
+            user_agent: "some agent".to_string(),
+        };
+        let mut sessions = vec![user_session1, user_session2, user_session3, user_session4];
+        clear_expired_sessions(&mut sessions);
+        assert_eq!(sessions.len(), 2);
     }
 }

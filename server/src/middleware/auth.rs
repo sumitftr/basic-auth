@@ -52,6 +52,9 @@ pub async fn auth_middleware(mut req: Request, next: Next) -> Result<Response, A
                         // replacing the old session with new session
                         user.sessions[i] = user_session;
 
+                        // clearing expired sessions
+                        user_session::clear_expired_sessions(&mut user.sessions);
+
                         // updating session in primary database
                         db.update_sessions(&user.username, &user.sessions).await?;
 
@@ -62,6 +65,12 @@ pub async fn auth_middleware(mut req: Request, next: Next) -> Result<Response, A
                         return Err(AppError::RefreshSession(set_cookie_headermap));
                     }
                     UserSessionStatus::Invalid => {
+                        // clearing expired sessions
+                        user_session::clear_expired_sessions(&mut user.sessions);
+
+                        // updating session in primary database
+                        db.update_sessions(&user.username, &user.sessions).await?;
+
                         return Err(AppError::InvalidSession(active_user_session.expire()));
                     }
                 };

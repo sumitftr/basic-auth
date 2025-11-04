@@ -1,5 +1,3 @@
-use std::time::SystemTime;
-
 use common::user_session::UserSession;
 use mongodb::bson::{DateTime, oid::ObjectId};
 use serde::{Deserialize, Serialize};
@@ -34,23 +32,4 @@ pub enum UserStatus {
     Locked,
     Blocked,
     Deactivated,
-}
-
-impl std::ops::Drop for User {
-    fn drop(&mut self) {
-        let mut synced_sessions = Vec::with_capacity(self.sessions.len());
-        let now = SystemTime::now();
-        for session in self.sessions.iter() {
-            if now < session.expires {
-                synced_sessions.push(session.to_owned());
-            }
-        }
-        self.sessions = synced_sessions;
-        // tokio::spawn(async move {
-        //     crate::Db::new()
-        //         .await
-        //         .update_sessions(&self.username, &self.sessions)
-        //         .await;
-        // });
-    }
 }
