@@ -1,12 +1,14 @@
 use axum::{
-    Extension,
+    Extension, Json,
     extract::{Path, State},
 };
 use common::AppError;
 use database::{Db, user::User};
+use serde::Serialize;
 use std::sync::{Arc, Mutex};
 
-struct GetUserProfileResponse {
+#[derive(Serialize)]
+pub struct GetUserProfileResponse {
     username: String,
     display_name: String,
     bio: Option<String>,
@@ -16,7 +18,7 @@ pub async fn get_user_profile(
     State(db): State<Arc<Db>>,
     Extension(user): Extension<Arc<Mutex<User>>>,
     Path(p): Path<String>,
-) -> Result<GetUserProfileResponse, AppError> {
+) -> Result<Json<GetUserProfileResponse>, AppError> {
     let res = {
         let guard = user.lock().unwrap();
         if guard.username == p {
@@ -31,13 +33,13 @@ pub async fn get_user_profile(
     };
 
     if let Some(res) = res {
-        return Ok(res);
+        Ok(Json(res))
     } else {
         let u = db.get_user(&p).await?;
-        Ok(GetUserProfileResponse {
+        Ok(Json(GetUserProfileResponse {
             username: u.username,
             display_name: u.display_name,
             bio: u.bio,
-        })
+        }))
     }
 }

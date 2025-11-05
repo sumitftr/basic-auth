@@ -13,7 +13,7 @@ license = "MIT"
 readme = "README.md"
 
 [workspace.dependencies]
-axum       = { version = "0.8", features = ["http2"] }
+axum       = { version = "0.8", features = ["http2", "macros"] }
 base64     = { version = "0.22" }
 dotenv     = { version = "0.15" }
 hmac       = { version = "0.12" }
