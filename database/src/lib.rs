@@ -2,7 +2,10 @@ use crate::user::User;
 use common::user_session::{ActiveUserSession, UserSession};
 use moka::sync::Cache;
 use mongodb::{Collection, error::ErrorKind};
-use std::{sync::Arc, time::Duration};
+use std::{
+    sync::{Arc, Mutex},
+    time::Duration,
+};
 use tokio::sync::OnceCell;
 
 pub mod active;
@@ -12,7 +15,7 @@ pub mod user;
 pub struct Db {
     users: Collection<User>,
     // in memory stores
-    active: Cache<ActiveUserSession, Arc<User>>,
+    active: Cache<ActiveUserSession, Arc<Mutex<User>>>,
     unregistered: Cache<String, crate::unregistered::UnregisteredEntry>,
 }
 
