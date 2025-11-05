@@ -77,12 +77,12 @@ pub fn clear_expired_sessions(sessions: &mut Vec<UserSession>) {
     let tmp_sessions = std::mem::take(sessions);
 
     let now = SystemTime::now();
-    let synced_sessions = tmp_sessions
+    let filtered_sessions = tmp_sessions
         .into_iter()
         .filter(|s| now < s.expires)
         .collect::<Vec<UserSession>>();
 
-    let _ = std::mem::replace(sessions, synced_sessions);
+    let _ = std::mem::replace(sessions, filtered_sessions);
 }
 
 #[derive(serde::Serialize, serde::Deserialize, Clone, Debug)]
