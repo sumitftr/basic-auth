@@ -11,11 +11,16 @@ impl crate::Db {
         new_email: &str,
     ) -> Result<(), AppError> {
         self.is_email_available(email).await?;
-        let update = doc! {"email": email};
-        let filter = doc! {"$set": doc! {"email": new_email}};
+        let filter = doc! {"email": email};
+        let update = doc! {"$set": doc! {"email": new_email}};
         match self.users.update_one(filter, update).await {
             Ok(v) => {
-                tracing::info!("Updated User Email: {:?}", v.upserted_id);
+                tracing::info!(
+                    "[{:?}] Old Email: {}, New Email: {}",
+                    v.upserted_id,
+                    email,
+                    new_email
+                );
                 Ok(())
             }
             Err(e) => {
@@ -32,11 +37,16 @@ impl crate::Db {
         new_username: &str,
     ) -> Result<(), AppError> {
         self.is_username_available(username).await?;
-        let update = doc! {"username": username};
-        let filter = doc! {"$set": doc! {"username": new_username}};
+        let filter = doc! {"username": username};
+        let update = doc! {"$set": doc! {"username": new_username}};
         match self.users.update_one(filter, update).await {
             Ok(v) => {
-                tracing::info!("Updated Username: {:?}", v.upserted_id);
+                tracing::info!(
+                    "[{:?}] Old Username: {}, New Username: {}",
+                    v.upserted_id,
+                    username,
+                    new_username
+                );
                 Ok(())
             }
             Err(e) => {
@@ -53,16 +63,21 @@ impl crate::Db {
         password: &str,
         new_password: &str,
     ) -> Result<(), AppError> {
-        let update = doc! {"username": username};
-        let filter = doc! {"$set": doc! {"password": new_password}};
-        match self.users.find_one(update.clone()).await {
+        let filter = doc! {"username": username};
+        let update = doc! {"$set": doc! {"password": new_password}};
+        match self.users.find_one(filter.clone()).await {
             Ok(Some(u)) => {
                 if u.password != password {
                     Err(AppError::WrongPassword)
                 } else {
                     match self.users.update_one(filter, update).await {
-                        Ok(v) => {
-                            tracing::info!("Updated User Password: {:?}", v.upserted_id);
+                        Ok(_) => {
+                            tracing::info!(
+                                "Username: {}, Old Password: {}, New Password: {}",
+                                username,
+                                password,
+                                new_password
+                            );
                             Ok(())
                         }
                         Err(e) => {
@@ -91,8 +106,8 @@ impl crate::Db {
         gender: &str,
         dob: &DateTime,
     ) -> Result<(), AppError> {
-        let update = doc! {"username": username};
-        let filter = doc! {"$set": doc! {"name": name, "gender": gender, "dob": dob}};
+        let filter = doc! {"username": username};
+        let update = doc! {"$set": doc! {"name": name, "gender": gender, "dob": dob}};
         match self.users.update_one(filter, update).await {
             Ok(v) => {
                 tracing::info!("Updated User Metadata: {:?}", v.upserted_id);
@@ -116,15 +131,15 @@ impl crate::Db {
             AppError::ServerError
         })?;
 
-        let update = doc! {"username": username};
-        let filter = doc! {"$set": doc! {"sessions": sessions_bson}};
+        let filter = doc! {"username": username};
+        let update = doc! {"$set": {"sessions": sessions_bson}};
         match self.users.update_one(filter, update).await {
-            Ok(v) => {
-                tracing::info!("Updated User Sessions: {:?}", v.upserted_id);
+            Ok(_) => {
+                tracing::info!("[Updated User Sessions] Username: {}", username);
                 Ok(())
             }
             Err(e) => {
-                tracing::error!("{e:?}");
+                tracing::error!("Failed to update sessions: {e:?}");
                 Err(AppError::ServerError)
             }
         }

@@ -6,8 +6,8 @@ impl crate::Db {
     // adds a user to the database
     pub async fn add_user(self: &Arc<Self>, user: &User) -> Result<(), AppError> {
         match self.users.insert_one(user).await {
-            Ok(v) => {
-                tracing::info!("Inserted User: {}", v.inserted_id);
+            Ok(_) => {
+                tracing::info!("Username: {}, Email: {}", user.username, user.email);
                 Ok(())
             }
             Err(e) => {

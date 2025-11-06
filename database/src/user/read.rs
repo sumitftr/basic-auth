@@ -8,7 +8,7 @@ use crate::user::User;
 impl crate::Db {
     // checks if the email is available or not
     pub async fn is_email_available(self: &Arc<Self>, email: &str) -> Result<(), AppError> {
-        if self.unregistered.get(email).is_some() {
+        if self.applicants.get(email).is_some() {
             return Err(AppError::EmailTaken);
         }
         match self.users.find_one(doc! { "email": email }).await {

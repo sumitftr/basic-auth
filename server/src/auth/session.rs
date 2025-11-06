@@ -40,6 +40,7 @@ pub async fn login(
         // this is an unreachable statement
         return Err(AppError::ServerError);
     };
+    dbg!(&user);
 
     // creating session for user
     let user_agent = headers

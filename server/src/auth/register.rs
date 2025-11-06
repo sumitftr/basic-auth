@@ -18,7 +18,7 @@ use std::sync::Arc;
 pub struct CreateUserRequest {
     name: String,
     email: String,
-    year: i32,
+    year: u32,
     month: u8,
     day: u8,
 }

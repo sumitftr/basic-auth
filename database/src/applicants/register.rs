@@ -1,5 +1,5 @@
 use crate::{
-    unregistered::{RegisterStatus, UnregisteredEntry},
+    applicants::{ApplicantEntry, RegisterStatus},
     user::User,
 };
 use common::{AppError, user_session::UserSession, validation};
@@ -14,7 +14,7 @@ impl crate::Db {
         email: String,
         day: u8,
         month: u8,
-        year: i32,
+        year: u32,
     ) -> Result<(), AppError> {
         // checking whether the name and email is valid or not
         let name = validation::is_name_valid(&name)?;
@@ -24,17 +24,31 @@ impl crate::Db {
         self.is_email_available(&email).await?;
 
         // checking if the date of birth is valid or not
-        let dob = match DateTime::builder().year(year).month(month).day(day).build() {
+        let dob = match DateTime::builder()
+            .year(year as i32)
+            .month(month)
+            .day(day)
+            .build()
+        {
             Ok(v) if v > DateTime::now() => return Err(AppError::BadReq("Invalid Date of Birth")),
             Ok(v) => v,
             Err(e) => {
                 tracing::error!("{e:?}");
-                return Err(AppError::ServerError);
+                return match e {
+                    mongodb::bson::datetime::Error::InvalidTimestamp { .. } => {
+                        Err(AppError::BadReq("Invalid Timestamp"))
+                    }
+                    mongodb::bson::datetime::Error::CannotFormat { .. } => {
+                        Err(AppError::BadReq("Failed to format `Date of Birth`"))
+                    }
+                    _ => Err(AppError::ServerError),
+                };
             }
         };
 
         // generating otp
         let otp = common::mail::generate_otp(email.as_bytes());
+        tracing::info!("OTP: {otp}, Email: {email}");
 
         // sending otp to the email
         common::mail::send_mail(
@@ -48,9 +62,9 @@ impl crate::Db {
         .await?;
 
         // inserting `UnregisteredEntry` to memory store
-        self.unregistered.insert(
+        self.applicants.insert(
             email,
-            UnregisteredEntry {
+            ApplicantEntry {
                 name,
                 dob,
                 otp,
@@ -67,7 +81,7 @@ impl crate::Db {
         // generating otp
         let otp = common::mail::generate_otp(email.as_bytes());
 
-        if let Some(mut entry) = self.unregistered.get(&email) {
+        if let Some(mut entry) = self.applicants.get(&email) {
             if entry.register_status != RegisterStatus::Created {
                 return Err(AppError::BadReq("OTP can't be sent multiple times"));
             }
@@ -83,7 +97,7 @@ impl crate::Db {
             )
             .await?;
             // inserting new entry to memory store
-            self.unregistered.insert(email, entry);
+            self.applicants.insert(email, entry);
         } else {
             return Err(AppError::UserNotFound);
         }
@@ -92,7 +106,7 @@ impl crate::Db {
     }
 
     pub async fn verify_email(self: Arc<Self>, email: String, otp: String) -> Result<(), AppError> {
-        if let Some(mut entry) = self.unregistered.get(&email) {
+        if let Some(mut entry) = self.applicants.get(&email) {
             if entry.register_status != RegisterStatus::Created {
                 return Err(AppError::BadReq("OTP can't be sent multiple times"));
             }
@@ -111,7 +125,7 @@ impl crate::Db {
             )
             .await?;
             // inserting new entry to memory store
-            self.unregistered.insert(email, entry);
+            self.applicants.insert(email, entry);
         } else {
             return Err(AppError::UserNotFound);
         }
@@ -120,7 +134,7 @@ impl crate::Db {
     }
 
     pub fn set_password(self: Arc<Self>, email: String, password: String) -> Result<(), AppError> {
-        if let Some(mut entry) = self.unregistered.get(&email) {
+        if let Some(mut entry) = self.applicants.get(&email) {
             if entry.register_status != RegisterStatus::EmailVerified {
                 return Err(AppError::BadReq("User email not verified"));
             }
@@ -131,7 +145,7 @@ impl crate::Db {
             }
             entry.password = Some(password);
             entry.register_status = RegisterStatus::PasswordSet;
-            self.unregistered.insert(email, entry);
+            self.applicants.insert(email, entry);
         } else {
             return Err(AppError::UserNotFound);
         }
@@ -149,15 +163,15 @@ impl crate::Db {
         // checking if the username is already used or not
         self.is_username_available(&username).await?;
 
-        let metadata: UnregisteredEntry;
+        let metadata: ApplicantEntry;
 
-        if let Some(v) = self.unregistered.get(&email) {
+        if let Some(v) = self.applicants.get(&email) {
             if v.register_status != RegisterStatus::PasswordSet {
                 return Err(AppError::BadReq("User password not set"));
             }
             // removing the `UnregisteredEntry` from `Db::unregistered`
             // SAFETY: This will not panic since the entry is already present
-            metadata = self.unregistered.remove(&email).unwrap();
+            metadata = self.applicants.remove(&email).unwrap();
         } else {
             return Err(AppError::UserNotFound);
         }

@@ -4,7 +4,7 @@ use serde::Deserialize;
 mod register;
 
 #[derive(Deserialize, Debug, Clone)]
-pub struct UnregisteredEntry {
+pub struct ApplicantEntry {
     pub name: String,
     // pub email: String,
     pub dob: DateTime,

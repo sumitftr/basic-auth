@@ -1,6 +1,6 @@
 use axum::{
     Router,
-    routing::{delete, get, post},
+    routing::{get, post},
 };
 
 mod auth;
@@ -17,7 +17,6 @@ pub async fn routes() -> Router {
         .route("/api/user/email", post(user::settings::update_email))
         .route("/api/user/username", post(user::settings::update_username))
         .route("/api/user/password", post(user::settings::update_password))
-        .route("/api/user/password", delete(user::settings::reset_password))
         .route("/api/user/metadata", post(user::settings::update_metadata))
         .route("/api/user/deactivate", post(user::settings::deactivate_account))
         // layer and state

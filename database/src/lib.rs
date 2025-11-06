@@ -9,14 +9,14 @@ use std::{
 use tokio::sync::OnceCell;
 
 pub mod active;
-pub mod unregistered;
+pub mod applicants;
 pub mod user;
 
 pub struct Db {
     users: Collection<User>,
     // in memory stores
     active: Cache<ActiveUserSession, Arc<Mutex<User>>>,
-    unregistered: Cache<String, crate::unregistered::UnregisteredEntry>,
+    applicants: Cache<String, crate::applicants::ApplicantEntry>,
 }
 
 static DB: OnceCell<Arc<Db>> = OnceCell::const_new();
@@ -51,7 +51,7 @@ impl Db {
                     .max_capacity(32728)
                     .time_to_live(Duration::from_secs(UserSession::MEM_CACHE_DURATION))
                     .build(),
-                unregistered: Cache::builder()
+                applicants: Cache::builder()
                     .max_capacity(8192)
                     .time_to_live(Duration::from_secs(1800))
                     .build(),
