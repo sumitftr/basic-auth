@@ -97,3 +97,6 @@ pub async fn logout(
         "Logout Successful".to_string(),
     ))
 }
+
+pub async fn logout_devices() {}
+pub async fn logout_all() {}

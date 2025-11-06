@@ -43,3 +43,5 @@ pub async fn get_user_profile(
         }))
     }
 }
+
+pub async fn update_profile() {}

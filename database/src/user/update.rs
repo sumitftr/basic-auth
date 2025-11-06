@@ -1,5 +1,5 @@
 use common::{AppError, user_session::UserSession};
-use mongodb::bson::{DateTime, doc};
+use mongodb::bson::doc;
 use std::sync::Arc;
 
 // implementation block for checking and updating user attributes
@@ -98,16 +98,15 @@ impl crate::Db {
 
 // implementation block for just updating user attributes
 impl crate::Db {
-    // updates metadata for the given user
-    pub async fn update_metadata(
+    // updates profile for the given user
+    pub async fn update_profile(
         self: &Arc<Self>,
         username: &str,
         name: &str,
-        gender: &str,
-        dob: &DateTime,
+        bio: &str,
     ) -> Result<(), AppError> {
         let filter = doc! {"username": username};
-        let update = doc! {"$set": doc! {"name": name, "gender": gender, "dob": dob}};
+        let update = doc! {"$set": doc! {"name": name, "bio": bio}};
         match self.users.update_one(filter, update).await {
             Ok(v) => {
                 tracing::info!("Updated User Metadata: {:?}", v.upserted_id);
