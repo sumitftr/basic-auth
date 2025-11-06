@@ -4,9 +4,15 @@ use std::sync::{Arc, Mutex};
 
 impl crate::Db {
     #[inline]
-    pub fn make_user_active(self: &Arc<Self>, active_user_session: ActiveUserSession, user: User) {
+    pub fn make_user_active(
+        self: &Arc<Self>,
+        active_user_session: ActiveUserSession,
+        user: User,
+    ) -> Arc<Mutex<User>> {
+        let wrapped_user = Arc::new(Mutex::new(user));
         self.active
-            .insert(active_user_session, Arc::new(Mutex::new(user)));
+            .insert(active_user_session, wrapped_user.clone());
+        wrapped_user
     }
 
     #[inline]

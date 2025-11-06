@@ -33,9 +33,9 @@ pub async fn auth_middleware(mut req: Request, next: Next) -> Result<Response, A
                 match user.sessions[i].session_status() {
                     UserSessionStatus::Valid(_) => {
                         // adding session and `User` to `Db::active` for faster access
-                        db.make_user_active(active_user_session.clone(), user.clone());
+                        let wrapped_user = db.make_user_active(active_user_session.clone(), user);
                         req.extensions_mut().insert(active_user_session);
-                        req.extensions_mut().insert(user);
+                        req.extensions_mut().insert(wrapped_user);
                     }
                     UserSessionStatus::Expiring(_) | UserSessionStatus::Refreshable(_) => {
                         // automatic session refresh code block

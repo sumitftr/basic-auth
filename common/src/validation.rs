@@ -45,15 +45,15 @@ fn is_local_part_valid(local_part: &str) -> bool {
     if local_part.is_empty() || local_part.len() > 64 {
         return false;
     }
+    // local part should start with alphanumeric character
+    if !local_part.chars().next().unwrap().is_ascii_alphanumeric() {
+        return false;
+    }
     // local part should only contain alphabets, digits and periods
     if !local_part
         .chars()
-        .all(|c| c.is_ascii_alphabetic() || c.is_ascii_digit() || c == '.' || c == '-' || c == '_')
+        .all(|c| c.is_ascii_alphanumeric() || c == '.' || c == '-' || c == '_')
     {
-        return false;
-    }
-    // local part should start with alphabetic character
-    if !local_part.chars().next().unwrap().is_ascii_alphabetic() {
         return false;
     }
     // local part should not contain more than one period, hypen or underscore together
@@ -112,17 +112,17 @@ pub fn is_username_valid(s: &str) -> Result<(), AppError> {
             "Username should be between 3 and 16 characters",
         ));
     }
-    if !s
-        .chars()
-        .all(|c| c.is_ascii_alphabetic() || c.is_ascii_digit() || c == '.')
-    {
+    if !s.chars().next().unwrap().is_ascii_lowercase() {
         return Err(AppError::BadReq(
-            "Only alphabets, digits and periods are allowed",
+            "Username should start with a lowercase alphabetic character",
         ));
     }
-    if !s.chars().next().unwrap().is_ascii_alphabetic() {
+    if !s
+        .chars()
+        .all(|c| c.is_ascii_lowercase() || c.is_ascii_digit() || c == '.')
+    {
         return Err(AppError::BadReq(
-            "Username should start with alphabetic character",
+            "Only lowercase alphabets, digits and periods are allowed",
         ));
     }
     if s.contains("..") {

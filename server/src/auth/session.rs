@@ -6,10 +6,9 @@ use axum::{
 };
 use common::{AppError, user_session::ActiveUserSession};
 use database::{Db, user::User};
-use serde::Deserialize;
-use std::sync::Arc;
+use std::sync::{Arc, Mutex};
 
-#[derive(Deserialize)]
+#[derive(serde::Deserialize)]
 pub struct LoginRequest {
     email: Option<String>,
     username: Option<String>,
@@ -40,7 +39,6 @@ pub async fn login(
         // this is an unreachable statement
         return Err(AppError::ServerError);
     };
-    dbg!(&user);
 
     // creating session for user
     let user_agent = headers
@@ -70,20 +68,25 @@ pub async fn login(
 pub async fn logout(
     State(db): State<Arc<Db>>,
     Extension(active_user_session): Extension<ActiveUserSession>,
-    Extension(mut user): Extension<User>,
+    Extension(user): Extension<Arc<Mutex<User>>>,
 ) -> Result<impl IntoResponse, AppError> {
     let decrypted_ssid = active_user_session.verify()?;
-    let i = common::user_session::get_session_index(&user.sessions, decrypted_ssid)?;
-    // deleting the user specified session
-    if user.sessions.len() == 1 {
-        user.sessions.clear();
-    } else {
-        let tmp_session = user.sessions.pop().unwrap();
-        user.sessions[i] = tmp_session;
-    }
+
+    let (username, sessions) = {
+        let mut guard = user.lock().unwrap();
+        let i = common::user_session::get_session_index(&guard.sessions, decrypted_ssid)?;
+        // deleting the user specified session
+        if guard.sessions.len() == 1 {
+            guard.sessions.clear();
+        } else {
+            let tmp_session = guard.sessions.pop().unwrap();
+            guard.sessions[i] = tmp_session;
+        }
+        (guard.username.clone(), guard.sessions.clone())
+    };
 
     // updating sessions list in the primary database
-    db.update_sessions(&user.username, &user.sessions).await?;
+    db.update_sessions(&username, &sessions).await?;
 
     // removing the user from `DB::active`
     db.remove_active_user(&active_user_session);

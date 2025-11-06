@@ -29,7 +29,7 @@ pub async fn start(
 ) -> Result<String, AppError> {
     db.create_user(body.name, body.email, body.day, body.month, body.year)
         .await?;
-    Ok("".to_string())
+    Ok("Your information has been accepted".to_string())
 }
 
 #[derive(Deserialize)]
@@ -58,7 +58,7 @@ pub async fn verify_email(
     Json(body): Json<VerifyEmailRequest>,
 ) -> Result<String, AppError> {
     db.verify_email(body.email, body.otp).await?;
-    Ok("Email Verified".to_string())
+    Ok("Email Verification successful".to_string())
 }
 
 /// third step of registering an user
@@ -74,7 +74,7 @@ pub async fn set_password(
     Json(body): Json<SetPasswordRequest>,
 ) -> Result<String, AppError> {
     db.set_password(body.email, body.password)?;
-    Ok("Password has been set".to_string())
+    Ok("Your password has been set".to_string())
 }
 
 /// last step of registering an user

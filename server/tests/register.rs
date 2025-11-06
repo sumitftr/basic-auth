@@ -56,7 +56,6 @@ fn main() -> Result<(), reqwest::Error> {
         // second step of registering
         out.write("Enter your otp: ");
         let otp = token.next::<String>();
-        dbg!(&otp);
         let body2 = format!(r#"{{"email": "{email}", "otp": "{otp}"}}"#);
         let res2 = client
             .post(&endpoint2)
@@ -76,7 +75,6 @@ fn main() -> Result<(), reqwest::Error> {
         // third step of registering
         out.write("Enter your password: ");
         let password = token.next_line::<String>();
-        dbg!(&password);
         let body3 = format!(r#"{{"email": "{email}", "password": "{password}"}}"#);
         let res3 = client
             .post(&endpoint3)
