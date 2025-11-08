@@ -8,7 +8,7 @@ use std::sync::Arc;
 
 // sub steps for registering an user
 impl crate::Db {
-    pub async fn create_user(
+    pub async fn create_applicant(
         self: Arc<Self>,
         name: String,
         email: String,
@@ -61,7 +61,7 @@ impl crate::Db {
         )
         .await?;
 
-        // inserting `UnregisteredEntry` to memory store
+        // inserting `ApplicantEntry` to memory store
         self.applicants.insert(
             email,
             ApplicantEntry {

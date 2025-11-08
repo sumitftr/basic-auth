@@ -5,12 +5,11 @@ use std::sync::Arc;
 // implementation block for checking and updating user attributes
 impl crate::Db {
     // updates email of the given user to new email
-    pub async fn check_and_update_email(
+    pub async fn update_email(
         self: &Arc<Self>,
         email: &str,
         new_email: &str,
     ) -> Result<(), AppError> {
-        self.is_email_available(email).await?;
         let filter = doc! {"email": email};
         let update = doc! {"$set": {"email": new_email}};
         match self.users.update_one(filter, update).await {
@@ -31,12 +30,11 @@ impl crate::Db {
     }
 
     // updates username of the given user to new username
-    pub async fn check_and_update_username(
+    pub async fn update_username(
         self: &Arc<Self>,
         username: &str,
         new_username: &str,
     ) -> Result<(), AppError> {
-        self.is_username_available(username).await?;
         let filter = doc! {"username": username};
         let update = doc! {"$set": {"username": new_username}};
         match self.users.update_one(filter, update).await {

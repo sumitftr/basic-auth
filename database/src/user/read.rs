@@ -1,8 +1,7 @@
 use common::AppError;
 use mongodb::bson::doc;
 use std::sync::Arc;
-
-use crate::user::User;
+use super::User;
 
 // implementation block for checking user attributes
 impl crate::Db {

@@ -27,7 +27,7 @@ pub async fn start(
     State(db): State<Arc<Db>>,
     Json(body): Json<CreateUserRequest>,
 ) -> Result<String, AppError> {
-    db.create_user(body.name, body.email, body.day, body.month, body.year)
+    db.create_applicant(body.name, body.email, body.day, body.month, body.year)
         .await?;
     Ok("Your information has been accepted".to_string())
 }

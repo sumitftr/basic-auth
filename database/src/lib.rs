@@ -11,12 +11,14 @@ use tokio::sync::OnceCell;
 pub mod active;
 pub mod applicants;
 pub mod user;
+pub mod verification;
 
 pub struct Db {
     users: Collection<User>,
     // in memory stores
     active: Cache<ActiveUserSession, Arc<Mutex<User>>>,
     applicants: Cache<String, crate::applicants::ApplicantEntry>,
+    verification: Cache<String, (String, String)>, // <EMAIL|PHONE, (NEW_EMAIL|NEW_PHONE, OTP)>
 }
 
 static DB: OnceCell<Arc<Db>> = OnceCell::const_new();
@@ -52,6 +54,10 @@ impl Db {
                     .time_to_live(Duration::from_secs(UserSession::MEM_CACHE_DURATION))
                     .build(),
                 applicants: Cache::builder()
+                    .max_capacity(8192)
+                    .time_to_live(Duration::from_secs(1800))
+                    .build(),
+                verification: Cache::builder()
                     .max_capacity(8192)
                     .time_to_live(Duration::from_secs(1800))
                     .build(),

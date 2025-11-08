@@ -1,4 +1,9 @@
-use axum::routing::{get, post};
+use axum::{
+    Extension, Json,
+    routing::{get, post},
+};
+use database::user::User;
+use std::sync::{Arc, Mutex};
 
 mod account;
 mod email;
@@ -29,4 +34,7 @@ pub async fn settings_routes() -> axum::Router {
         .with_state(database::Db::new().await)
 }
 
-pub async fn fetch_settings() {}
+pub async fn fetch_settings(Extension(user): Extension<Arc<Mutex<User>>>) -> Json<User> {
+    let res = user.lock().unwrap().clone();
+    Json(res)
+}
