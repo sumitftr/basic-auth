@@ -183,6 +183,7 @@ impl crate::Db {
             dob: metadata.dob,
             password: metadata.password.unwrap(),
             username,
+            profile_pic: None,
             display_name: metadata.name,
             bio: None,
             gender: None,
