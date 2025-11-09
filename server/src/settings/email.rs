@@ -17,7 +17,7 @@ pub async fn update_email(
     // checking whether the new email is same as original email or not
     if user.lock().unwrap().email == body.new_email {
         return Err(AppError::BadReq(
-            "Your email cannot be same as of your original email",
+            "Your new email cannot be same as of your original email",
         ));
     }
     // checking if the new email is valid or not

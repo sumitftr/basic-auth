@@ -2,6 +2,8 @@ use crate::user::User;
 use common::user_session::ActiveUserSession;
 use std::sync::{Arc, Mutex};
 
+// implementation block for creating active users
+// those are the users whose session is cached in memory
 impl crate::Db {
     #[inline]
     pub fn make_user_active(

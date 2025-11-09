@@ -26,11 +26,10 @@ pub async fn settings_routes() -> axum::Router {
         .route("/api/settings/phone", post(phone::update_phone))
         .route("/api/settings/verify_phone", post(phone::verify_phone))
         .route("/api/settings/country", post(metadata::update_country))
+        .route("/api/settings/delete_account", post(account::delete_account))
+        .layer(axum::middleware::from_fn(crate::middleware::auth_middleware))
         .route("/api/settings/forgot_password", post(recovery::forgot_password))
         .route("/api/settings/reset_password", post(recovery::reset_password))
-        .route("/api/settings/delete_account", post(account::delete_account))
-        // layer and state
-        .layer(axum::middleware::from_fn(crate::middleware::auth_middleware))
         .with_state(database::Db::new().await)
 }
 

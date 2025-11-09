@@ -1,5 +1,6 @@
 use std::sync::Arc;
 
+// implementation block for users, those who are trying to update email or phone
 impl crate::Db {
     #[inline]
     pub fn add_verification_entry(self: &Arc<Self>, old: String, new: String, otp: String) {
