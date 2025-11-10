@@ -17,8 +17,8 @@ pub struct Db {
     // in memory stores
     active: Cache<ActiveUserSession, Arc<Mutex<User>>>,
     applicants: Cache<String, crate::applicants::ApplicantEntry>,
+    recovery: Cache<String, String>, // <QUERY_STRING, EMAIL>
     verification: Cache<String, (String, String)>, // <EMAIL|PHONE, (NEW_EMAIL|NEW_PHONE, OTP)>
-    recovery: Cache<String, String>,               // <QUERY_STRING, EMAIL>
 }
 
 static DB: OnceCell<Arc<Db>> = OnceCell::const_new();
@@ -57,11 +57,11 @@ impl Db {
                     .max_capacity(8192)
                     .time_to_live(Duration::from_secs(1800))
                     .build(),
-                verification: Cache::builder()
-                    .max_capacity(4096)
+                recovery: Cache::builder()
+                    .max_capacity(8192)
                     .time_to_live(Duration::from_secs(1800))
                     .build(),
-                recovery: Cache::builder()
+                verification: Cache::builder()
                     .max_capacity(4096)
                     .time_to_live(Duration::from_secs(1800))
                     .build(),

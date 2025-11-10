@@ -57,17 +57,14 @@ impl crate::Db {
     // updates password of the given user
     pub async fn update_password(
         self: &Arc<Self>,
-        username: &str,
+        email: &str,
         password: &str,
-        new_password: &str,
     ) -> Result<(), AppError> {
-        let filter = doc! {"username": username};
-        let update = doc! {"$set": {"password": new_password}};
+        let filter = doc! {"email": email};
+        let update = doc! {"$set": {"password": password}};
         match self.users.update_one(filter, update).await {
             Ok(_) => {
-                tracing::info!(
-                    "Username: {username}, Old Password: {password}, New Password: {new_password}",
-                );
+                tracing::info!("Email: {email}, New Password: {password}",);
                 Ok(())
             }
             Err(e) => {

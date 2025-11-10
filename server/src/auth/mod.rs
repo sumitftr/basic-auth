@@ -1,6 +1,7 @@
 use crate::middleware::auth_middleware;
 use axum::{Router, middleware::from_fn, routing::post};
 
+mod recovery;
 mod register;
 mod session;
 
@@ -16,5 +17,7 @@ pub async fn auth_routes() -> Router {
         .route("/api/user/logout", post(session::logout).layer(from_fn(auth_middleware)))
         .route("/api/user/logout_devices", post(session::logout_devices).layer(from_fn(auth_middleware)))
         .route("/api/user/logout_all", post(session::logout_all).layer(from_fn(auth_middleware)))
+        .route("/api/forgot_password", post(recovery::forgot_password))
+        .route("/api/reset_password?code={code}", post(recovery::reset_password))
         .with_state(database::Db::new().await)
 }

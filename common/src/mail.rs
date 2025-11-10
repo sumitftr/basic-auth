@@ -56,7 +56,7 @@ pub fn generate_otp(secret: &[u8]) -> String {
     // Get current time in seconds, divided into 30-second intervals
     let counter = SystemTime::now()
         .duration_since(UNIX_EPOCH)
-        .expect("Time went backwards")
+        .expect("system time before UNIX_EPOCH")
         .as_secs()
         / TIME_STEP;
 
@@ -91,6 +91,27 @@ pub fn generate_otp(secret: &[u8]) -> String {
     format!("{:06}", otp)
 }
 
+pub fn generate_hash(secret: &[u8]) -> String {
+    const TIME_STEP: u64 = 30; // 30-second windows
+
+    // ---- Counter (big-endian, 8 bytes) ----
+    let counter = SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .expect("system time before UNIX_EPOCH")
+        .as_secs()
+        / TIME_STEP;
+
+    let counter_bytes = counter.to_be_bytes(); // network order
+
+    // ---- HMAC-SHA-256 ----
+    let mut mac = Hmac::<sha2::Sha256>::new_from_slice(secret).unwrap();
+    mac.update(&counter_bytes);
+    let result = mac.finalize().into_bytes();
+
+    // ---- Hex-encode (64 characters) ----
+    const_hex::encode(result)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -113,5 +134,12 @@ mod tests {
         for _ in 0..10 {
             assert_eq!(otp, generate_otp(&secret));
         }
+    }
+
+    #[test]
+    fn hash_test() {
+        let secret = "hello@example.com".as_bytes();
+        let r = generate_hash(secret);
+        dbg!(&r);
     }
 }

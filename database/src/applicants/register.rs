@@ -138,11 +138,7 @@ impl crate::Db {
             if entry.register_status != RegisterStatus::EmailVerified {
                 return Err(AppError::BadReq("User email not verified"));
             }
-            if password.len() < 8 {
-                return Err(AppError::BadReq(
-                    "Password should be of atleast 8 characters",
-                ));
-            }
+            common::validation::is_password_valid(&password)?;
             entry.password = Some(password);
             entry.register_status = RegisterStatus::PasswordSet;
             self.applicants.insert(email, entry);

@@ -15,6 +15,7 @@ readme = "README.md"
 [workspace.dependencies]
 axum       = { version = "0.8", features = ["http2", "macros"] }
 base64     = { version = "0.22" }
+const-hex  = { version = "1.17", features = ["alloc"] }
 dotenv     = { version = "0.15" }
 hmac       = { version = "0.12" }
 lettre     = { version = "0.11" }

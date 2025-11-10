@@ -3,12 +3,12 @@ use std::sync::Arc;
 // implementation block for those users who forgot their password
 impl crate::Db {
     #[inline]
-    pub fn add_recovery_entry(self: &Arc<Self>, secret: String, email: String) {
+    pub fn add_recovery_entry(self: &Arc<Self>, code: String, email: String) {
         if let Some(v) = self.recovery.get(&email) {
             self.recovery.remove(&v);
         }
-        self.recovery.insert(secret.clone(), email.clone());
-        self.recovery.insert(email, secret);
+        self.recovery.insert(code.clone(), email.clone());
+        self.recovery.insert(email, code);
     }
 
     #[inline]

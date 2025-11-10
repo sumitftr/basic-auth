@@ -1,5 +1,10 @@
 use crate::AppError;
 
+const SPECIAL: [char; 33] = [
+    ' ', '!', '"', '#', '$', '%', '&', '\'', '(', ')', '*', '+', ',', '-', '.', '/', ':', ';', '<',
+    '=', '>', '?', '@', '[', '\\', ']', '^', '_', '`', '{', '|', '}', '~',
+];
+
 // a valid name contains two or more words
 // each words should only contain english alphabets
 pub fn is_name_valid(s: &str) -> Result<String, AppError> {
@@ -104,6 +109,35 @@ fn is_domain_valid(domain: &str) -> bool {
         return false;
     }
     true
+}
+
+pub fn is_password_valid(p: &str) -> Result<(), AppError> {
+    if p.len() < 8 {
+        return Err(AppError::BadReq(
+            "Password cannot be less than 8 characters",
+        ));
+    }
+    let (mut lower, mut upper, mut digit, mut special) = (false, false, false, false);
+    for c in p.chars() {
+        if c.is_lowercase() {
+            lower = true;
+        }
+        if c.is_uppercase() {
+            upper = true;
+        }
+        if c.is_numeric() {
+            digit = true;
+        }
+        if SPECIAL.contains(&c) {
+            special = true;
+        }
+    }
+    if lower && upper && digit && special {
+        return Ok(());
+    }
+    Err(AppError::BadReq(
+        "Password must contain a lowercase alphabet, a uppercase alphabet, a digit and a special character",
+    ))
 }
 
 pub fn is_username_valid(s: &str) -> Result<(), AppError> {

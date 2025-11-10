@@ -10,7 +10,6 @@ mod email;
 mod metadata;
 mod password;
 mod phone;
-mod recovery;
 mod username;
 
 #[rustfmt::skip]
@@ -28,8 +27,6 @@ pub async fn settings_routes() -> axum::Router {
         .route("/api/settings/country", post(metadata::update_country))
         .route("/api/settings/delete_account", post(account::delete_account))
         .layer(axum::middleware::from_fn(crate::middleware::auth_middleware))
-        .route("/api/settings/forgot_password", post(recovery::forgot_password))
-        .route("/api/settings/reset_password", post(recovery::reset_password))
         .with_state(database::Db::new().await)
 }
 
