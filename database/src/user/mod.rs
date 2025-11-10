@@ -11,7 +11,7 @@ pub struct User {
     pub _id: ObjectId,
     pub legal_name: String,
     pub email: String,
-    pub dob: DateTime,
+    pub birth_date: DateTime,
     pub password: String,
     pub username: String,
     pub profile_pic: Option<String>,

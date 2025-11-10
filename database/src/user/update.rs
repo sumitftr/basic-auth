@@ -1,5 +1,5 @@
 use common::{AppError, user_session::UserSession};
-use mongodb::bson::doc;
+use mongodb::bson::{DateTime, doc};
 use std::sync::Arc;
 
 // implementation block for checking and updating user attributes
@@ -30,17 +30,19 @@ impl crate::Db {
     }
 
     // updates username of the given user to new username
-    pub async fn update_username(
+    pub async fn check_and_update_username(
         self: &Arc<Self>,
         username: &str,
         new_username: &str,
     ) -> Result<(), AppError> {
+        // checking if the new username is available or not
+        self.is_username_available(new_username).await?;
         let filter = doc! {"username": username};
         let update = doc! {"$set": {"username": new_username}};
         match self.users.update_one(filter, update).await {
             Ok(v) => {
                 tracing::info!(
-                    "[{:?}] Old Username: {}, New Username: {}",
+                    "[{:?}] Old Username: @{}, New Username: @{}",
                     v.upserted_id,
                     username,
                     new_username
@@ -89,11 +91,68 @@ impl crate::Db {
         let update = doc! {"$set": {"sessions": sessions_bson}};
         match self.users.update_one(filter, update).await {
             Ok(_) => {
-                tracing::info!("Updated User Sessions: {}", username);
+                tracing::info!("Updated User Sessions: @{}", username);
                 Ok(())
             }
             Err(e) => {
                 tracing::error!("Failed to update sessions: {e:?}");
+                Err(AppError::ServerError)
+            }
+        }
+    }
+
+    pub async fn update_birth_date(
+        self: &Arc<Self>,
+        username: &str,
+        birth_date: DateTime,
+    ) -> Result<(), AppError> {
+        let filter = doc! {"username": username};
+        let update = doc! {"$set": {"birth_date": birth_date}};
+        match self.users.update_one(filter, update).await {
+            Ok(_) => {
+                tracing::info!("Updated Birth Date: @{}", username);
+                Ok(())
+            }
+            Err(e) => {
+                tracing::error!("Failed to update birth date: {e:?}");
+                Err(AppError::ServerError)
+            }
+        }
+    }
+
+    pub async fn update_gender(
+        self: &Arc<Self>,
+        username: &str,
+        gender: &str,
+    ) -> Result<(), AppError> {
+        let filter = doc! {"username": username};
+        let update = doc! {"$set": {"gender": gender}};
+        match self.users.update_one(filter, update).await {
+            Ok(_) => {
+                tracing::info!("Updated Gender: @{}", username);
+                Ok(())
+            }
+            Err(e) => {
+                tracing::error!("Failed to update gender: {e:?}");
+                Err(AppError::ServerError)
+            }
+        }
+    }
+
+    pub async fn update_country(
+        self: &Arc<Self>,
+        username: &str,
+        country: &str,
+    ) -> Result<(), AppError> {
+        let filter = doc! {"username": username};
+        let update = doc! {"$set": {"country": country}};
+        match self.users.update_one(filter, update).await {
+            Ok(_) => {
+                tracing::info!("Updated Country: @{}", username);
+                Ok(())
+            }
+            Err(e) => {
+                tracing::error!("Failed to update country: {e:?}");
                 Err(AppError::ServerError)
             }
         }
@@ -112,7 +171,7 @@ impl crate::Db {
             doc! {"$set": {"profile_pic": profile_pic, "display_name": display_name, "bio": bio}};
         match self.users.update_one(filter, update).await {
             Ok(_) => {
-                tracing::info!("Updated User Profile: {}", username);
+                tracing::info!("Updated User Profile: @{}", username);
                 Ok(())
             }
             Err(e) => {

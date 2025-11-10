@@ -1,3 +1,7 @@
+use std::str::FromStr;
+
+use mongodb::bson::DateTime;
+
 use crate::AppError;
 
 const SPECIAL: [char; 33] = [
@@ -111,6 +115,30 @@ fn is_domain_valid(domain: &str) -> bool {
     true
 }
 
+pub fn is_birth_date_valid(year: u32, month: u8, day: u8) -> Result<DateTime, AppError> {
+    match DateTime::builder()
+        .year(year as i32)
+        .month(month)
+        .day(day)
+        .build()
+    {
+        Ok(v) if v > DateTime::now() => Err(AppError::BadReq("Invalid Date of Birth")),
+        Ok(v) => Ok(v),
+        Err(e) => {
+            tracing::error!("{e:?}");
+            match e {
+                mongodb::bson::datetime::Error::InvalidTimestamp { .. } => {
+                    Err(AppError::BadReq("Invalid Timestamp"))
+                }
+                mongodb::bson::datetime::Error::CannotFormat { .. } => {
+                    Err(AppError::BadReq("Failed to format `Date of Birth`"))
+                }
+                _ => Err(AppError::ServerError),
+            }
+        }
+    }
+}
+
 pub fn is_password_valid(p: &str) -> Result<(), AppError> {
     if p.len() < 8 {
         return Err(AppError::BadReq(
@@ -168,6 +196,21 @@ pub fn is_username_valid(s: &str) -> Result<(), AppError> {
         return Err(AppError::BadReq("Username can't be ended with a period"));
     }
     Ok(())
+}
+
+pub fn is_gender_valid(gender: &str) -> Result<(), AppError> {
+    if gender.chars().any(|c| !c.is_alphabetic()) {
+        return Err(AppError::BadReq("Gender not valid"));
+    }
+    Ok(())
+}
+
+pub fn is_country_valid(country: &str) -> Result<String, AppError> {
+    let c = celes::Country::from_str(country.trim()).map_err(|e| {
+        tracing::error!("{e:?}");
+        AppError::BadReq("Invalid Country")
+    })?;
+    Ok(c.long_name.to_string())
 }
 
 #[cfg(test)]

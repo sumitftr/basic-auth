@@ -22,9 +22,8 @@ pub async fn update_username(
     }
     // checking if the new username is valid or not
     common::validation::is_username_valid(&body.new_username)?;
-    // checking if the new username is available or not
-    db.is_username_available(&body.new_username).await?;
     // updating username in the primary database
-    db.update_username(&username, &body.new_username).await?;
+    db.check_and_update_username(&username, &body.new_username)
+        .await?;
     Ok(format!("Your new username is {}", body.new_username))
 }

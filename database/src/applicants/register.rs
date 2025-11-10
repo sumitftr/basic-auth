@@ -23,28 +23,8 @@ impl crate::Db {
         // checking if the email is already used or not
         self.is_email_available(&email).await?;
 
-        // checking if the date of birth is valid or not
-        let dob = match DateTime::builder()
-            .year(year as i32)
-            .month(month)
-            .day(day)
-            .build()
-        {
-            Ok(v) if v > DateTime::now() => return Err(AppError::BadReq("Invalid Date of Birth")),
-            Ok(v) => v,
-            Err(e) => {
-                tracing::error!("{e:?}");
-                return match e {
-                    mongodb::bson::datetime::Error::InvalidTimestamp { .. } => {
-                        Err(AppError::BadReq("Invalid Timestamp"))
-                    }
-                    mongodb::bson::datetime::Error::CannotFormat { .. } => {
-                        Err(AppError::BadReq("Failed to format `Date of Birth`"))
-                    }
-                    _ => Err(AppError::ServerError),
-                };
-            }
-        };
+        // checking if the birth date is valid or not
+        let birth_date = common::validation::is_birth_date_valid(year, month, day)?;
 
         // generating otp
         let otp = common::mail::generate_otp(email.as_bytes());
@@ -66,7 +46,7 @@ impl crate::Db {
             email,
             ApplicantEntry {
                 name,
-                dob,
+                birth_date,
                 otp,
                 password: None,
                 register_status: RegisterStatus::Created,
@@ -176,7 +156,7 @@ impl crate::Db {
             _id: ObjectId::new(),
             legal_name: metadata.name.clone(),
             email,
-            dob: metadata.dob,
+            birth_date: metadata.birth_date,
             password: metadata.password.unwrap(),
             username,
             profile_pic: None,

@@ -7,7 +7,7 @@ mod register;
 pub struct ApplicantEntry {
     pub name: String,
     // pub email: String,
-    pub dob: DateTime,
+    pub birth_date: DateTime,
     pub otp: String,
     pub password: Option<String>,
     pub register_status: RegisterStatus,

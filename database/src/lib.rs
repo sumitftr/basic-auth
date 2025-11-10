@@ -14,6 +14,7 @@ pub mod user;
 
 pub struct Db {
     users: Collection<User>,
+    deleted_users: Collection<User>,
     // in memory stores
     active: Cache<ActiveUserSession, Arc<Mutex<User>>>,
     applicants: Cache<String, crate::applicants::ApplicantEntry>,
@@ -33,7 +34,7 @@ impl Db {
                 .database(&std::env::var("DATABASE_NAME").unwrap());
 
             // check and create all specified collections in `collections`
-            let collections = ["users"];
+            let collections = ["users", "deleted_users"];
             for collection in collections {
                 if let Err(e) = db.create_collection(collection).await {
                     match e.kind.as_ref() {
@@ -49,6 +50,7 @@ impl Db {
 
             Arc::new(Db {
                 users: db.collection(collections[0]),
+                deleted_users: db.collection(collections[1]),
                 active: Cache::builder()
                     .max_capacity(32728)
                     .time_to_live(Duration::from_secs(UserSession::MEM_CACHE_DURATION))
