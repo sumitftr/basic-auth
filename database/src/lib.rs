@@ -1,4 +1,4 @@
-use crate::user::User;
+use crate::{mem::ApplicantEntry, user::User};
 use common::user_session::{ActiveUserSession, UserSession};
 use moka::sync::Cache;
 use mongodb::{Collection, error::ErrorKind};
@@ -8,7 +8,6 @@ use std::{
 };
 use tokio::sync::OnceCell;
 
-pub mod applicants;
 pub mod mem;
 pub mod user;
 
@@ -17,7 +16,7 @@ pub struct Db {
     deleted_users: Collection<User>,
     // in memory stores
     active: Cache<ActiveUserSession, Arc<Mutex<User>>>,
-    applicants: Cache<String, crate::applicants::ApplicantEntry>,
+    applicants: Cache<String, ApplicantEntry>,
     recovery: Cache<String, String>, // <QUERY_STRING, EMAIL>
     verification: Cache<String, (String, String)>, // <EMAIL|PHONE, (NEW_EMAIL|NEW_PHONE, OTP)>
 }

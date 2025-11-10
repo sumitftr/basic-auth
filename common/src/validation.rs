@@ -169,7 +169,7 @@ pub fn is_password_valid(p: &str) -> Result<(), AppError> {
 }
 
 pub fn is_username_valid(s: &str) -> Result<(), AppError> {
-    if s.len() < 3 && s.len() > 16 {
+    if s.len() < 3 || s.len() > 16 {
         return Err(AppError::BadReq(
             "Username should be between 3 and 16 characters",
         ));

@@ -27,8 +27,30 @@ pub async fn start(
     State(db): State<Arc<Db>>,
     Json(body): Json<CreateUserRequest>,
 ) -> Result<String, AppError> {
-    db.create_applicant(body.name, body.email, body.day, body.month, body.year)
+    // validating user sent data
+    let name = common::validation::is_name_valid(&body.name)?;
+    common::validation::is_email_valid(&body.email)?;
+    let birth_date = common::validation::is_birth_date_valid(body.year, body.month, body.day)?;
+
+    // generating otp
+    let otp = common::mail::generate_otp(body.email.as_bytes());
+    tracing::info!("OTP: {otp}, Email: {}", body.email);
+
+    // sending otp to the email
+    common::mail::send_mail(
+        &body.email,
+        format!("{otp} is your {} verification code", &*common::SERVICE_NAME),
+        format!(
+            "Confirm your email address\n {otp}\n Thanks,\n {}",
+            &*common::SERVICE_NAME
+        ),
+    )
+    .await?;
+
+    // storing applicant data in memory
+    db.create_applicant(name, body.email, birth_date, otp)
         .await?;
+
     Ok("Your information has been accepted".to_string())
 }
 
@@ -41,7 +63,21 @@ pub async fn resend_otp(
     State(db): State<Arc<Db>>,
     Json(body): Json<ResendOtpRequest>,
 ) -> Result<String, AppError> {
-    db.resend_otp(body.email).await?;
+    // generating otp
+    let otp = common::mail::generate_otp(body.email.as_bytes());
+    db.update_applicant_otp(&body.email, &otp)?;
+
+    // resending otp to the email
+    common::mail::send_mail(
+        &body.email,
+        format!("{otp} is your {} verification code", &*common::SERVICE_NAME),
+        format!(
+            "Confirm your email address\n {otp}\n Thanks,\n {}",
+            &*common::SERVICE_NAME
+        ),
+    )
+    .await?;
+
     Ok("The email has been sent".to_string())
 }
 
@@ -57,7 +93,21 @@ pub async fn verify_email(
     State(db): State<Arc<Db>>,
     Json(body): Json<VerifyEmailRequest>,
 ) -> Result<String, AppError> {
-    db.verify_email(body.email, body.otp).await?;
+    // verifying email by checking if the otp sent by user matches the original one
+    db.verify_applicant_email(&body.email, &body.otp).await?;
+
+    // sending email verification success
+    common::mail::send_mail(
+        &body.email,
+        format!("Your email {} has been verified successfully", body.email),
+        format!(
+            "Your email {} has been verified successfully\n Thanks,\n {}",
+            body.email,
+            &*common::SERVICE_NAME
+        ),
+    )
+    .await?;
+
     Ok("Email Verification successful".to_string())
 }
 
@@ -73,8 +123,16 @@ pub async fn set_password(
     State(db): State<Arc<Db>>,
     Json(body): Json<SetPasswordRequest>,
 ) -> Result<String, AppError> {
-    db.set_password(body.email, body.password)?;
-    Ok("Your password has been set".to_string())
+    // checking if the user sent password is valid or not
+    common::validation::is_password_valid(&body.password)?;
+
+    // setting password in in-memory database
+    db.set_applicant_password(&body.email, body.password)?;
+
+    Ok(format!(
+        "Your password for email {} has been set",
+        body.email
+    ))
 }
 
 /// last step of registering an user
@@ -90,6 +148,9 @@ pub async fn set_username(
     headers: HeaderMap,
     Json(body): Json<SetUsernameRequest>,
 ) -> Result<impl IntoResponse, AppError> {
+    // checking validity of the username
+    common::validation::is_username_valid(&body.username)?;
+
     // getting user-agent header
     let user_agent = headers
         .get(header::USER_AGENT)
@@ -102,7 +163,7 @@ pub async fn set_username(
 
     // registering user to primary database
     let user = Arc::clone(&db)
-        .set_username(body.email, body.username.clone(), user_session)
+        .set_applicant_username(body.email, body.username.clone(), user_session)
         .await?;
 
     // activating session by adding it to `Db::active`

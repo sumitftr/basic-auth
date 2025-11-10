@@ -11,6 +11,5 @@ pub async fn delete_account(
     db.remove_active_user(&active_user_session);
     let u = user.lock().unwrap().clone(); // this clone can be avoided
     db.delete_user(u).await?;
-
     Ok("Your account has been deleted".to_string())
 }

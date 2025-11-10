@@ -13,7 +13,7 @@ license = "MIT"
 readme = "README.md"
 
 [workspace.dependencies]
-axum       = { version = "0.8", features = ["http2", "macros"] }
+axum       = { version = "0.8", features = ["http2", "macros", "multipart"] }
 base64     = { version = "0.22" }
 const-hex  = { version = "1.17", features = ["alloc"] }
 celes      = { version = "2.6" }

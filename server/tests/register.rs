@@ -48,7 +48,10 @@ fn main() -> Result<(), reqwest::Error> {
                 writeln!(out.inner, "{:?}", v.text()?);
                 break;
             }
-            Err(_) => continue,
+            Err(e) => {
+                writeln!(out.inner, "{e:?}");
+                continue;
+            }
         }
     }
 
@@ -67,7 +70,10 @@ fn main() -> Result<(), reqwest::Error> {
                 writeln!(out.inner, "{:?}", v.text()?);
                 break;
             }
-            Err(_) => continue,
+            Err(e) => {
+                writeln!(out.inner, "{e:?}");
+                continue;
+            }
         }
     }
 
@@ -86,7 +92,10 @@ fn main() -> Result<(), reqwest::Error> {
                 writeln!(out.inner, "{:?}", v.text()?);
                 break;
             }
-            Err(_) => continue,
+            Err(e) => {
+                writeln!(out.inner, "{e:?}");
+                continue;
+            }
         }
     }
 
@@ -113,7 +122,10 @@ fn main() -> Result<(), reqwest::Error> {
                 writeln!(out.inner, "{:?}", v.text()?);
                 break;
             }
-            Err(_) => continue,
+            Err(e) => {
+                writeln!(out.inner, "{e:?}");
+                continue;
+            }
         }
     }
 
