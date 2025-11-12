@@ -146,7 +146,7 @@ pub async fn logout_all(
     let i = common::user_session::get_session_index(&sessions, decrypted_ssid)?;
     // creating the final sessions vector
     let only_session = {
-        if i == sessions.len() {
+        if i == sessions.len() - 1 {
             vec![sessions.pop().unwrap()]
         } else {
             let mut tmp = sessions.pop().unwrap();

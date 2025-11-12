@@ -57,8 +57,8 @@ pub async fn verify_email(
         if otp == body.otp {
             db.update_email(&old_email, &new_email).await?;
             db.remove_verification_entry(&old_email);
-            user.lock().unwrap().email = new_email.clone();
-            Ok(format!("Your email `{new_email}` has been verified"))
+            user.lock().unwrap().email = new_email;
+            Ok("Your email has been verified".to_string())
         } else {
             Err(AppError::BadReq("Invalid OTP"))
         }
