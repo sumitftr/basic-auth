@@ -25,5 +25,6 @@ pub async fn update_username(
     // updating username in the primary database
     db.check_and_update_username(&username, &body.new_username)
         .await?;
+    user.lock().unwrap().username = body.new_username.clone();
     Ok(format!("Your new username is {}", body.new_username))
 }

@@ -45,12 +45,14 @@ fn main() -> Result<(), reqwest::Error> {
             .send();
         match res1 {
             Ok(v) => {
-                writeln!(out.inner, "{:?}", v.text()?);
-                break;
+                if v.status().is_client_error() {
+                    writeln!(out.inner, "{:?}", v.text()?);
+                } else {
+                    break;
+                }
             }
             Err(e) => {
                 writeln!(out.inner, "{e:?}");
-                continue;
             }
         }
     }
@@ -67,12 +69,14 @@ fn main() -> Result<(), reqwest::Error> {
             .send();
         match res2 {
             Ok(v) => {
-                writeln!(out.inner, "{:?}", v.text()?);
-                break;
+                if v.status().is_client_error() {
+                    writeln!(out.inner, "{:?}", v.text()?);
+                } else {
+                    break;
+                }
             }
             Err(e) => {
                 writeln!(out.inner, "{e:?}");
-                continue;
             }
         }
     }
@@ -89,12 +93,14 @@ fn main() -> Result<(), reqwest::Error> {
             .send();
         match res3 {
             Ok(v) => {
-                writeln!(out.inner, "{:?}", v.text()?);
-                break;
+                if v.status().is_client_error() {
+                    writeln!(out.inner, "{:?}", v.text()?);
+                } else {
+                    break;
+                }
             }
             Err(e) => {
                 writeln!(out.inner, "{e:?}");
-                continue;
             }
         }
     }
@@ -111,20 +117,23 @@ fn main() -> Result<(), reqwest::Error> {
             .send();
         match res4 {
             Ok(v) => {
-                let cookies = v
-                    .headers()
-                    .get(reqwest::header::SET_COOKIE)
-                    .unwrap()
-                    .to_str()
-                    .map(|v| v[..v.find(';').unwrap()].to_string())
-                    .unwrap();
-                writeln!(out.inner, "{cookies}");
-                writeln!(out.inner, "{:?}", v.text()?);
-                break;
+                if v.status().is_client_error() {
+                    writeln!(out.inner, "{:?}", v.text()?);
+                } else {
+                    let cookies = v
+                        .headers()
+                        .get(reqwest::header::SET_COOKIE)
+                        .unwrap()
+                        .to_str()
+                        .map(|v| v[..v.find(';').unwrap()].to_string())
+                        .unwrap();
+                    writeln!(out.inner, "{cookies}");
+                    writeln!(out.inner, "{:?}", v.text()?);
+                    break;
+                }
             }
             Err(e) => {
                 writeln!(out.inner, "{e:?}");
-                continue;
             }
         }
     }

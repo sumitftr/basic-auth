@@ -4,6 +4,8 @@ use base64::Engine;
 use hmac::Mac;
 use std::time::{Duration, SystemTime};
 
+pub const BASE64_DIGEST_LEN: usize = 44;
+
 /// this function creates a session that is passed to the user
 /// and stored in both in-memory and primary database
 pub fn create_session(user_agent: String) -> (UserSession, ActiveUserSession, HeaderMap) {
@@ -44,8 +46,6 @@ fn sign(value: &str) -> String {
 ///
 /// value is the `VALUE` part of the whole cookie (`KEY=VALUE`)
 fn verify(value: &str) -> Option<String> {
-    const BASE64_DIGEST_LEN: usize = 44;
-
     if !value.is_char_boundary(BASE64_DIGEST_LEN) {
         return None;
     }
@@ -83,6 +83,25 @@ pub fn clear_expired_sessions(sessions: &mut Vec<UserSession>) {
         .collect::<Vec<UserSession>>();
 
     let _ = std::mem::replace(sessions, filtered_sessions);
+}
+
+pub fn delete_selected_sessions(
+    sessions: Vec<UserSession>,
+    mut selected: Vec<String>,
+) -> Vec<UserSession> {
+    sessions
+        .into_iter()
+        .filter(|v| {
+            #[allow(clippy::needless_range_loop)]
+            for i in 0..selected.len() {
+                if selected[i] == v.unsigned_ssid {
+                    std::mem::take(&mut selected[i]);
+                    return false;
+                }
+            }
+            true
+        })
+        .collect::<Vec<UserSession>>()
 }
 
 #[derive(serde::Serialize, serde::Deserialize, Clone, Debug)]

@@ -18,6 +18,7 @@ pub async fn update_birth_date(
     let birth_date = common::validation::is_birth_date_valid(body.year, body.month, body.day)?;
     let username = user.lock().unwrap().username.clone();
     db.update_birth_date(&username, birth_date).await?;
+    user.lock().unwrap().birth_date = birth_date;
     Ok("Your birth date has been updated".to_string())
 }
 
@@ -34,6 +35,7 @@ pub async fn update_gender(
     common::validation::is_gender_valid(&body.gender)?;
     let username = user.lock().unwrap().username.clone();
     db.update_gender(&username, &body.gender).await?;
+    user.lock().unwrap().gender = Some(body.gender);
     Ok("Your gender has been updated".to_string())
 }
 
@@ -50,5 +52,6 @@ pub async fn update_country(
     let country = common::validation::is_country_valid(&body.country)?;
     let username = user.lock().unwrap().username.clone();
     db.update_country(&username, &country).await?;
+    user.lock().unwrap().country = Some(country);
     Ok("Your country has been updated".to_string())
 }

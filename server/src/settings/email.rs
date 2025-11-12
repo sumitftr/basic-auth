@@ -14,8 +14,9 @@ pub async fn update_email(
     Extension(user): Extension<Arc<Mutex<User>>>,
     Json(body): Json<UpdateEmailRequest>,
 ) -> Result<String, AppError> {
+    let email = user.lock().unwrap().email.clone();
     // checking whether the new email is same as original email or not
-    if user.lock().unwrap().email == body.new_email {
+    if email == body.new_email {
         return Err(AppError::BadReq(
             "Your new email cannot be same as of your original email",
         ));
@@ -37,11 +38,7 @@ pub async fn update_email(
     )
     .await?;
     // adding an entry to in-memory cache for further checking
-    db.add_verification_entry(
-        user.lock().unwrap().email.clone(),
-        body.new_email,
-        otp.clone(),
-    );
+    db.add_verification_entry(email, body.new_email, otp.clone());
     Ok(otp)
 }
 
@@ -58,8 +55,9 @@ pub async fn verify_email(
     let old_email = user.lock().unwrap().email.clone();
     if let Some((new_email, otp)) = db.get_verification_entry(&old_email) {
         if otp == body.otp {
-            db.remove_verification_entry(&old_email);
             db.update_email(&old_email, &new_email).await?;
+            db.remove_verification_entry(&old_email);
+            user.lock().unwrap().email = new_email.clone();
             Ok(format!("Your email `{new_email}` has been verified"))
         } else {
             Err(AppError::BadReq("Invalid OTP"))

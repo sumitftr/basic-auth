@@ -85,10 +85,8 @@ pub async fn logout(
         (guard.username.clone(), guard.sessions.clone())
     };
 
-    // updating sessions list in the primary database
+    // updating sessions list in the primary and in-memory database
     db.update_sessions(&username, &sessions).await?;
-
-    // removing the user from `DB::active`
     db.remove_active_user(&active_user_session);
 
     Ok((
@@ -98,5 +96,66 @@ pub async fn logout(
     ))
 }
 
-pub async fn logout_devices() {}
-pub async fn logout_all() {}
+#[derive(serde::Deserialize)]
+pub struct LogoutDevicesRequest {
+    sessions: Vec<String>,
+}
+
+pub async fn logout_devices(
+    State(db): State<Arc<Db>>,
+    Extension(active_user_session): Extension<ActiveUserSession>,
+    Extension(user): Extension<Arc<Mutex<User>>>,
+    Json(mut body): Json<LogoutDevicesRequest>,
+) -> Result<impl IntoResponse, AppError> {
+    // cloning username and sessions
+    let (username, sessions) = {
+        let guard = user.lock().unwrap();
+        (guard.username.clone(), guard.sessions.clone())
+    };
+    // client could send a huge `Vec<String>` which could cause server overhead
+    // to neglect that issue this condition is checked
+    if sessions.len() < body.sessions.len() {
+        return Err(AppError::BadReq("Your selected session list is too long"));
+    }
+    // removing active session from `body.sessions` if passed
+    body.sessions
+        .iter_mut()
+        .filter(|v| {
+            v.as_str() != &active_user_session.ssid[common::user_session::BASE64_DIGEST_LEN..]
+        })
+        .for_each(|_| ());
+    let final_sessions = common::user_session::delete_selected_sessions(sessions, body.sessions);
+    // updating primary and in-memory database with the remaining sessions
+    db.update_sessions(&username, &final_sessions).await?;
+    user.lock().unwrap().sessions = final_sessions;
+    Ok("You sessions has been updated".to_string())
+}
+
+pub async fn logout_all(
+    State(db): State<Arc<Db>>,
+    Extension(active_user_session): Extension<ActiveUserSession>,
+    Extension(user): Extension<Arc<Mutex<User>>>,
+) -> Result<String, AppError> {
+    // cloning username and sessions
+    let (username, mut sessions) = {
+        let guard = user.lock().unwrap();
+        (guard.username.clone(), guard.sessions.clone())
+    };
+    // getting session index
+    let decrypted_ssid = active_user_session.verify()?;
+    let i = common::user_session::get_session_index(&sessions, decrypted_ssid)?;
+    // creating the final sessions vector
+    let only_session = {
+        if i == sessions.len() {
+            vec![sessions.pop().unwrap()]
+        } else {
+            let mut tmp = sessions.pop().unwrap();
+            std::mem::swap(&mut sessions[i], &mut tmp);
+            vec![tmp]
+        }
+    };
+    // updating primary and in-memory database with the only session
+    db.update_sessions(&username, &only_session).await?;
+    user.lock().unwrap().sessions = only_session;
+    Ok("Deleted all other user sessions".to_string())
+}
