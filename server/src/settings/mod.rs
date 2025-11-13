@@ -20,6 +20,7 @@ pub async fn settings_routes() -> axum::Router {
         .route("/api/settings/verify_email", post(email::verify_email))
         .route("/api/settings/username", post(username::update_username))
         .route("/api/settings/password", post(password::update_password))
+        .route("/api/settings/legal_name", post(metadata::update_legal_name))
         .route("/api/settings/birth_date", post(metadata::update_birth_date))
         .route("/api/settings/gender", post(metadata::update_gender))
         .route("/api/settings/phone", post(phone::update_phone))

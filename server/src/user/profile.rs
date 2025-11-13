@@ -4,10 +4,9 @@ use axum::{
 };
 use common::AppError;
 use database::{Db, user::User};
-use serde::Serialize;
 use std::sync::{Arc, Mutex};
 
-#[derive(Serialize)]
+#[derive(serde::Serialize)]
 pub struct UserProfileResponse {
     username: String,
     display_name: String,
@@ -49,11 +48,15 @@ pub async fn update_profile(
     Extension(user): Extension<Arc<Mutex<User>>>,
     mut multipart: Multipart,
 ) -> Result<Json<UpdateProfileResponse>, AppError> {
-    let username = user.lock().unwrap().username.clone();
-    let mut res = UpdateProfileResponse {
-        icon: None,
-        display_name: None,
-        bio: None,
+    let (username, _id, mut icon, mut display_name, mut bio) = {
+        let guard = user.lock().unwrap();
+        (
+            guard.username.clone(),
+            guard._id.clone().to_string(),
+            None,
+            None,
+            None,
+        )
     };
 
     // Parse multipart form data
@@ -79,8 +82,9 @@ pub async fn update_profile(
 
                 // checking if the user sent icon is valid or not
                 let content_type = common::validation::is_icon_valid(&mut filename, &data)?;
+                filename = format!("icon/{_id}-{filename}");
 
-                res.icon = Some(db.upload_image(&filename, data, &content_type).await?);
+                icon = Some(db.upload_image(&filename, data, &content_type).await?);
             }
             "display_name" => {
                 let text = field.text().await.map_err(|e| {
@@ -88,17 +92,9 @@ pub async fn update_profile(
                     AppError::InvalidData("Failed to read name")
                 })?;
 
-                if text.trim().is_empty() {
-                    return Err(AppError::InvalidData("Name cannot be empty"));
-                }
+                common::validation::is_display_name_valid(&text)?;
 
-                if !text.trim().is_ascii() {
-                    return Err(AppError::InvalidData(
-                        "Name can only contain ascii characters",
-                    ));
-                }
-
-                res.display_name = Some(text.trim().to_string());
+                display_name = Some(text.trim().to_string());
             }
             "bio" => {
                 let text = field.text().await.map_err(|e| {
@@ -106,15 +102,34 @@ pub async fn update_profile(
                     AppError::InvalidData("Failed to read bio")
                 })?;
 
-                res.bio = Some(text);
+                common::validation::is_bio_valid(&text)?;
+
+                bio = Some(text);
             }
             _ => continue, // ignore unknown fields
         }
     }
 
     // update user profile in database
-    db.update_profile(&username, &res.icon, &res.display_name, &res.bio)
+    db.update_profile(&username, &icon, &display_name, &bio)
         .await?;
+    let res = {
+        let mut guard = user.lock().unwrap();
+        if icon.is_some() {
+            guard.icon = icon;
+        }
+        if let Some(display_name) = display_name {
+            guard.display_name = display_name;
+        }
+        if bio.is_some() {
+            guard.bio = bio;
+        }
+        UpdateProfileResponse {
+            icon: guard.icon.clone(),
+            display_name: guard.display_name.clone(),
+            bio: guard.bio.clone(),
+        }
+    };
 
     Ok(Json(res))
 }
@@ -122,6 +137,6 @@ pub async fn update_profile(
 #[derive(serde::Serialize)]
 pub struct UpdateProfileResponse {
     icon: Option<String>,
-    display_name: Option<String>,
+    display_name: String,
     bio: Option<String>,
 }

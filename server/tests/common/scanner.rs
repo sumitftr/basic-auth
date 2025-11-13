@@ -1,3 +1,5 @@
+#![allow(dead_code, clippy::missing_transmute_annotations)]
+
 pub struct Scanner<R> {
     reader: R,
     buffer: Vec<u8>,

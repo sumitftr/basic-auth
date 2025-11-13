@@ -4,6 +4,23 @@ use database::{Db, user::User};
 use std::sync::{Arc, Mutex};
 
 #[derive(serde::Deserialize)]
+pub struct UpdateLegalNameRequest {
+    legal_name: String,
+}
+
+pub async fn update_legal_name(
+    State(db): State<Arc<Db>>,
+    Extension(user): Extension<Arc<Mutex<User>>>,
+    Json(body): Json<UpdateLegalNameRequest>,
+) -> Result<String, AppError> {
+    common::validation::is_name_valid(&body.legal_name)?;
+    let username = user.lock().unwrap().username.clone();
+    db.update_legal_name(&username, &body.legal_name).await?;
+    user.lock().unwrap().legal_name = body.legal_name;
+    Ok("Your legal name has been updated".to_string())
+}
+
+#[derive(serde::Deserialize)]
 pub struct UpdateBirthDateRequest {
     year: u32,
     month: u8,

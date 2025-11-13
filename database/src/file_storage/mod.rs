@@ -38,7 +38,7 @@ impl Default for FileStorage {
 impl crate::Db {
     pub async fn upload_image(
         self: &Arc<Self>,
-        key: &str,
+        filename: &str,
         data: axum::body::Bytes,
         content_type: &str,
     ) -> Result<String, AppError> {
@@ -46,7 +46,7 @@ impl crate::Db {
             .client
             .put_object()
             .bucket(&self.bucket.name)
-            .key(key)
+            .key(filename)
             .body(data.into())
             .content_type(content_type)
             .send()
@@ -56,15 +56,15 @@ impl crate::Db {
                 AppError::ServerError
             })?;
 
-        Ok(format!("{}/{}", self.bucket.public_url, key))
+        Ok(format!("{}/{}", self.bucket.public_url, filename))
     }
 
-    pub async fn delete_image(self: &Arc<Self>, key: &str) -> Result<(), AppError> {
+    pub async fn delete_image(self: &Arc<Self>, filename: &str) -> Result<(), AppError> {
         self.bucket
             .client
             .delete_object()
             .bucket(&self.bucket.name)
-            .key(key)
+            .key(filename)
             .send()
             .await
             .map_err(|e| {

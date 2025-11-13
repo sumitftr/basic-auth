@@ -196,6 +196,25 @@ pub fn is_username_valid(s: &str) -> Result<(), AppError> {
     Ok(())
 }
 
+pub fn is_display_name_valid(display_name: &str) -> Result<(), AppError> {
+    if display_name.trim().is_empty() {
+        return Err(AppError::InvalidData("Name cannot be empty"));
+    }
+    if !display_name.trim().is_ascii() {
+        return Err(AppError::InvalidData(
+            "Name can only contain ascii characters",
+        ));
+    }
+    Ok(())
+}
+
+pub fn is_bio_valid(bio: &str) -> Result<(), AppError> {
+    if bio.len() > 500 {
+        return Err(AppError::InvalidData("Bio too long"));
+    }
+    Ok(())
+}
+
 pub fn is_gender_valid(gender: &str) -> Result<(), AppError> {
     if gender.chars().any(|c| !c.is_alphabetic()) {
         return Err(AppError::BadReq("Gender not valid"));
