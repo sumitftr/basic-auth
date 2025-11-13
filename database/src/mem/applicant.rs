@@ -106,7 +106,7 @@ impl crate::Db {
                 birth_date: metadata.birth_date,
                 password: metadata.password.unwrap(),
                 username,
-                profile_pic: None,
+                icon: None,
                 display_name: metadata.name,
                 bio: None,
                 gender: None,

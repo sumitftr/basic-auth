@@ -162,13 +162,12 @@ impl crate::Db {
     pub async fn update_profile(
         self: &Arc<Self>,
         username: &str,
-        profile_pic: &str,
-        display_name: &str,
-        bio: &str,
+        icon: &Option<String>,
+        display_name: &Option<String>,
+        bio: &Option<String>,
     ) -> Result<(), AppError> {
         let filter = doc! {"username": username};
-        let update =
-            doc! {"$set": {"profile_pic": profile_pic, "display_name": display_name, "bio": bio}};
+        let update = doc! {"$set": {"icon": icon, "display_name": display_name, "bio": bio}};
         match self.users.update_one(filter, update).await {
             Ok(_) => {
                 tracing::info!("Updated User Profile: @{}", username);

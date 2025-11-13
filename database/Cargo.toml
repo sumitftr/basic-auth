@@ -10,8 +10,10 @@ readme.workspace = true
 [dependencies]
 common = { path = "../common" }
 
+axum = { workspace = true }
 moka = { workspace = true }
 mongodb = { workspace = true }
+s3 = { workspace = true }
 serde = { workspace = true }
 tokio = { workspace = true }
 tracing = { workspace = true }

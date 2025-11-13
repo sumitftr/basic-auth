@@ -6,6 +6,7 @@ use axum::{
 #[derive(Debug)]
 pub enum AppError {
     BadReq(&'static str),
+    InvalidData(&'static str),
     InvalidEmailFormat,
     UserNotFound,
     UsernameTaken,
@@ -22,6 +23,9 @@ impl axum::response::IntoResponse for AppError {
     fn into_response(self) -> axum::response::Response {
         match self {
             Self::BadReq(e) => {
+                (StatusCode::BAD_REQUEST, JsonError::new(e)).into_response()
+            }
+            Self::InvalidData(e) => {
                 (StatusCode::BAD_REQUEST, JsonError::new(e)).into_response()
             }
             Self::InvalidEmailFormat => {
@@ -46,7 +50,7 @@ impl axum::response::IntoResponse for AppError {
                 (StatusCode::UNAUTHORIZED, set_cookies, JsonError::new("Invalid Session")).into_response()
             }
             Self::RefreshSession(set_cookies) => {
-                (StatusCode::OK, set_cookies, JsonMsg::new("Session Refreshed")).into_response()
+                (StatusCode::OK, set_cookies, JsonSuccess::new("Session Refreshed")).into_response()
             }
             Self::ServerError => {
                 (StatusCode::INTERNAL_SERVER_ERROR, JsonError::new("Something went wrong")).into_response()
@@ -68,13 +72,13 @@ impl<'a> JsonError<'a> {
 }
 
 #[derive(serde::Serialize)]
-pub struct JsonMsg<'a> {
-    msg: &'a str,
+pub struct JsonSuccess<'a> {
+    success: &'a str,
 }
 
-impl<'a> JsonMsg<'a> {
+impl<'a> JsonSuccess<'a> {
     #[inline]
-    pub fn new(msg: &'a str) -> Json<Self> {
-        Json(Self { msg })
+    pub fn new(success: &'a str) -> Json<Self> {
+        Json(Self { success })
     }
 }

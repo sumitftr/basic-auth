@@ -22,6 +22,7 @@ hmac       = { version = "0.12" }
 lettre     = { version = "0.11" }
 moka       = { version = "0.12", features = ["sync"] }
 mongodb    = { version = "3.3" }
+s3         = { version = "1", features = ["behavior-version-latest"], package = "aws-sdk-s3" }
 serde      = { version = "1", features = ["derive"] }
 serde_json = { version = "1" }
 sha2       = { version = "0.10" }

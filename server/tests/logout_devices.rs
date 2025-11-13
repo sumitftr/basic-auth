@@ -48,10 +48,3 @@ fn main() -> Result<(), reqwest::Error> {
 pub struct LogoutDevicesRequest {
     sessions: Vec<String>,
 }
-
-#[derive(serde::Deserialize)]
-pub struct UserSession {
-    pub unsigned_ssid: String,
-    pub expires: std::time::SystemTime,
-    pub user_agent: String,
-}

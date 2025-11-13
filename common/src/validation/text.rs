@@ -1,8 +1,6 @@
-use std::str::FromStr;
-
-use mongodb::bson::DateTime;
-
 use crate::AppError;
+use mongodb::bson::DateTime;
+use std::str::FromStr;
 
 const SPECIAL: [char; 33] = [
     ' ', '!', '"', '#', '$', '%', '&', '\'', '(', ')', '*', '+', ',', '-', '.', '/', ':', ';', '<',

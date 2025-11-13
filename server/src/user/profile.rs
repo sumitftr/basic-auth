@@ -44,14 +44,84 @@ pub async fn get_user_profile(
     }
 }
 
-#[allow(unused)]
 pub async fn update_profile(
     State(db): State<Arc<Db>>,
     Extension(user): Extension<Arc<Mutex<User>>>,
     mut multipart: Multipart,
-) -> Result<Json<UserProfileResponse>, AppError> {
-    if let Some(profile_picture) = multipart.next_field().await.unwrap() {}
-    if let Some(display_name) = multipart.next_field().await.unwrap() {}
-    if let Some(bio) = multipart.next_field().await.unwrap() {}
-    todo!()
+) -> Result<Json<UpdateProfileResponse>, AppError> {
+    let username = user.lock().unwrap().username.clone();
+    let mut res = UpdateProfileResponse {
+        icon: None,
+        display_name: None,
+        bio: None,
+    };
+
+    // Parse multipart form data
+    while let Some(field) = multipart.next_field().await.map_err(|e| {
+        tracing::error!("Invalid multipart/form-data field: {e:?}");
+        AppError::InvalidData("Failed to read multipart field")
+    })? {
+        let name = field
+            .name()
+            .ok_or_else(|| AppError::InvalidData("Field has no name"))?;
+
+        match name {
+            "icon" => {
+                let mut filename = field
+                    .file_name()
+                    .ok_or_else(|| AppError::InvalidData("No filename provided"))?
+                    .to_string();
+
+                let data = field.bytes().await.map_err(|e| {
+                    tracing::error!("Invalid multipart/form-data field body: {e:?}");
+                    AppError::InvalidData("Failed to read image")
+                })?;
+
+                // checking if the user sent icon is valid or not
+                let content_type = common::validation::is_icon_valid(&mut filename, &data)?;
+
+                res.icon = Some(db.upload_image(&filename, data, &content_type).await?);
+            }
+            "display_name" => {
+                let text = field.text().await.map_err(|e| {
+                    tracing::error!("Invalid multipart/form-data field body: {e:?}");
+                    AppError::InvalidData("Failed to read name")
+                })?;
+
+                if text.trim().is_empty() {
+                    return Err(AppError::InvalidData("Name cannot be empty"));
+                }
+
+                if !text.trim().is_ascii() {
+                    return Err(AppError::InvalidData(
+                        "Name can only contain ascii characters",
+                    ));
+                }
+
+                res.display_name = Some(text.trim().to_string());
+            }
+            "bio" => {
+                let text = field.text().await.map_err(|e| {
+                    tracing::error!("Invalid multipart/form-data field body: {e:?}");
+                    AppError::InvalidData("Failed to read bio")
+                })?;
+
+                res.bio = Some(text);
+            }
+            _ => continue, // ignore unknown fields
+        }
+    }
+
+    // update user profile in database
+    db.update_profile(&username, &res.icon, &res.display_name, &res.bio)
+        .await?;
+
+    Ok(Json(res))
+}
+
+#[derive(serde::Serialize)]
+pub struct UpdateProfileResponse {
+    icon: Option<String>,
+    display_name: Option<String>,
+    bio: Option<String>,
 }

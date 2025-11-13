@@ -14,7 +14,7 @@ pub struct User {
     pub birth_date: DateTime,
     pub password: String,
     pub username: String,
-    pub profile_pic: Option<String>,
+    pub icon: Option<String>,
     pub display_name: String,
     pub bio: Option<String>,
     pub gender: Option<String>,
