@@ -2,7 +2,7 @@ use crate::AppError;
 
 fn detect_image_format(data: &axum::body::Bytes) -> Result<String, AppError> {
     if data.starts_with(&[0xFF, 0xD8, 0xFF]) {
-        return Ok("jpeg".to_string());
+        return Ok("jpg".to_string());
     }
 
     if data.starts_with(&[0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A]) {
@@ -28,22 +28,24 @@ fn detect_image_format(data: &axum::body::Bytes) -> Result<String, AppError> {
     ))
 }
 
-pub fn is_icon_valid(filename: &mut String, data: &axum::body::Bytes) -> Result<String, AppError> {
+pub fn is_icon_valid(filepath: &mut String, data: &axum::body::Bytes) -> Result<String, AppError> {
     // validate file size (max 5MiB)
     if data.len() > 5 * 1024 * 1024 {
         return Err(AppError::InvalidData("File too large (max 5MiB)"));
     }
 
-    let content_type = detect_image_format(data)?;
+    let img_type = detect_image_format(data)?;
 
-    if filename
-        .split('.')
-        .next_back()
-        .is_none_or(|ext| ext != content_type)
-    {
-        filename.push('.');
-        filename.push_str(&content_type);
+    let mut filename = filepath.split('/').next_back().unwrap().to_string();
+    // remove existing extension if present
+    if let Some(dot_pos) = filename.rfind('.') {
+        filename.truncate(dot_pos);
     }
+    // add the correct extension
+    filename.push('.');
+    filename.push_str(&img_type);
+    // replace the original string with new string
+    let _ = std::mem::replace(filepath, filename);
 
-    Ok(format!("image/{content_type}"))
+    Ok(format!("image/{img_type}"))
 }

@@ -8,14 +8,14 @@ use std::{
 };
 use tokio::sync::OnceCell;
 
-pub mod file_storage;
+pub mod bucket;
 pub mod mem;
 pub mod user;
 
 pub struct Db {
     users: Collection<User>,
     deleted_users: Collection<User>,
-    bucket: file_storage::FileStorage,
+    bucket: bucket::BlackBlazeB2,
     // in memory stores
     active: Cache<ActiveUserSession, Arc<Mutex<User>>>,
     applicants: Cache<String, ApplicantEntry>,
@@ -52,7 +52,7 @@ impl Db {
             Arc::new(Db {
                 users: db.collection(collections[0]),
                 deleted_users: db.collection(collections[1]),
-                bucket: file_storage::FileStorage::default(),
+                bucket: bucket::BlackBlazeB2::default(),
                 active: Cache::builder()
                     .max_capacity(32728)
                     .time_to_live(Duration::from_secs(UserSession::MEM_CACHE_DURATION))
@@ -75,11 +75,3 @@ impl Db {
         .clone()
     }
 }
-
-/*
-format!("https://{}.s3.{}.amazonaws.com", bucket, region)
-format!("{}/{}", endpoint.replace("https://", protocol).replace("http://", protocol), bucket)
-format!("https://{}.r2.cloudflarestorage.com", account_id)    format!("https://{}", domain)    format!("https://pub-{}.r2.dev", account_id)
-format!("https://{}", endpoint)    format!("https://f004.backblazeb2.com/file/{}", bucket)
-format!("https://{}.digitaloceanspaces.com", region)    format!("https://{}.{}.digitaloceanspaces.com", bucket, region)
-*/
