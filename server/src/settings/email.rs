@@ -1,4 +1,5 @@
 use axum::{Extension, Json, extract::State};
+use axum_extra::{json, response::ErasedJson};
 use common::AppError;
 use database::{Db, user::User};
 use serde::Deserialize;
@@ -13,7 +14,7 @@ pub async fn update_email(
     State(db): State<Arc<Db>>,
     Extension(user): Extension<Arc<Mutex<User>>>,
     Json(body): Json<UpdateEmailRequest>,
-) -> Result<String, AppError> {
+) -> Result<ErasedJson, AppError> {
     let email = user.lock().unwrap().email.clone();
     // checking whether the new email is same as original email or not
     if email == body.new_email {
@@ -39,7 +40,10 @@ pub async fn update_email(
     .await?;
     // adding an entry to in-memory cache for further checking
     db.add_verification_entry(email, body.new_email, otp.clone());
-    Ok(otp)
+    Ok(json!({
+        "otp": otp,
+        "message": "Please verify your email",
+    }))
 }
 
 #[derive(Deserialize)]
@@ -51,14 +55,16 @@ pub async fn verify_email(
     State(db): State<Arc<Db>>,
     Extension(user): Extension<Arc<Mutex<User>>>,
     Json(body): Json<VerifyEmailRequest>,
-) -> Result<String, AppError> {
+) -> Result<ErasedJson, AppError> {
     let old_email = user.lock().unwrap().email.clone();
     if let Some((new_email, otp)) = db.get_verification_entry(&old_email) {
         if otp == body.otp {
             db.update_email(&old_email, &new_email).await?;
             db.remove_verification_entry(&old_email);
             user.lock().unwrap().email = new_email;
-            Ok("Your email has been verified".to_string())
+            Ok(json!({
+                "message": "Your email has been verified"
+            }))
         } else {
             Err(AppError::BadReq("Invalid OTP"))
         }

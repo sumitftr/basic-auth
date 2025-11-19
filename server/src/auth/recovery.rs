@@ -2,6 +2,7 @@ use axum::{
     Json,
     extract::{Query, State},
 };
+use axum_extra::{json, response::ErasedJson};
 use common::AppError;
 use database::Db;
 use std::sync::Arc;
@@ -15,7 +16,7 @@ pub struct ForgotPasswordRequest {
 pub async fn forgot_password(
     State(db): State<Arc<Db>>,
     Json(body): Json<ForgotPasswordRequest>,
-) -> Result<String, AppError> {
+) -> Result<ErasedJson, AppError> {
     let code = common::mail::generate_hash(body.email.as_bytes());
     db.add_recovery_entry(code.clone(), body.email.clone());
 
@@ -31,7 +32,9 @@ pub async fn forgot_password(
     )
     .await?;
 
-    Ok(format!("Check your email {} to reset password", body.email))
+    Ok(json!({
+        "message": format!("Check your email to reset password")
+    }))
 }
 
 #[derive(serde::Deserialize)]
@@ -48,7 +51,7 @@ pub async fn reset_password(
     State(db): State<Arc<Db>>,
     Query(q): Query<ResetPasswordQuery>,
     Json(body): Json<ResetPasswordRequest>,
-) -> Result<String, AppError> {
+) -> Result<ErasedJson, AppError> {
     if let Some(email) = db.get_recovery_entry(&q.code) {
         common::validation::is_password_valid(&body.password)?;
         db.update_password(&email, &body.password).await?;
@@ -65,7 +68,9 @@ pub async fn reset_password(
         )
         .await?;
 
-        Ok(format!("Your password for {email} has been changed"))
+        Ok(json!({
+            "message": format!("Your password for {email} has been changed")
+        }))
     } else {
         Err(AppError::BadReq("Your password reset link has expired"))
     }

@@ -1,4 +1,5 @@
 use axum::{Extension, Json, extract::State};
+use axum_extra::{json, response::ErasedJson};
 use common::AppError;
 use database::{Db, user::User};
 use std::sync::{Arc, Mutex};
@@ -12,7 +13,7 @@ pub async fn update_username(
     State(db): State<Arc<Db>>,
     Extension(user): Extension<Arc<Mutex<User>>>,
     Json(body): Json<UpdateUsernameRequest>,
-) -> Result<String, AppError> {
+) -> Result<ErasedJson, AppError> {
     let username = user.lock().unwrap().username.clone();
     // checking whether the new username is same as original username or not
     if username == body.new_username {
@@ -25,6 +26,9 @@ pub async fn update_username(
     // updating username in the primary database
     db.check_and_update_username(&username, &body.new_username)
         .await?;
-    user.lock().unwrap().username = body.new_username;
-    Ok("Your username has been updated".to_string())
+    user.lock().unwrap().username = body.new_username.clone();
+    Ok(json!({
+        "username": body.new_username,
+        "message": "Your username has been updated"
+    }))
 }

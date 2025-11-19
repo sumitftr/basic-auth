@@ -4,6 +4,7 @@ use axum::{
     http::{HeaderMap, StatusCode, header},
     response::IntoResponse,
 };
+use axum_extra::{json, response::ErasedJson};
 use common::{AppError, user_session::ActiveUserSession};
 use database::{Db, user::User};
 use std::sync::{Arc, Mutex};
@@ -61,7 +62,9 @@ pub async fn login(
     Ok((
         StatusCode::CREATED,
         set_cookie_headermap,
-        "Login Successful".to_string(),
+        json!({
+            "message": "Login Successful"
+        }),
     ))
 }
 
@@ -92,7 +95,9 @@ pub async fn logout(
     Ok((
         StatusCode::CREATED,
         active_user_session.expire(),
-        "Logout Successful".to_string(),
+        json!({
+            "message": "Logout Successful"
+        }),
     ))
 }
 
@@ -128,14 +133,16 @@ pub async fn logout_devices(
     // updating primary and in-memory database with the remaining sessions
     db.update_sessions(&username, &final_sessions).await?;
     user.lock().unwrap().sessions = final_sessions;
-    Ok("You sessions has been updated".to_string())
+    Ok(json!({
+        "message": "You sessions has been updated"
+    }))
 }
 
 pub async fn logout_all(
     State(db): State<Arc<Db>>,
     Extension(active_user_session): Extension<ActiveUserSession>,
     Extension(user): Extension<Arc<Mutex<User>>>,
-) -> Result<String, AppError> {
+) -> Result<ErasedJson, AppError> {
     // cloning username and sessions
     let (username, mut sessions) = {
         let guard = user.lock().unwrap();
@@ -157,5 +164,7 @@ pub async fn logout_all(
     // updating primary and in-memory database with the only session
     db.update_sessions(&username, &only_session).await?;
     user.lock().unwrap().sessions = only_session;
-    Ok("Deleted all other user sessions".to_string())
+    Ok(json!({
+        "message": "Deleted all other user sessions"
+    }))
 }

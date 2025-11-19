@@ -12,6 +12,7 @@ common = { path = "../common" }
 database = { path = "../database" }
 
 axum = { workspace = true }
+axum-extra = { workspace = true }
 serde = { workspace = true }
 serde_json = { workspace = true }
 tokio = { workspace = true }

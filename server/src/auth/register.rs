@@ -7,6 +7,7 @@ use axum::{
     },
     response::IntoResponse,
 };
+use axum_extra::{json, response::ErasedJson};
 use common::AppError;
 use database::Db;
 use serde::Deserialize;
@@ -26,7 +27,7 @@ pub struct CreateUserRequest {
 pub async fn start(
     State(db): State<Arc<Db>>,
     Json(body): Json<CreateUserRequest>,
-) -> Result<String, AppError> {
+) -> Result<ErasedJson, AppError> {
     // validating user sent data
     let name = common::validation::is_name_valid(&body.name)?;
     common::validation::is_email_valid(&body.email)?;
@@ -51,7 +52,9 @@ pub async fn start(
     db.create_applicant(name, body.email, birth_date, otp)
         .await?;
 
-    Ok("Your information has been accepted".to_string())
+    Ok(json!({
+        "message": "Your information has been accepted"
+    }))
 }
 
 #[derive(Deserialize)]
@@ -62,7 +65,7 @@ pub struct ResendOtpRequest {
 pub async fn resend_otp(
     State(db): State<Arc<Db>>,
     Json(body): Json<ResendOtpRequest>,
-) -> Result<String, AppError> {
+) -> Result<ErasedJson, AppError> {
     // generating otp
     let otp = common::mail::generate_otp(body.email.as_bytes());
     db.update_applicant_otp(&body.email, &otp)?;
@@ -78,7 +81,9 @@ pub async fn resend_otp(
     )
     .await?;
 
-    Ok("The email has been sent".to_string())
+    Ok(json!({
+        "message": "The email has been sent"
+    }))
 }
 
 /// second step of registering an user
@@ -92,7 +97,7 @@ pub struct VerifyEmailRequest {
 pub async fn verify_email(
     State(db): State<Arc<Db>>,
     Json(body): Json<VerifyEmailRequest>,
-) -> Result<String, AppError> {
+) -> Result<ErasedJson, AppError> {
     // verifying email by checking if the otp sent by user matches the original one
     db.verify_applicant_email(&body.email, &body.otp).await?;
 
@@ -108,7 +113,9 @@ pub async fn verify_email(
     )
     .await?;
 
-    Ok("Email Verification successful".to_string())
+    Ok(json!({
+        "message": "Email Verification successful"
+    }))
 }
 
 /// third step of registering an user
@@ -122,17 +129,16 @@ pub struct SetPasswordRequest {
 pub async fn set_password(
     State(db): State<Arc<Db>>,
     Json(body): Json<SetPasswordRequest>,
-) -> Result<String, AppError> {
+) -> Result<ErasedJson, AppError> {
     // checking if the user sent password is valid or not
     common::validation::is_password_valid(&body.password)?;
 
     // setting password in in-memory database
     db.set_applicant_password(&body.email, body.password)?;
 
-    Ok(format!(
-        "Your password for email {} has been set",
-        body.email
-    ))
+    Ok(json!({
+        "message": format!("Your password for email {} has been set", body.email)
+    }))
 }
 
 /// last step of registering an user
@@ -172,6 +178,8 @@ pub async fn set_username(
     Ok((
         StatusCode::CREATED,
         set_cookie_headermap,
-        "User Created".to_string(),
+        json!({
+            "message": "User Created"
+        }),
     ))
 }

@@ -1,44 +1,38 @@
 use axum::{
-    Extension, Json,
+    Extension,
     extract::{Multipart, Path, State},
 };
+use axum_extra::{json, response::ErasedJson};
 use common::AppError;
 use database::{Db, user::User};
 use std::sync::{Arc, Mutex};
-
-#[derive(serde::Serialize)]
-pub struct UserProfileResponse {
-    username: String,
-    display_name: String,
-    bio: Option<String>,
-}
 
 pub async fn get_user_profile(
     State(db): State<Arc<Db>>,
     Extension(user): Extension<Arc<Mutex<User>>>,
     Path(p): Path<String>,
-) -> Result<Json<UserProfileResponse>, AppError> {
+) -> Result<ErasedJson, AppError> {
     let res = {
         let guard = user.lock().unwrap();
         if guard.username == p {
-            Some(UserProfileResponse {
-                username: guard.username.clone(),
-                display_name: guard.display_name.clone(),
-                bio: guard.bio.clone(),
-            })
+            Some(json!({
+                "username": guard.username.clone(),
+                "display_name": guard.display_name.clone(),
+                "bio": guard.bio.clone(),
+            }))
         } else {
             None
         }
     };
 
     if let Some(res) = res {
-        Ok(Json(res))
+        Ok(res)
     } else {
         let u = db.get_user(&p).await?;
-        Ok(Json(UserProfileResponse {
-            username: u.username,
-            display_name: u.display_name,
-            bio: u.bio,
+        Ok(json!({
+            "username": u.username,
+            "display_name": u.display_name,
+            "bio": u.bio,
         }))
     }
 }
@@ -47,7 +41,7 @@ pub async fn update_profile(
     State(db): State<Arc<Db>>,
     Extension(user): Extension<Arc<Mutex<User>>>,
     mut multipart: Multipart,
-) -> Result<Json<UpdateProfileResponse>, AppError> {
+) -> Result<ErasedJson, AppError> {
     let (username, _id, mut icon, mut display_name, mut bio) = {
         let guard = user.lock().unwrap();
         (
@@ -124,19 +118,12 @@ pub async fn update_profile(
         if bio.is_some() {
             guard.bio = bio;
         }
-        UpdateProfileResponse {
-            icon: guard.icon.clone(),
-            display_name: guard.display_name.clone(),
-            bio: guard.bio.clone(),
-        }
+        json!({
+            "icon": guard.icon.clone(),
+            "display_name": guard.display_name.clone(),
+            "bio": guard.bio.clone(),
+        })
     };
 
-    Ok(Json(res))
-}
-
-#[derive(serde::Serialize)]
-pub struct UpdateProfileResponse {
-    icon: Option<String>,
-    display_name: String,
-    bio: Option<String>,
+    Ok(res)
 }
