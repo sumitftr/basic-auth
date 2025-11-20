@@ -2,7 +2,7 @@ use crate::{
     mem::{ApplicantEntry, ApplicantStatus},
     user::User,
 };
-use common::{AppError, user_session::UserSession};
+use common::{AppError, session::Session};
 use mongodb::bson::{DateTime, oid::ObjectId};
 use std::sync::Arc;
 
@@ -90,7 +90,7 @@ impl crate::Db {
         self: Arc<Self>,
         email: String,
         username: String,
-        new_session: UserSession,
+        new_session: Session,
     ) -> Result<User, AppError> {
         if let Some(entry) = self.applicants.get(&email) {
             if entry.register_status != ApplicantStatus::PasswordSet {

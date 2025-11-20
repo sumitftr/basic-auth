@@ -1,5 +1,5 @@
 use crate::{mem::ApplicantEntry, user::User};
-use common::user_session::{ActiveUserSession, UserSession};
+use common::session::{ActiveSession, Session};
 use moka::sync::Cache;
 use mongodb::{Collection, error::ErrorKind};
 use std::{
@@ -17,7 +17,7 @@ pub struct Db {
     deleted_users: Collection<User>,
     bucket: bucket::BlackBlazeB2,
     // in memory stores
-    active: Cache<ActiveUserSession, Arc<Mutex<User>>>,
+    active: Cache<ActiveSession, Arc<Mutex<User>>>,
     applicants: Cache<String, ApplicantEntry>,
     recovery: Cache<String, String>, // <QUERY_STRING, EMAIL>
     verification: Cache<String, (String, String)>, // <EMAIL|PHONE, (NEW_EMAIL|NEW_PHONE, OTP)>
@@ -55,7 +55,7 @@ impl Db {
                 bucket: bucket::BlackBlazeB2::default(),
                 active: Cache::builder()
                     .max_capacity(32728)
-                    .time_to_live(Duration::from_secs(UserSession::MEM_CACHE_DURATION))
+                    .time_to_live(Duration::from_secs(Session::MEM_CACHE_DURATION))
                     .build(),
                 applicants: Cache::builder()
                     .max_capacity(8192)

@@ -1,12 +1,8 @@
-use axum::{
-    Json,
-    extract::State,
-    http::{
-        StatusCode,
-        header::{self, HeaderMap},
-    },
-    response::IntoResponse,
+use axum::http::{
+    StatusCode,
+    header::{self, HeaderMap},
 };
+use axum::{Json, extract::State, response::IntoResponse};
 use axum_extra::{json, response::ErasedJson};
 use common::AppError;
 use database::Db;
@@ -34,11 +30,11 @@ pub async fn start(
     let birth_date = common::validation::is_birth_date_valid(body.year, body.month, body.day)?;
 
     // generating otp
-    let otp = common::mail::generate_otp(body.email.as_bytes());
+    let otp = common::otp::generate(body.email.as_bytes());
     tracing::info!("OTP: {otp}, Email: {}", body.email);
 
     // sending otp to the email
-    common::mail::send_mail(
+    common::mail::send(
         &body.email,
         format!("{otp} is your {} verification code", &*common::SERVICE_NAME),
         format!(
@@ -67,11 +63,11 @@ pub async fn resend_otp(
     Json(body): Json<ResendOtpRequest>,
 ) -> Result<ErasedJson, AppError> {
     // generating otp
-    let otp = common::mail::generate_otp(body.email.as_bytes());
+    let otp = common::otp::generate(body.email.as_bytes());
     db.update_applicant_otp(&body.email, &otp)?;
 
     // resending otp to the email
-    common::mail::send_mail(
+    common::mail::send(
         &body.email,
         format!("{otp} is your {} verification code", &*common::SERVICE_NAME),
         format!(
@@ -102,7 +98,7 @@ pub async fn verify_email(
     db.verify_applicant_email(&body.email, &body.otp).await?;
 
     // sending email verification success
-    common::mail::send_mail(
+    common::mail::send(
         &body.email,
         format!("Your email {} has been verified successfully", body.email),
         format!(
@@ -164,8 +160,8 @@ pub async fn set_username(
         .unwrap_or_default();
 
     // creating session
-    let (user_session, active_user_session, set_cookie_headermap) =
-        common::user_session::create_session(user_agent);
+    let (user_session, active_session, set_cookie_headermap) =
+        common::session::create_session(user_agent);
 
     // registering user to primary database
     let user = Arc::clone(&db)
@@ -173,7 +169,7 @@ pub async fn set_username(
         .await?;
 
     // activating session by adding it to `Db::active`
-    db.make_user_active(active_user_session, user);
+    db.make_user_active(active_session, user);
 
     Ok((
         StatusCode::CREATED,

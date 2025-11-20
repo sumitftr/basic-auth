@@ -1,4 +1,4 @@
-use common::user_session::UserSession;
+use common::session::Session;
 use mongodb::bson::{DateTime, oid::ObjectId};
 
 mod create;
@@ -20,7 +20,7 @@ pub struct User {
     pub gender: Option<String>,
     pub phone: Option<String>,
     pub country: Option<String>,
-    pub sessions: Vec<UserSession>,
+    pub sessions: Vec<Session>,
     pub created: DateTime,
     // pub last_accessed: DateTime,
 }

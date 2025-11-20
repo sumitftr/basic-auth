@@ -1,5 +1,6 @@
 use axum::{Router, routing::post};
 
+mod oauth_google;
 mod recovery;
 mod register;
 mod session;
@@ -12,6 +13,7 @@ pub async fn auth_routes() -> Router {
         .route("/api/user/logout", post(session::logout))
         .layer(axum::middleware::from_fn(crate::middleware::auth_middleware))
         .route("/api/user/login", post(session::login))
+        .route("/api/oauth/google", post(oauth_google::login_with_google))
         .route("/api/forgot_password", post(recovery::forgot_password))
         .route("/api/reset_password", post(recovery::reset_password))
         .route("/api/user/register/start", post(register::start))

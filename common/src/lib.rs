@@ -2,7 +2,8 @@ mod error;
 pub use error::AppError;
 
 pub mod mail;
-pub mod user_session;
+pub mod otp;
+pub mod session;
 pub mod validation;
 
 pub static SERVICE_NAME: std::sync::LazyLock<String> =

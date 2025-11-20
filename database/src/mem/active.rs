@@ -1,5 +1,5 @@
 use crate::user::User;
-use common::user_session::ActiveUserSession;
+use common::session::ActiveSession;
 use std::sync::{Arc, Mutex};
 
 // implementation block for creating active users
@@ -8,28 +8,27 @@ impl crate::Db {
     #[inline]
     pub fn make_user_active(
         self: &Arc<Self>,
-        active_user_session: ActiveUserSession,
+        active_session: ActiveSession,
         user: User,
     ) -> Arc<Mutex<User>> {
         let wrapped_user = Arc::new(Mutex::new(user));
-        self.active
-            .insert(active_user_session, wrapped_user.clone());
+        self.active.insert(active_session, wrapped_user.clone());
         wrapped_user
     }
 
     #[inline]
     pub fn get_active_user(
         self: &Arc<Self>,
-        active_user_session: &ActiveUserSession,
+        active_session: &ActiveSession,
     ) -> Option<Arc<Mutex<User>>> {
-        self.active.get(active_user_session)
+        self.active.get(active_session)
     }
 
     #[inline]
     pub fn remove_active_user(
         self: &Arc<Self>,
-        active_user_session: &ActiveUserSession,
+        active_session: &ActiveSession,
     ) -> Option<Arc<Mutex<User>>> {
-        self.active.remove(active_user_session)
+        self.active.remove(active_session)
     }
 }

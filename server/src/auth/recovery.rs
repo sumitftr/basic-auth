@@ -17,10 +17,10 @@ pub async fn forgot_password(
     State(db): State<Arc<Db>>,
     Json(body): Json<ForgotPasswordRequest>,
 ) -> Result<ErasedJson, AppError> {
-    let code = common::mail::generate_hash(body.email.as_bytes());
+    let code = common::otp::generate_hash(body.email.as_bytes());
     db.add_recovery_entry(code.clone(), body.email.clone());
 
-    common::mail::send_mail(
+    common::mail::send(
         body.email.as_str(),
         format!("{} password reset request", &*common::SERVICE_NAME),
         format!(
@@ -57,7 +57,7 @@ pub async fn reset_password(
         db.update_password(&email, &body.password).await?;
         db.remove_recovery_entry(&email);
 
-        common::mail::send_mail(
+        common::mail::send(
             &email,
             format!("Your {} password has been changed", &*common::SERVICE_NAME),
             format!(

@@ -1,7 +1,7 @@
 use axum::{extract::Request, http::header, middleware::Next, response::Response};
 use common::{
     AppError,
-    user_session::{self, ActiveUserSession, UserSessionStatus},
+    session::{self, ActiveSession, SessionStatus},
 };
 
 pub async fn auth_middleware(mut req: Request, next: Next) -> Result<Response, AppError> {
@@ -14,30 +14,30 @@ pub async fn auth_middleware(mut req: Request, next: Next) -> Result<Response, A
         .collect::<Vec<String>>();
 
     // parsing all user sent cookies to create a valid `ActiveUserSession`
-    let active_user_session = ActiveUserSession::parse(&cookies)?;
+    let active_session = ActiveSession::parse(&cookies)?;
 
-    // checking whether cookies inside `active_user_session` is tampered or not
-    let decrypted_ssid = active_user_session.verify()?;
+    // checking whether cookies inside `active_session` is tampered or not
+    let decrypted_ssid = active_session.verify()?;
 
     let db = database::Db::new().await;
 
     // when the use is found inside `Db::active`
-    if let Some(user) = db.get_active_user(&active_user_session) {
-        req.extensions_mut().insert(active_user_session);
+    if let Some(user) = db.get_active_user(&active_session) {
+        req.extensions_mut().insert(active_session);
         req.extensions_mut().insert(user);
     } else {
         // when the user is not found inside `Db::active`
         match db.get_user_by_decrypted_ssid(&decrypted_ssid).await {
             Ok(mut user) => {
-                let i = user_session::get_session_index(&user.sessions, decrypted_ssid)?;
+                let i = session::get_session_index(&user.sessions, decrypted_ssid)?;
                 match user.sessions[i].session_status() {
-                    UserSessionStatus::Valid(_) => {
+                    SessionStatus::Valid(_) => {
                         // adding session and `User` to `Db::active` for faster access
-                        let wrapped_user = db.make_user_active(active_user_session.clone(), user);
-                        req.extensions_mut().insert(active_user_session);
+                        let wrapped_user = db.make_user_active(active_session.clone(), user);
+                        req.extensions_mut().insert(active_session);
                         req.extensions_mut().insert(wrapped_user);
                     }
-                    UserSessionStatus::Expiring(_) | UserSessionStatus::Refreshable(_) => {
+                    SessionStatus::Expiring(_) | SessionStatus::Refreshable(_) => {
                         // automatic session refresh code block
                         let user_agent = req
                             .headers()
@@ -46,32 +46,32 @@ pub async fn auth_middleware(mut req: Request, next: Next) -> Result<Response, A
                             .unwrap_or_default();
 
                         // creating session
-                        let (user_session, new_active_user_session, set_cookie_headermap) =
-                            user_session::create_session(user_agent);
+                        let (user_session, new_active_session, set_cookie_headermap) =
+                            session::create_session(user_agent);
 
                         // replacing the old session with new session
                         user.sessions[i] = user_session;
 
                         // clearing expired sessions
-                        user_session::clear_expired_sessions(&mut user.sessions);
+                        session::clear_expired_sessions(&mut user.sessions);
 
                         // updating session in primary database
                         db.update_sessions(&user.username, &user.sessions).await?;
 
                         // activating session by adding it to `Db::active`
-                        db.make_user_active(new_active_user_session, user);
+                        db.make_user_active(new_active_session, user);
 
                         // in the case of `Expiring` the new ssid will override the old one
                         return Err(AppError::RefreshSession(set_cookie_headermap));
                     }
-                    UserSessionStatus::Invalid => {
+                    SessionStatus::Invalid => {
                         // clearing expired sessions
-                        user_session::clear_expired_sessions(&mut user.sessions);
+                        session::clear_expired_sessions(&mut user.sessions);
 
                         // updating session in primary database
                         db.update_sessions(&user.username, &user.sessions).await?;
 
-                        return Err(AppError::InvalidSession(active_user_session.expire()));
+                        return Err(AppError::InvalidSession(active_session.expire()));
                     }
                 };
             }

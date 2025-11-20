@@ -1,4 +1,4 @@
-use common::{AppError, user_session::UserSession};
+use common::{AppError, session::Session};
 use mongodb::bson::{DateTime, doc};
 use std::sync::Arc;
 
@@ -79,7 +79,7 @@ impl crate::Db {
     pub async fn update_sessions(
         self: &Arc<Self>,
         username: &str,
-        sessions: &[UserSession],
+        sessions: &[Session],
     ) -> Result<(), AppError> {
         // Serialize the sessions array slice to Bson
         let sessions_bson = mongodb::bson::to_bson(sessions).map_err(|e| {

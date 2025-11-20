@@ -5,7 +5,7 @@ use axum::{
     response::IntoResponse,
 };
 use axum_extra::{json, response::ErasedJson};
-use common::{AppError, user_session::ActiveUserSession};
+use common::{AppError, session::ActiveSession};
 use database::{Db, user::User};
 use std::sync::{Arc, Mutex};
 
@@ -46,18 +46,18 @@ pub async fn login(
         .get(header::USER_AGENT)
         .map(|v| v.to_str().unwrap_or_default().to_owned())
         .unwrap_or_default();
-    let (user_session, active_user_session, set_cookie_headermap) =
-        common::user_session::create_session(user_agent);
+    let (user_session, active_session, set_cookie_headermap) =
+        common::session::create_session(user_agent);
 
     // clearing expired sessions
-    common::user_session::clear_expired_sessions(&mut user.sessions);
+    common::session::clear_expired_sessions(&mut user.sessions);
 
     // adding `UserSession` to primary database
     user.sessions.push(user_session);
     db.update_sessions(&user.username, &user.sessions).await?;
 
     // activating session by adding it to `Db::active`
-    db.make_user_active(active_user_session, user);
+    db.make_user_active(active_session, user);
 
     Ok((
         StatusCode::CREATED,
@@ -70,14 +70,14 @@ pub async fn login(
 
 pub async fn logout(
     State(db): State<Arc<Db>>,
-    Extension(active_user_session): Extension<ActiveUserSession>,
+    Extension(active_session): Extension<ActiveSession>,
     Extension(user): Extension<Arc<Mutex<User>>>,
 ) -> Result<impl IntoResponse, AppError> {
-    let decrypted_ssid = active_user_session.verify()?;
+    let decrypted_ssid = active_session.verify()?;
 
     let (username, sessions) = {
         let mut guard = user.lock().unwrap();
-        let i = common::user_session::get_session_index(&guard.sessions, decrypted_ssid)?;
+        let i = common::session::get_session_index(&guard.sessions, decrypted_ssid)?;
         // deleting the user specified session
         if guard.sessions.len() == 1 {
             guard.sessions.clear();
@@ -90,11 +90,11 @@ pub async fn logout(
 
     // updating sessions list in the primary and in-memory database
     db.update_sessions(&username, &sessions).await?;
-    db.remove_active_user(&active_user_session);
+    db.remove_active_user(&active_session);
 
     Ok((
         StatusCode::CREATED,
-        active_user_session.expire(),
+        active_session.expire(),
         json!({
             "message": "Logout Successful"
         }),
@@ -108,7 +108,7 @@ pub struct LogoutDevicesRequest {
 
 pub async fn logout_devices(
     State(db): State<Arc<Db>>,
-    Extension(active_user_session): Extension<ActiveUserSession>,
+    Extension(active_session): Extension<ActiveSession>,
     Extension(user): Extension<Arc<Mutex<User>>>,
     Json(mut body): Json<LogoutDevicesRequest>,
 ) -> Result<impl IntoResponse, AppError> {
@@ -125,11 +125,9 @@ pub async fn logout_devices(
     // removing active session from `body.sessions` if passed
     body.sessions
         .iter_mut()
-        .filter(|v| {
-            v.as_str() != &active_user_session.ssid[common::user_session::BASE64_DIGEST_LEN..]
-        })
+        .filter(|v| v.as_str() != &active_session.ssid[common::session::BASE64_DIGEST_LEN..])
         .for_each(|_| ());
-    let final_sessions = common::user_session::delete_selected_sessions(sessions, body.sessions);
+    let final_sessions = common::session::delete_selected_sessions(sessions, body.sessions);
     // updating primary and in-memory database with the remaining sessions
     db.update_sessions(&username, &final_sessions).await?;
     user.lock().unwrap().sessions = final_sessions;
@@ -140,7 +138,7 @@ pub async fn logout_devices(
 
 pub async fn logout_all(
     State(db): State<Arc<Db>>,
-    Extension(active_user_session): Extension<ActiveUserSession>,
+    Extension(active_session): Extension<ActiveSession>,
     Extension(user): Extension<Arc<Mutex<User>>>,
 ) -> Result<ErasedJson, AppError> {
     // cloning username and sessions
@@ -149,8 +147,8 @@ pub async fn logout_all(
         (guard.username.clone(), guard.sessions.clone())
     };
     // getting session index
-    let decrypted_ssid = active_user_session.verify()?;
-    let i = common::user_session::get_session_index(&sessions, decrypted_ssid)?;
+    let decrypted_ssid = active_session.verify()?;
+    let i = common::session::get_session_index(&sessions, decrypted_ssid)?;
     // creating the final sessions vector
     let only_session = {
         if i == sessions.len() - 1 {

@@ -27,9 +27,9 @@ pub async fn update_email(
     // checking if the new email is available or not
     db.is_email_available(&body.new_email).await?;
     // generating otp
-    let otp = common::mail::generate_otp(body.new_email.as_bytes());
+    let otp = common::otp::generate(body.new_email.as_bytes());
     // sending mail to the new email for verification
-    common::mail::send_mail(
+    common::mail::send(
         &body.new_email,
         format!("{otp} is your {} verification code", &*common::SERVICE_NAME),
         format!(

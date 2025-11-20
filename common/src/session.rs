@@ -8,19 +8,19 @@ pub const BASE64_DIGEST_LEN: usize = 44;
 
 /// this function creates a session that is passed to the user
 /// and stored in both in-memory and primary database
-pub fn create_session(user_agent: String) -> (UserSession, ActiveUserSession, HeaderMap) {
+pub fn create_session(user_agent: String) -> (Session, ActiveSession, HeaderMap) {
     #[allow(clippy::identity_op)]
     let expires = 30 * 86400 + 0; // days * 86400 + secs
     let uid = uuid::Uuid::new_v4().to_string();
     let signed_uid = sign(&uid);
 
     (
-        UserSession {
+        Session {
             unsigned_ssid: uid.clone(),
             expires: SystemTime::now() + Duration::from_secs(expires),
             user_agent,
         },
-        ActiveUserSession {
+        ActiveSession {
             ssid: format!("{signed_uid}{uid}"),
         },
         HeaderMap::from_iter([(
@@ -61,10 +61,7 @@ fn verify(value: &str) -> Option<String> {
 }
 
 /// finds the current used session from a list of `UserSession`s
-pub fn get_session_index(
-    sessions: &[UserSession],
-    decrypted_ssid: String,
-) -> Result<usize, AppError> {
+pub fn get_session_index(sessions: &[Session], decrypted_ssid: String) -> Result<usize, AppError> {
     for (i, session) in sessions.iter().enumerate() {
         if session.unsigned_ssid.contains(&decrypted_ssid) {
             return Ok(i);
@@ -73,22 +70,19 @@ pub fn get_session_index(
     Err(AppError::AuthError("Session not found"))
 }
 
-pub fn clear_expired_sessions(sessions: &mut Vec<UserSession>) {
+pub fn clear_expired_sessions(sessions: &mut Vec<Session>) {
     let tmp_sessions = std::mem::take(sessions);
 
     let now = SystemTime::now();
     let filtered_sessions = tmp_sessions
         .into_iter()
         .filter(|s| now < s.expires)
-        .collect::<Vec<UserSession>>();
+        .collect::<Vec<Session>>();
 
     let _ = std::mem::replace(sessions, filtered_sessions);
 }
 
-pub fn delete_selected_sessions(
-    sessions: Vec<UserSession>,
-    mut selected: Vec<String>,
-) -> Vec<UserSession> {
+pub fn delete_selected_sessions(sessions: Vec<Session>, mut selected: Vec<String>) -> Vec<Session> {
     sessions
         .into_iter()
         .filter(|v| {
@@ -101,30 +95,30 @@ pub fn delete_selected_sessions(
             }
             true
         })
-        .collect::<Vec<UserSession>>()
+        .collect::<Vec<Session>>()
 }
 
 #[derive(serde::Serialize, serde::Deserialize, Clone, Debug)]
-pub struct UserSession {
+pub struct Session {
     pub unsigned_ssid: String,
     pub expires: SystemTime,
     pub user_agent: String,
 }
 
-pub enum UserSessionStatus {
+pub enum SessionStatus {
     Valid(u64),
     Expiring(u64),
     Refreshable(u64),
     Invalid,
 }
 
-impl UserSession {
+impl Session {
     // timestamp in seconds
     pub const MEM_CACHE_DURATION: u64 = 10800; // 3 hours
     pub const MAX_REFRESH_DURATION: u64 = 604800; // 7 days
 
     /// returns the timestamp difference of the session with current time
-    pub fn session_status(&self) -> UserSessionStatus {
+    pub fn session_status(&self) -> SessionStatus {
         let diff = self
             .expires
             .duration_since(std::time::UNIX_EPOCH)
@@ -137,27 +131,27 @@ impl UserSession {
 
         if diff > 0 {
             if diff > Self::MEM_CACHE_DURATION as i64 {
-                UserSessionStatus::Valid(diff as u64)
+                SessionStatus::Valid(diff as u64)
             } else {
-                UserSessionStatus::Expiring(diff as u64)
+                SessionStatus::Expiring(diff as u64)
             }
         } else {
             #[allow(clippy::collapsible_else_if)]
             if -diff < Self::MAX_REFRESH_DURATION as i64 {
-                UserSessionStatus::Refreshable(diff as u64)
+                SessionStatus::Refreshable(diff as u64)
             } else {
-                UserSessionStatus::Invalid
+                SessionStatus::Invalid
             }
         }
     }
 }
 
 #[derive(Hash, Eq, PartialEq, Clone, Debug)]
-pub struct ActiveUserSession {
+pub struct ActiveSession {
     pub ssid: String, // SSID=
 }
 
-impl ActiveUserSession {
+impl ActiveSession {
     /// parses all the cookies sent by a client and creates an `ActiveUserSession`
     pub fn parse(cookies_list: &Vec<String>) -> Result<Self, AppError> {
         for cookies in cookies_list {
@@ -198,18 +192,18 @@ mod tests {
     #[test]
     fn user_session_test() {
         dotenv::dotenv().ok();
-        let (user_session, active_user_session, set_cookie_headermap) =
+        let (user_session, active_session, set_cookie_headermap) =
             create_session("Mozilla Firefox".to_string());
         dbg!(&user_session);
-        dbg!(&active_user_session);
+        dbg!(&active_session);
         dbg!(&set_cookie_headermap);
         assert!(
-            active_user_session
+            active_session
                 .ssid
                 .ends_with(user_session.unsigned_ssid.as_str())
         );
         assert!(
-            active_user_session
+            active_session
                 .ssid
                 .starts_with(&sign(&user_session.unsigned_ssid))
         );
@@ -231,7 +225,7 @@ mod tests {
     fn syncing_session_test() {
         dotenv::dotenv().ok();
         let (user_session1, _, _) = create_session("Mozilla Firefox".to_string());
-        let user_session2 = UserSession {
+        let user_session2 = Session {
             unsigned_ssid: create_session("Mozilla Firefox".to_string())
                 .0
                 .unsigned_ssid,
@@ -239,7 +233,7 @@ mod tests {
             user_agent: "some agent".to_string(),
         };
         let (user_session3, _, _) = create_session("chrome browser".to_string());
-        let user_session4 = UserSession {
+        let user_session4 = Session {
             unsigned_ssid: "ertnasotenoariesntoaiesnoa".to_string(),
             expires: SystemTime::now() - Duration::from_secs(23829389283),
             user_agent: "some agent".to_string(),
