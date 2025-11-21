@@ -1,7 +1,7 @@
+use super::User;
 use common::AppError;
 use mongodb::bson::doc;
 use std::sync::Arc;
-use super::User;
 
 // implementation block for checking user attributes
 impl crate::Db {
@@ -38,8 +38,17 @@ impl crate::Db {
         password: &str,
     ) -> Result<User, AppError> {
         match self.users.find_one(doc! { "username": username }).await {
-            Ok(Some(user)) if user.password == password => Ok(user),
-            Ok(Some(_)) => Err(AppError::WrongPassword),
+            Ok(Some(user)) => {
+                if let Some(db_pass) = user.password.as_ref() {
+                    if db_pass == password {
+                        Ok(user)
+                    } else {
+                        Err(AppError::WrongPassword)
+                    }
+                } else {
+                    Err(AppError::BadReq("Password not set"))
+                }
+            }
             Ok(None) => Err(AppError::UserNotFound),
             Err(e) => {
                 tracing::error!("{e:?}");
@@ -54,8 +63,17 @@ impl crate::Db {
         password: &str,
     ) -> Result<User, AppError> {
         match self.users.find_one(doc! { "email": email }).await {
-            Ok(Some(user)) if user.password == password => Ok(user),
-            Ok(Some(_)) => Err(AppError::WrongPassword),
+            Ok(Some(user)) => {
+                if let Some(db_pass) = user.password.as_ref() {
+                    if db_pass == password {
+                        Ok(user)
+                    } else {
+                        Err(AppError::WrongPassword)
+                    }
+                } else {
+                    Err(AppError::BadReq("Password not set"))
+                }
+            }
             Ok(None) => Err(AppError::UserNotFound),
             Err(e) => {
                 tracing::error!("{e:?}");

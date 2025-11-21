@@ -3,24 +3,33 @@
 > Create a `.env` file inside project root
 > And set the following environment variables inside `.env` file
 
-> Set your **`SERVER SOCKET IP`** and **`PORT`**
-```
-  SOCKET=<socket_ip>:<port>
-```
+```dotenv
+SOCKET=your_socket
+SECRET_KEY=your_secret_key
+SERVICE_NAME=your_service_name
+SERVICE_DOMAIN=your_service_domain
 
-> Set your **`DATABASE URI`**
-```
-  DATABASE_URI=<your_database_uri>
-```
+# OAuth
+GOOGLE_CLIENT_ID=your_google_client_id
+GOOGLE_CLIENT_SECRET=your_google_client_secret
 
-> Set your **`DATABASE NAME`**
-```
-  DATABASE_NAME=<your_database_name>
-```
+# Database
+DATABASE_URL=your_database_url
+DATABASE_NAME=your_database_name
 
-> Set your **`SECRET KEY`**
-```
-  SECRET_KEY=<your_secret_key>
+# Object Storage
+BUCKET_ACCESS_KEY=your_bucket_access_key
+BUCKET_SECRET_KEY=your_bucket_secret_key
+BUCKET_ID=your_bucket_id
+BUCKET_ENDPOINT=your_bucket_endpoint
+BUCKET_NAME=your_bucket_name
+BUCKET_REGION=your_bucket_region
+BUCKET_PUBLIC_URL=your_bucket_public_url
+
+# Email
+SMTP_KEY=your_smtp_key
+SMTP_HOST=your_smtp_host
+NOREPLY_EMAIL=your_noreply_email
 ```
 
 ## Run your project

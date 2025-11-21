@@ -1,10 +1,11 @@
 mod error;
-pub use error::AppError;
-
+pub mod generate;
 pub mod mail;
-pub mod otp;
+pub mod oauth;
 pub mod session;
 pub mod validation;
+
+pub use error::AppError;
 
 pub static SERVICE_NAME: std::sync::LazyLock<String> =
     std::sync::LazyLock::new(|| std::env::var("SERVICE_NAME").unwrap());

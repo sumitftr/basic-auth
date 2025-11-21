@@ -52,7 +52,7 @@ pub async fn login(
     // clearing expired sessions
     common::session::clear_expired_sessions(&mut user.sessions);
 
-    // adding `UserSession` to primary database
+    // adding `Session` to primary database
     user.sessions.push(user_session);
     db.update_sessions(&user.username, &user.sessions).await?;
 

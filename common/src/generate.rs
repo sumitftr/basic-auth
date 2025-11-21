@@ -1,7 +1,10 @@
+use base64::Engine;
 use hmac::{Hmac, Mac};
+use rand::Rng;
+use sha2::{Digest, Sha256};
 use std::time::{SystemTime, UNIX_EPOCH};
 
-pub fn generate(secret: &[u8]) -> String {
+pub fn otp(secret: &str) -> String {
     const TIME_STEP: u64 = 30; // 30 seconds
     const DIGITS_POWER: u32 = 1_000_000; // 10^6
 
@@ -25,7 +28,7 @@ pub fn generate(secret: &[u8]) -> String {
     ];
 
     // HMAC-SHA256
-    let mut mac = Hmac::<sha2::Sha256>::new_from_slice(secret).unwrap();
+    let mut mac = Hmac::<sha2::Sha256>::new_from_slice(secret.as_bytes()).unwrap();
     mac.update(&message);
     let result = mac.finalize().into_bytes();
 
@@ -37,13 +40,13 @@ pub fn generate(secret: &[u8]) -> String {
         | (result[offset + 3] as u32);
 
     // Truncate to 6 digits
-    let otp = binary % DIGITS_POWER;
+    let one_time_pass = binary % DIGITS_POWER;
 
     // Return as zero-padded 6-digit string
-    format!("{:06}", otp)
+    format!("{:06}", one_time_pass)
 }
 
-pub fn generate_hash(secret: &[u8]) -> String {
+pub fn hex_64(secret: &str) -> String {
     const TIME_STEP: u64 = 30; // 30-second windows
 
     // ---- Counter (big-endian, 8 bytes) ----
@@ -56,12 +59,34 @@ pub fn generate_hash(secret: &[u8]) -> String {
     let counter_bytes = counter.to_be_bytes(); // network order
 
     // ---- HMAC-SHA-256 ----
-    let mut mac = Hmac::<sha2::Sha256>::new_from_slice(secret).unwrap();
+    let mut mac = Hmac::<sha2::Sha256>::new_from_slice(secret.as_bytes()).unwrap();
     mac.update(&counter_bytes);
     let result = mac.finalize().into_bytes();
 
     // ---- Hex-encode (64 characters) ----
     const_hex::encode(result)
+}
+
+// Generate random string for state and nonce
+pub fn random_string(length: usize) -> String {
+    const CHARSET: &[u8] = b"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
+    let mut rng = rand::rng();
+    (0..length)
+        .map(|_| {
+            let idx = rng.random_range(0..CHARSET.len());
+            CHARSET[idx] as char
+        })
+        .collect()
+}
+
+// Generate PKCE (Proof Key for Code Exchange) code verifier and challenge
+pub fn pkce() -> (String, String) {
+    let code_verifier = random_string(128);
+    let mut hasher = Sha256::new();
+    hasher.update(code_verifier.as_bytes());
+    let hash = hasher.finalize();
+    let code_challenge = base64::prelude::BASE64_URL_SAFE_NO_PAD.encode(hash);
+    (code_verifier, code_challenge)
 }
 
 #[cfg(test)]
@@ -71,8 +96,8 @@ mod tests {
     #[test]
     fn otp_test() {
         for _ in 0..10 {
-            let secret = uuid::Uuid::new_v4().into_bytes();
-            let otp = generate(&secret);
+            let secret = uuid::Uuid::new_v4().to_string();
+            let otp = otp(&secret);
             dbg!(&otp);
             assert!(otp.len() == 6);
         }
@@ -80,18 +105,23 @@ mod tests {
 
     #[test]
     fn otp_test_quick() {
-        let secret = uuid::Uuid::new_v4().into_bytes();
-        let otp = generate(&secret);
-        dbg!(&otp);
+        let secret = uuid::Uuid::new_v4().to_string();
+        let one_time_pass = otp(&secret);
+        dbg!(&one_time_pass);
         for _ in 0..10 {
-            assert_eq!(otp, generate(&secret));
+            assert_eq!(one_time_pass, otp(&secret));
         }
     }
 
     #[test]
     fn hash_test() {
-        let secret = "hello@example.com".as_bytes();
-        let r = generate_hash(secret);
+        let secret = "hello@example.com";
+        let r = hex_64(secret);
         dbg!(&r);
+    }
+
+    #[test]
+    fn generate_rand_str_test() {
+        assert_eq!(128, random_string(128).len());
     }
 }

@@ -4,7 +4,7 @@ pub static SOCKET: std::sync::LazyLock<String> =
     std::sync::LazyLock::new(|| std::env::var("SOCKET").unwrap());
 
 #[tokio::main]
-async fn main() {
+pub async fn main() {
     dotenv::dotenv().ok();
 
     tracing_subscriber::registry()

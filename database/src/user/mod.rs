@@ -11,8 +11,8 @@ pub struct User {
     pub _id: ObjectId,
     pub legal_name: String,
     pub email: String,
-    pub birth_date: DateTime,
-    pub password: String,
+    pub birth_date: Option<DateTime>,
+    pub password: Option<String>,
     pub username: String,
     pub icon: Option<String>,
     pub display_name: String,
@@ -22,5 +22,10 @@ pub struct User {
     pub country: Option<String>,
     pub sessions: Vec<Session>,
     pub created: DateTime,
+    // pub oauth: Option<OAuthDetails>,
     // pub last_accessed: DateTime,
+}
+
+pub enum OAuthDetails {
+    Google {},
 }

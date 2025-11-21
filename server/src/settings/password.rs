@@ -17,7 +17,7 @@ pub async fn update_password(
     common::validation::is_password_valid(&body.password)?;
     let email = user.lock().unwrap().email.clone();
     db.update_password(&email, &body.password).await?;
-    user.lock().unwrap().password = body.password;
+    user.lock().unwrap().password = Some(body.password);
     Ok(json!({
         "message": "Your password has been changed"
     }))

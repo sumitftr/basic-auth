@@ -30,7 +30,7 @@ pub async fn start(
     let birth_date = common::validation::is_birth_date_valid(body.year, body.month, body.day)?;
 
     // generating otp
-    let otp = common::otp::generate(body.email.as_bytes());
+    let otp = common::generate::otp(&body.email);
     tracing::info!("OTP: {otp}, Email: {}", body.email);
 
     // sending otp to the email
@@ -63,7 +63,7 @@ pub async fn resend_otp(
     Json(body): Json<ResendOtpRequest>,
 ) -> Result<ErasedJson, AppError> {
     // generating otp
-    let otp = common::otp::generate(body.email.as_bytes());
+    let otp = common::generate::otp(&body.email);
     db.update_applicant_otp(&body.email, &otp)?;
 
     // resending otp to the email

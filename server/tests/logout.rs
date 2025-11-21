@@ -17,7 +17,7 @@ fn main() -> Result<(), reqwest::Error> {
     let mut token = Scanner::new(std::io::stdin().lock());
     let mut out = Printer::new();
 
-    let endpoint = format!("{}/api/user/logout", SOCKET);
+    let endpoint = format!("{}/api/logout", SOCKET);
     out.write("Enter cookie: ");
     let cookies = token.next_line::<String>();
     let res = client

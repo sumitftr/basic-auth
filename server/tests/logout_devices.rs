@@ -27,7 +27,7 @@ fn main() -> Result<(), reqwest::Error> {
         .send()?;
     writeln!(out.inner, "{:#?}", res.text()?);
 
-    let endpoint = format!("{}/api/user/logout_devices", SOCKET);
+    let endpoint = format!("{}/api/logout_devices", SOCKET);
     out.write("Enter number of cookies you want to delete: ");
     let l = token.next_line::<usize>();
     let mut sessions = Vec::with_capacity(l);

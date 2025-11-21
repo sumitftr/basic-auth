@@ -1,5 +1,6 @@
 mod active;
 mod applicant;
+mod oauth_oidc;
 mod recovery;
 mod verification;
 
@@ -7,11 +8,11 @@ mod verification;
 pub struct ApplicantEntry {
     pub name: String,
     // pub email: String,
-    pub birth_date: mongodb::bson::DateTime,
+    pub birth_date: Option<mongodb::bson::DateTime>,
     pub otp: String,
     pub password: Option<String>,
+    pub icon: Option<String>,
     pub register_status: ApplicantStatus,
-    pub session: Vec<String>,
 }
 
 #[derive(serde::Deserialize, PartialEq, Debug, Clone)]
@@ -19,4 +20,5 @@ pub enum ApplicantStatus {
     Created,
     EmailVerified,
     PasswordSet,
+    OidcVerified,
 }

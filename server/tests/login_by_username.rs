@@ -17,7 +17,7 @@ fn main() -> Result<(), reqwest::Error> {
     let mut token = Scanner::new(std::io::stdin().lock());
     let mut out = Printer::new();
 
-    let endpoint = format!("{}/api/user/login", SOCKET);
+    let endpoint = format!("{}/api/login", SOCKET);
     out.write("Enter username: ");
     let username = token.next_line::<String>();
     out.write("Enter password: ");

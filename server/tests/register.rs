@@ -18,10 +18,10 @@ fn main() -> Result<(), reqwest::Error> {
     let mut out = Printer::new();
 
     let mut email: String;
-    let endpoint1 = format!("{}/api/user/register/start", SOCKET);
-    let endpoint2 = format!("{}/api/user/register/verify_email", SOCKET);
-    let endpoint3 = format!("{}/api/user/register/set_password", SOCKET);
-    let endpoint4 = format!("{}/api/user/register/set_username", SOCKET);
+    let endpoint1 = format!("{}/api/register/start", SOCKET);
+    let endpoint2 = format!("{}/api/register/verify_email", SOCKET);
+    let endpoint3 = format!("{}/api/register/set_password", SOCKET);
+    let endpoint4 = format!("{}/api/register/set_username", SOCKET);
 
     loop {
         // first step of registering

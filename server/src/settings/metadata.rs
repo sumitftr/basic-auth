@@ -39,7 +39,7 @@ pub async fn update_birth_date(
     let birth_date = common::validation::is_birth_date_valid(body.year, body.month, body.day)?;
     let username = user.lock().unwrap().username.clone();
     db.update_birth_date(&username, birth_date).await?;
-    user.lock().unwrap().birth_date = birth_date;
+    user.lock().unwrap().birth_date = Some(birth_date);
     Ok(json!({
         "birth_date": birth_date.to_string(),
         "message": "Your birth date has been updated"

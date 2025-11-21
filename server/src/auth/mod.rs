@@ -1,25 +1,26 @@
 use axum::{Router, routing::post};
 
-mod oauth_google;
+mod logging;
+mod oidc;
 mod recovery;
 mod register;
-mod session;
 
 #[rustfmt::skip]
 pub async fn auth_routes() -> Router {
     Router::new()
-        .route("/api/user/logout_all", post(session::logout_all))
-        .route("/api/user/logout_devices", post(session::logout_devices))
-        .route("/api/user/logout", post(session::logout))
+        .route("/api/logout_all", post(logging::logout_all))
+        .route("/api/logout_devices", post(logging::logout_devices))
+        .route("/api/logout", post(logging::logout))
         .layer(axum::middleware::from_fn(crate::middleware::auth_middleware))
-        .route("/api/user/login", post(session::login))
-        .route("/api/oauth/google", post(oauth_google::login_with_google))
+        .route("/api/login", post(logging::login))
+        .route("/api/oauth2/login", post(oidc::login))
+        .route("/api/oauth2/callback", post(oidc::callback))
         .route("/api/forgot_password", post(recovery::forgot_password))
         .route("/api/reset_password", post(recovery::reset_password))
-        .route("/api/user/register/start", post(register::start))
-        .route("/api/user/register/resend_otp", post(register::resend_otp))
-        .route("/api/user/register/verify_email", post(register::verify_email))
-        .route("/api/user/register/set_password", post(register::set_password))
-        .route("/api/user/register/set_username", post(register::set_username))
+        .route("/api/register/start", post(register::start))
+        .route("/api/register/resend_otp", post(register::resend_otp))
+        .route("/api/register/verify_email", post(register::verify_email))
+        .route("/api/register/set_password", post(register::set_password))
+        .route("/api/register/set_username", post(register::set_username))
         .with_state(database::Db::new().await)
 }

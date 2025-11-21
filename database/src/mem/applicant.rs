@@ -8,6 +8,30 @@ use std::sync::Arc;
 
 // sub steps for registering an user
 impl crate::Db {
+    pub async fn create_applicant_oidc(
+        self: &Arc<Self>,
+        name: String,
+        email: String,
+        icon: String,
+    ) -> Result<(), AppError> {
+        // checking if the email is already used or not
+        self.is_email_available(&email).await?;
+
+        self.applicants.insert(
+            email,
+            ApplicantEntry {
+                name,
+                birth_date: None,
+                otp: "".to_string(),
+                password: None,
+                icon: Some(icon),
+                register_status: ApplicantStatus::OidcVerified,
+            },
+        );
+
+        Ok(())
+    }
+
     pub async fn create_applicant(
         self: Arc<Self>,
         name: String,
@@ -22,11 +46,11 @@ impl crate::Db {
             email,
             ApplicantEntry {
                 name,
-                birth_date,
+                birth_date: Some(birth_date),
                 otp,
                 password: None,
+                icon: None,
                 register_status: ApplicantStatus::Created,
-                session: vec![],
             },
         );
 
@@ -93,7 +117,9 @@ impl crate::Db {
         new_session: Session,
     ) -> Result<User, AppError> {
         if let Some(entry) = self.applicants.get(&email) {
-            if entry.register_status != ApplicantStatus::PasswordSet {
+            if entry.register_status != ApplicantStatus::PasswordSet
+                || entry.register_status != ApplicantStatus::OidcVerified
+            {
                 return Err(AppError::BadReq("User password not set"));
             }
             self.is_username_available(&username).await?;
@@ -104,9 +130,9 @@ impl crate::Db {
                 legal_name: metadata.name.clone(),
                 email,
                 birth_date: metadata.birth_date,
-                password: metadata.password.unwrap(),
+                password: metadata.password,
                 username,
-                icon: None,
+                icon: metadata.icon,
                 display_name: metadata.name,
                 bio: None,
                 gender: None,
