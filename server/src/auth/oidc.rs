@@ -1,26 +1,27 @@
 use axum::{
     extract::{Query, State},
+    http::HeaderMap,
     response::{IntoResponse, Redirect},
 };
-use common::AppError;
+use common::{AppError, session::ActiveSession};
 use database::Db;
 use std::sync::Arc;
 
 #[derive(serde::Deserialize)]
-pub struct Provider {
+pub struct ProviderQuery {
     by: String,
 }
 
 pub async fn login(
     State(db): State<Arc<Db>>,
-    Query(q): Query<Provider>,
+    Query(q): Query<ProviderQuery>,
 ) -> Result<impl IntoResponse, AppError> {
     // Generate state, nonce, and PKCE
     let csrf_state = common::generate::random_string(32);
     let nonce = common::generate::random_string(32);
     let (code_verifier, code_challenge) = common::generate::pkce();
     let oauth_cfg =
-        common::oauth::get_oauth_provider(common::oauth::get_oauth_provider_by_str(&q.by)?);
+        common::oauth::get_oauth_provider(common::oauth::OAuthProvider::try_from(q.by.as_str())?);
 
     db.add_oauth_creds(
         csrf_state.clone(),
@@ -29,7 +30,7 @@ pub async fn login(
         oauth_cfg.provider,
     );
 
-    let redirect_uri = format!("{}/oauth2/callback", &*common::SERVICE_DOMAIN); // this hasn't been decided yet
+    let redirect_uri = format!("{}/api/oauth2/callback", &*common::SERVICE_DOMAIN);
     let mut request_uri = oauth_cfg.authorization_endpoint.clone();
     request_uri
         .query_pairs_mut()
@@ -48,11 +49,14 @@ pub async fn login(
 // Query parameters for OAuth callback
 #[derive(serde::Deserialize)]
 pub struct AuthRequest {
-    pub code: String,
-    pub state: String,
+    #[serde(rename = "code")]
+    pub authorization_code: String,
+    #[serde(rename = "state")]
+    pub csrf_state: String,
 }
 
 // Token response from provider
+#[allow(dead_code)]
 #[derive(serde::Deserialize)]
 struct TokenResponse {
     access_token: String,
@@ -62,50 +66,26 @@ struct TokenResponse {
     refresh_token: Option<String>,
 }
 
-// Google User information from OIDC
-#[derive(serde::Deserialize)]
-struct GoogleUserInfo {
-    sub: String,
-    name: String,
-    // given_name: String,
-    // family_name: String,
-    picture: String,
-    email: String,
-    // email_verified: bool,
-    // locale: String,
-}
-
-// JWT Claims
-#[derive(serde::Deserialize)]
-struct IdTokenClaims<T> {
-    #[serde(flatten)]
-    userinfo: T,
-    iss: String,
-    aud: String,
-    exp: u64,
-    iat: u64,
-    nonce: Option<String>,
-}
-
 pub async fn callback(
     State(db): State<Arc<Db>>,
     Query(q): Query<AuthRequest>,
+    headers: HeaderMap,
 ) -> Result<impl IntoResponse, AppError> {
     let (code_verifier, nonce, provider) = db
-        .get_oauth_creds(&q.state)
+        .get_oauth_creds(&q.csrf_state)
         .ok_or_else(|| AppError::BadReq("CSRF State didn't match"))?;
 
     let oauth_cfg = common::oauth::get_oauth_provider(provider);
+    let client = reqwest::Client::new();
+    let redirect_uri = format!("{}/api/oauth2/callback", &*common::SERVICE_DOMAIN);
 
     // Exchange authorization code for tokens
-    let redirect_uri = format!("{}/oauth2/callback", &*common::SERVICE_DOMAIN); // this hasn't been decided yet
-    let client = reqwest::Client::new();
     let token_response = match client
         .post(oauth_cfg.token_endpoint)
         .form(&[
             ("client_id", &oauth_cfg.client_id),
             ("client_secret", &oauth_cfg.client_secret),
-            ("code", &q.code),
+            ("code", &q.authorization_code),
             ("redirect_uri", &redirect_uri),
             ("grant_type", &"authorization_code".to_string()),
             ("code_verifier", &code_verifier),
@@ -132,11 +112,26 @@ pub async fn callback(
         }
     };
 
-    // Verify ID token if present
+    let fetch_user_info = || async {
+        let resp = client
+            .get(oauth_cfg.userinfo_endpoint)
+            .bearer_auth(&token_response.access_token)
+            .send()
+            .await
+            .map_err(|e| {
+                tracing::error!("Error calling userinfo endpoint: {e:?}");
+                AppError::ServerError
+            })?;
+
+        resp.json::<UserInfo>().await.map_err(|e| {
+            tracing::error!("Error fetching user info: {e:?}");
+            AppError::ServerError
+        })
+    };
+
     let user_info = if let Some(id_token) = token_response.id_token {
-        match verify_and_decode_id_token::<GoogleUserInfo>(&id_token, &oauth_cfg.client_id, &nonce)
-        {
-            Ok(claims) => GoogleUserInfo {
+        match verify_and_decode_id_token(&id_token, &oauth_cfg.client_id, &nonce) {
+            Ok(claims) => UserInfo {
                 sub: claims.userinfo.sub,
                 email: claims.userinfo.email,
                 name: claims.userinfo.name,
@@ -144,48 +139,89 @@ pub async fn callback(
             },
             Err(e) => {
                 tracing::error!("Error verifying ID token: {e:?}");
-                return Err(AppError::ServerError);
+                fetch_user_info().await?
             }
         }
     } else {
-        // Fallback: fetch user info from userinfo endpoint
-        match client
-            .get(oauth_cfg.userinfo_endpoint)
-            .bearer_auth(&token_response.access_token)
-            .send()
-            .await
-        {
-            Ok(resp) => resp.json::<GoogleUserInfo>().await.map_err(|e| {
-                tracing::error!("Error fetching user info: {e:?}");
-                AppError::ServerError
-            })?,
-            Err(e) => {
-                tracing::error!("Error calling userinfo endpoint: {e:?}");
-                return Err(AppError::ServerError);
-            }
-        }
+        fetch_user_info().await?
     };
 
     // create applicant from oauth_oidc
-    db.create_applicant_oidc(user_info.name, user_info.email, user_info.picture)
-        .await?;
-    db.remove_oauth_creds(&q.state);
+    match db.get_user_by_email(&user_info.email).await {
+        Ok(mut u) => {
+            // collecting all the user sent cookie headers into `cookies`
+            let cookies = headers
+                .get_all(axum::http::header::COOKIE)
+                .iter()
+                .map(|h| h.to_str().unwrap_or_default().to_string())
+                .collect::<Vec<String>>();
 
-    Ok(Redirect::to("/"))
+            match ActiveSession::parse_and_verify(&cookies) {
+                Ok(active_session) => {
+                    db.make_user_active(active_session, u);
+                    db.remove_oauth_creds(&q.csrf_state);
+                    return Ok(Redirect::to("/").into_response());
+                }
+                Err(_) => {
+                    let user_agent = headers
+                        .get(axum::http::header::USER_AGENT)
+                        .map(|v| v.to_str().unwrap_or_default().to_owned())
+                        .unwrap_or_default();
+                    let (db_session, active_session, set_cookie_headermap) =
+                        common::session::create_session(user_agent);
+                    u.sessions.push(db_session);
+                    db.update_sessions(&u.username, &u.sessions).await?;
+                    db.make_user_active(active_session, u);
+                    db.remove_oauth_creds(&q.csrf_state);
+                    return Ok((set_cookie_headermap, Redirect::to("/")).into_response());
+                }
+            }
+        }
+        Err(_) => {
+            db.create_applicant_oidc(user_info.name, user_info.email, user_info.picture)
+                .await?;
+            db.remove_oauth_creds(&q.csrf_state);
+        }
+    }
+
+    Ok(Redirect::to("/").into_response()) // not decided yet
+}
+
+// Google User information from OIDC
+#[derive(serde::Deserialize)]
+struct UserInfo {
+    sub: String,
+    name: String,
+    // given_name: String,
+    // family_name: String,
+    picture: String,
+    email: String,
+    // email_verified: bool,
+    // locale: String,
+}
+
+// JWT Claims
+#[allow(dead_code)]
+#[derive(serde::Deserialize)]
+struct IdTokenClaims {
+    #[serde(flatten)]
+    userinfo: UserInfo,
+    iss: String,
+    aud: String,
+    #[serde(alias = "iat")]
+    exp: u64,
+    nonce: Option<String>,
 }
 
 // Verify and decode ID token (simplified - not validating signature)
-fn verify_and_decode_id_token<T>(
+fn verify_and_decode_id_token(
     token: &str,
     expected_audience: &str,
     expected_nonce: &str,
-) -> Result<IdTokenClaims<T>, AppError>
-where
-    T: for<'de> serde::Deserialize<'de>,
-{
+) -> Result<IdTokenClaims, AppError> {
     // Decode without verification
     let token_data =
-        jsonwebtoken::dangerous::insecure_decode::<IdTokenClaims<T>>(token).map_err(|e| {
+        jsonwebtoken::dangerous::insecure_decode::<IdTokenClaims>(token).map_err(|e| {
             tracing::error!("failed to decode id token: {e:?}");
             AppError::ServerError
         })?;

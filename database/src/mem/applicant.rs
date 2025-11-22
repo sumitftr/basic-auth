@@ -116,24 +116,58 @@ impl crate::Db {
         username: String,
         new_session: Session,
     ) -> Result<User, AppError> {
-        if let Some(entry) = self.applicants.get(&email) {
+        if let Some(mut entry) = self.applicants.get(&email) {
             if entry.register_status != ApplicantStatus::PasswordSet
                 || entry.register_status != ApplicantStatus::OidcVerified
             {
                 return Err(AppError::BadReq("User password not set"));
             }
             self.is_username_available(&username).await?;
-            let metadata = self.applicants.remove(&email).unwrap();
+
+            let _id = ObjectId::new();
+            // creating a new object in the bucket from the cdn url
+            if entry.icon.is_some() {
+                let cdn_icon_url = entry.icon.unwrap();
+                // Download the image from the source URL
+                let response = reqwest::get(&cdn_icon_url).await.map_err(|e| {
+                    tracing::error!("Failed to download image from {cdn_icon_url}: {e:#?}");
+                    AppError::ServerError
+                })?;
+
+                if !response.status().is_success() {
+                    tracing::error!(
+                        "Failed to download image from {cdn_icon_url}: status {}",
+                        response.status()
+                    );
+                    return Err(AppError::ServerError);
+                }
+
+                // Get the image data as bytes
+                let data = response.bytes().await.map_err(|e| {
+                    tracing::error!("Failed to read image bytes from {}: {e:#?}", cdn_icon_url);
+                    AppError::ServerError
+                })?;
+
+                let filename = cdn_icon_url
+                    .split('/')
+                    .next_back()
+                    .unwrap()
+                    .split('=')
+                    .next()
+                    .unwrap()
+                    .to_owned();
+                entry.icon = Some(self.upload_icon(data, filename, &_id.to_string()).await?);
+            }
 
             let user = User {
-                _id: ObjectId::new(),
-                legal_name: metadata.name.clone(),
-                email,
-                birth_date: metadata.birth_date,
-                password: metadata.password,
+                _id,
+                legal_name: entry.name.clone(),
+                email: email.clone(),
+                birth_date: entry.birth_date,
+                password: entry.password,
                 username,
-                icon: metadata.icon,
-                display_name: metadata.name,
+                icon: entry.icon,
+                display_name: entry.name,
                 bio: None,
                 gender: None,
                 phone: None,
@@ -142,7 +176,9 @@ impl crate::Db {
                 created: DateTime::now(),
                 // last_login: DateTime::now(),
             };
+
             self.add_user(&user).await?;
+            self.applicants.remove(&email).unwrap();
 
             Ok(user)
         } else {

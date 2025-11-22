@@ -41,10 +41,14 @@ impl<'a> Default for OAuthProviders<'a> {
     }
 }
 
-pub fn get_oauth_provider_by_str(provider: &str) -> Result<OAuthProvider, AppError> {
-    match provider {
-        "google" => Ok(OAuthProvider::Google),
-        _ => Err(AppError::BadReq("Invalid OAuth Provider")),
+impl TryFrom<&str> for OAuthProvider {
+    type Error = AppError;
+
+    fn try_from(provider: &str) -> Result<Self, AppError> {
+        match provider {
+            "google" => Ok(OAuthProvider::Google),
+            _ => Err(AppError::BadReq("Invalid OAuth Provider")),
+        }
     }
 }
 

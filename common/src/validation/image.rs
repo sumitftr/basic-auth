@@ -28,6 +28,7 @@ fn detect_image_format(data: &axum::body::Bytes) -> Result<String, AppError> {
     ))
 }
 
+/// returns content-type of the image in `String` format and update the filepath
 pub fn is_icon_valid(filepath: &mut String, data: &axum::body::Bytes) -> Result<String, AppError> {
     // validate file size (max 5MiB)
     if data.len() > 5 * 1024 * 1024 {

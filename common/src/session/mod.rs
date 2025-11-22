@@ -1,0 +1,73 @@
+mod active_session;
+mod cookie;
+mod db_session;
+mod session_crud;
+
+pub use active_session::ActiveSession;
+pub use cookie::BASE64_DIGEST_LEN;
+use cookie::{sign, verify};
+pub use db_session::{Session, SessionStatus};
+pub use session_crud::{
+    clear_expired_sessions, create_session, delete_selected_sessions, get_session_index,
+};
+
+#[cfg(test)]
+mod tests {
+    #![allow(clippy::needless_range_loop)]
+    use super::*;
+    use std::time::{Duration, SystemTime};
+
+    #[test]
+    fn db_session_test() {
+        dotenv::dotenv().ok();
+        let (db_session, active_session, set_cookie_headermap) =
+            create_session("Mozilla Firefox".to_string());
+        dbg!(&db_session);
+        dbg!(&active_session);
+        dbg!(&set_cookie_headermap);
+        assert!(
+            active_session
+                .ssid
+                .ends_with(db_session.unsigned_ssid.as_str())
+        );
+        assert!(
+            active_session
+                .ssid
+                .starts_with(&sign(&db_session.unsigned_ssid))
+        );
+    }
+
+    #[test]
+    fn sign_then_verify() {
+        dotenv::dotenv().ok();
+        let uid = uuid::Uuid::new_v4().to_string();
+        let signed_uid = sign(&uid);
+        let decrypted_uid = verify(&format!("{signed_uid}{uid}")).unwrap();
+        dbg!(&uid);
+        dbg!(&signed_uid);
+        dbg!(&decrypted_uid);
+        assert_eq!(uid, decrypted_uid);
+    }
+
+    #[test]
+    fn syncing_session_test() {
+        dotenv::dotenv().ok();
+        let (db_session1, _, _) = create_session("Mozilla Firefox".to_string());
+        let db_session2 = Session {
+            unsigned_ssid: create_session("Mozilla Firefox".to_string())
+                .0
+                .unsigned_ssid,
+            expires: SystemTime::now() - Duration::from_secs(348738749374),
+            user_agent: "some agent".to_string(),
+        };
+        let (db_session3, _, _) = create_session("chrome browser".to_string());
+        let db_session4 = Session {
+            unsigned_ssid: "ertnasotenoariesntoaiesnoa".to_string(),
+            expires: SystemTime::now() - Duration::from_secs(23829389283),
+            user_agent: "some agent".to_string(),
+        };
+        let mut sessions = vec![db_session1, db_session2, db_session3, db_session4];
+        clear_expired_sessions(&mut sessions);
+        assert_eq!(sessions.len(), 2);
+    }
+}

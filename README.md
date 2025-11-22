@@ -4,10 +4,10 @@
 > And set the following environment variables inside `.env` file
 
 ```dotenv
-SOCKET=your_socket
-SECRET_KEY=your_secret_key
+SOCKET=your_ip:your_port
+SECRET_KEY=your_secret_key_for_signing_cookies
 SERVICE_NAME=your_service_name
-SERVICE_DOMAIN=your_service_domain
+SERVICE_DOMAIN=your_service_domain_with_scheme
 
 # OAuth
 GOOGLE_CLIENT_ID=your_google_client_id

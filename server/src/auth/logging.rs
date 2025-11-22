@@ -46,14 +46,14 @@ pub async fn login(
         .get(header::USER_AGENT)
         .map(|v| v.to_str().unwrap_or_default().to_owned())
         .unwrap_or_default();
-    let (user_session, active_session, set_cookie_headermap) =
+    let (db_session, active_session, set_cookie_headermap) =
         common::session::create_session(user_agent);
 
     // clearing expired sessions
     common::session::clear_expired_sessions(&mut user.sessions);
 
     // adding `Session` to primary database
-    user.sessions.push(user_session);
+    user.sessions.push(db_session);
     db.update_sessions(&user.username, &user.sessions).await?;
 
     // activating session by adding it to `Db::active`
@@ -73,11 +73,9 @@ pub async fn logout(
     Extension(active_session): Extension<ActiveSession>,
     Extension(user): Extension<Arc<Mutex<User>>>,
 ) -> Result<impl IntoResponse, AppError> {
-    let decrypted_ssid = active_session.verify()?;
-
     let (username, sessions) = {
         let mut guard = user.lock().unwrap();
-        let i = common::session::get_session_index(&guard.sessions, decrypted_ssid)?;
+        let i = common::session::get_session_index(&guard.sessions, &active_session)?;
         // deleting the user specified session
         if guard.sessions.len() == 1 {
             guard.sessions.clear();
@@ -125,7 +123,7 @@ pub async fn logout_devices(
     // removing active session from `body.sessions` if passed
     body.sessions
         .iter_mut()
-        .filter(|v| v.as_str() != &active_session.ssid[common::session::BASE64_DIGEST_LEN..])
+        .filter(|v| **v != active_session.decrypted_ssid)
         .for_each(|_| ());
     let final_sessions = common::session::delete_selected_sessions(sessions, body.sessions);
     // updating primary and in-memory database with the remaining sessions
@@ -147,8 +145,7 @@ pub async fn logout_all(
         (guard.username.clone(), guard.sessions.clone())
     };
     // getting session index
-    let decrypted_ssid = active_session.verify()?;
-    let i = common::session::get_session_index(&sessions, decrypted_ssid)?;
+    let i = common::session::get_session_index(&sessions, &active_session)?;
     // creating the final sessions vector
     let only_session = {
         if i == sessions.len() - 1 {

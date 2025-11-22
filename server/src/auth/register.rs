@@ -33,6 +33,10 @@ pub async fn start(
     let otp = common::generate::otp(&body.email);
     tracing::info!("OTP: {otp}, Email: {}", body.email);
 
+    // storing applicant data in memory
+    db.create_applicant(name, body.email.clone(), birth_date, otp.clone())
+        .await?;
+
     // sending otp to the email
     common::mail::send(
         &body.email,
@@ -43,10 +47,6 @@ pub async fn start(
         ),
     )
     .await?;
-
-    // storing applicant data in memory
-    db.create_applicant(name, body.email, birth_date, otp)
-        .await?;
 
     Ok(json!({
         "message": "Your information has been accepted"
@@ -160,12 +160,12 @@ pub async fn set_username(
         .unwrap_or_default();
 
     // creating session
-    let (user_session, active_session, set_cookie_headermap) =
+    let (db_session, active_session, set_cookie_headermap) =
         common::session::create_session(user_agent);
 
     // registering user to primary database
     let user = Arc::clone(&db)
-        .set_applicant_username(body.email, body.username.clone(), user_session)
+        .set_applicant_username(body.email, body.username.clone(), db_session)
         .await?;
 
     // activating session by adding it to `Db::active`

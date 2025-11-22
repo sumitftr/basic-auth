@@ -13,11 +13,8 @@ pub async fn auth_middleware(mut req: Request, next: Next) -> Result<Response, A
         .map(|h| h.to_str().unwrap_or_default().to_string())
         .collect::<Vec<String>>();
 
-    // parsing all user sent cookies to create a valid `ActiveUserSession`
-    let active_session = ActiveSession::parse(&cookies)?;
-
-    // checking whether cookies inside `active_session` is tampered or not
-    let decrypted_ssid = active_session.verify()?;
+    // parsing and verifying all user sent cookies to create a valid `ActiveSession`
+    let active_session = ActiveSession::parse_and_verify(&cookies)?;
 
     let db = database::Db::new().await;
 
@@ -27,15 +24,15 @@ pub async fn auth_middleware(mut req: Request, next: Next) -> Result<Response, A
         req.extensions_mut().insert(user);
     } else {
         // when the user is not found inside `Db::active`
-        match db.get_user_by_decrypted_ssid(&decrypted_ssid).await {
+        match db.get_user_by_active_session(&active_session).await {
             Ok(mut user) => {
-                let i = session::get_session_index(&user.sessions, decrypted_ssid)?;
+                let i = session::get_session_index(&user.sessions, &active_session)?;
                 match user.sessions[i].session_status() {
                     SessionStatus::Valid(_) => {
                         // adding session and `User` to `Db::active` for faster access
-                        let wrapped_user = db.make_user_active(active_session.clone(), user);
+                        let arc_wrapped_user = db.make_user_active(active_session.clone(), user);
                         req.extensions_mut().insert(active_session);
-                        req.extensions_mut().insert(wrapped_user);
+                        req.extensions_mut().insert(arc_wrapped_user);
                     }
                     SessionStatus::Expiring(_) | SessionStatus::Refreshable(_) => {
                         // automatic session refresh code block
@@ -46,11 +43,11 @@ pub async fn auth_middleware(mut req: Request, next: Next) -> Result<Response, A
                             .unwrap_or_default();
 
                         // creating session
-                        let (user_session, new_active_session, set_cookie_headermap) =
+                        let (db_session, new_active_session, set_cookie_headermap) =
                             session::create_session(user_agent);
 
                         // replacing the old session with new session
-                        user.sessions[i] = user_session;
+                        user.sessions[i] = db_session;
 
                         // clearing expired sessions
                         session::clear_expired_sessions(&mut user.sessions);
@@ -65,11 +62,14 @@ pub async fn auth_middleware(mut req: Request, next: Next) -> Result<Response, A
                         return Err(AppError::RefreshSession(set_cookie_headermap));
                     }
                     SessionStatus::Invalid => {
+                        let session_count = user.sessions.len();
                         // clearing expired sessions
                         session::clear_expired_sessions(&mut user.sessions);
 
-                        // updating session in primary database
-                        db.update_sessions(&user.username, &user.sessions).await?;
+                        if user.sessions.len() < session_count {
+                            // updating session in primary database
+                            db.update_sessions(&user.username, &user.sessions).await?;
+                        }
 
                         return Err(AppError::InvalidSession(active_session.expire()));
                     }

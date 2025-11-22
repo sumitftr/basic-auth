@@ -154,8 +154,8 @@ impl BlackBlazeB2 {
 impl crate::Db {
     pub async fn upload_image(
         self: &Arc<Self>,
-        filename: &str,
         data: axum::body::Bytes,
+        filename: &str,
         content_type: &str,
     ) -> Result<String, AppError> {
         if data.is_empty() {

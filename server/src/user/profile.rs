@@ -28,7 +28,7 @@ pub async fn get_user_profile(
     if let Some(res) = res {
         Ok(res)
     } else {
-        let u = db.get_user(&p).await?;
+        let u = db.get_user_by_username(&p).await?;
         Ok(json!({
             "username": u.username,
             "display_name": u.display_name,
@@ -64,7 +64,7 @@ pub async fn update_profile(
 
         match name {
             "icon" => {
-                let mut filename = field
+                let filename = field
                     .file_name()
                     .ok_or_else(|| AppError::InvalidData("No filename provided"))?
                     .to_string();
@@ -74,11 +74,7 @@ pub async fn update_profile(
                     AppError::InvalidData("Failed to read image")
                 })?;
 
-                // checking if the user sent icon is valid or not
-                let content_type = common::validation::is_icon_valid(&mut filename, &data)?;
-                filename = format!("icon/{_id}-{filename}");
-
-                icon = Some(db.upload_image(&filename, data, &content_type).await?);
+                icon = Some(db.upload_icon(data, filename, &_id.to_string()).await?);
             }
             "display_name" => {
                 let text = field.text().await.map_err(|e| {

@@ -33,7 +33,7 @@ pub async fn forgot_password(
     .await?;
 
     Ok(json!({
-        "message": format!("Check your email and verify the otp to reset password")
+        "message": format!("Check your email to reset password")
     }))
 }
 

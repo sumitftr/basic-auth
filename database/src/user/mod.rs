@@ -4,7 +4,8 @@ use mongodb::bson::{DateTime, oid::ObjectId};
 mod create;
 mod delete;
 mod read;
-mod update;
+mod update_by_email;
+mod update_by_username;
 
 #[derive(serde::Serialize, serde::Deserialize, Debug, Clone)]
 pub struct User {
