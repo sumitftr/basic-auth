@@ -48,7 +48,7 @@ pub async fn login(
 
 // Query parameters for OAuth callback
 #[derive(serde::Deserialize)]
-pub struct AuthRequest {
+pub struct ProviderRedirect {
     #[serde(rename = "code")]
     pub authorization_code: String,
     #[serde(rename = "state")]
@@ -68,7 +68,7 @@ struct TokenResponse {
 
 pub async fn callback(
     State(db): State<Arc<Db>>,
-    Query(q): Query<AuthRequest>,
+    Query(q): Query<ProviderRedirect>,
     headers: HeaderMap,
 ) -> Result<impl IntoResponse, AppError> {
     let (code_verifier, nonce, provider) = db
@@ -147,7 +147,7 @@ pub async fn callback(
     };
 
     // create applicant from oauth_oidc
-    match db.get_user_by_email(&user_info.email).await {
+    return match db.get_user_by_email(&user_info.email).await {
         Ok(mut u) => {
             // collecting all the user sent cookie headers into `cookies`
             let cookies = headers
@@ -160,12 +160,12 @@ pub async fn callback(
                 Ok(active_session) => {
                     db.make_user_active(active_session, u);
                     db.remove_oauth_creds(&q.csrf_state);
-                    return Ok(Redirect::to("/").into_response());
+                    Ok(Redirect::to("/").into_response())
                 }
                 Err(_) => {
                     let user_agent = headers
                         .get(axum::http::header::USER_AGENT)
-                        .map(|v| v.to_str().unwrap_or_default().to_owned())
+                        .map(|v| v.to_str().unwrap_or_default().to_string())
                         .unwrap_or_default();
                     let (db_session, active_session, set_cookie_headermap) =
                         common::session::create_session(user_agent);
@@ -173,42 +173,42 @@ pub async fn callback(
                     db.update_sessions(&u.username, &u.sessions).await?;
                     db.make_user_active(active_session, u);
                     db.remove_oauth_creds(&q.csrf_state);
-                    return Ok((set_cookie_headermap, Redirect::to("/")).into_response());
+                    Ok((set_cookie_headermap, Redirect::to("/")).into_response())
                 }
             }
         }
-        Err(_) => {
+        Err(AppError::UserNotFound) => {
             db.create_applicant_oidc(user_info.name, user_info.email, user_info.picture)
                 .await?;
             db.remove_oauth_creds(&q.csrf_state);
+            Ok(Redirect::to("/").into_response()) // not decided yet
         }
-    }
-
-    Ok(Redirect::to("/").into_response()) // not decided yet
+        Err(e) => Err(e),
+    };
 }
 
-// Google User information from OIDC
-#[derive(serde::Deserialize)]
+// User information from OIDC
+#[derive(serde::Deserialize, Debug)]
 struct UserInfo {
     sub: String,
     name: String,
-    // given_name: String,
-    // family_name: String,
+    // given_name: Option<String>,
+    // family_name: Option<String>,
     picture: String,
     email: String,
-    // email_verified: bool,
-    // locale: String,
+    // email_verified: Option<bool>,
+    // locale: Option<String>,
 }
 
 // JWT Claims
 #[allow(dead_code)]
-#[derive(serde::Deserialize)]
+#[derive(Debug, serde::Deserialize)]
 struct IdTokenClaims {
     #[serde(flatten)]
     userinfo: UserInfo,
     iss: String,
     aud: String,
-    #[serde(alias = "iat")]
+    iat: u64,
     exp: u64,
     nonce: Option<String>,
 }

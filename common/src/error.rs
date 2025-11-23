@@ -3,7 +3,7 @@ use axum::{
     http::{HeaderMap, StatusCode},
 };
 
-#[derive(Debug)]
+#[derive(PartialEq, Debug)]
 pub enum AppError {
     BadReq(&'static str),
     InvalidData(&'static str),

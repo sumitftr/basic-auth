@@ -1,4 +1,7 @@
-use axum::{Router, routing::post};
+use axum::{
+    Router,
+    routing::{get, post},
+};
 
 mod logging;
 mod oidc;
@@ -13,8 +16,8 @@ pub async fn auth_routes() -> Router {
         .route("/api/logout", post(logging::logout))
         .layer(axum::middleware::from_fn(crate::middleware::auth_middleware))
         .route("/api/login", post(logging::login))
-        .route("/api/oauth2/login", post(oidc::login))
-        .route("/api/oauth2/callback", post(oidc::callback))
+        .route("/api/oauth2/login", get(oidc::login))
+        .route("/api/oauth2/callback", get(oidc::callback))
         .route("/api/forgot_password", post(recovery::forgot_password))
         .route("/api/reset_password", post(recovery::reset_password))
         .route("/api/register/start", post(register::start))

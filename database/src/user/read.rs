@@ -32,31 +32,6 @@ impl crate::Db {
         }
     }
 
-    pub async fn authenticate_user_by_username(
-        self: &Arc<Self>,
-        username: &str,
-        password: &str,
-    ) -> Result<User, AppError> {
-        match self.users.find_one(doc! { "username": username }).await {
-            Ok(Some(user)) => {
-                if let Some(db_pass) = user.password.as_ref() {
-                    if db_pass == password {
-                        Ok(user)
-                    } else {
-                        Err(AppError::WrongPassword)
-                    }
-                } else {
-                    Err(AppError::BadReq("Password not set"))
-                }
-            }
-            Ok(None) => Err(AppError::UserNotFound),
-            Err(e) => {
-                tracing::error!("{e:?}");
-                Err(AppError::ServerError)
-            }
-        }
-    }
-
     pub async fn authenticate_user_by_email(
         self: &Arc<Self>,
         email: &str,
@@ -64,8 +39,8 @@ impl crate::Db {
     ) -> Result<User, AppError> {
         match self.users.find_one(doc! { "email": email }).await {
             Ok(Some(user)) => {
-                if let Some(db_pass) = user.password.as_ref() {
-                    if db_pass == password {
+                if let Some(db_password) = user.password.as_ref() {
+                    if db_password == password {
                         Ok(user)
                     } else {
                         Err(AppError::WrongPassword)
@@ -82,9 +57,23 @@ impl crate::Db {
         }
     }
 
-    pub async fn get_user_by_username(self: &Arc<Self>, username: &str) -> Result<User, AppError> {
-        match self.users.find_one(doc! { "username": username}).await {
-            Ok(Some(user)) => Ok(user),
+    pub async fn authenticate_user_by_username(
+        self: &Arc<Self>,
+        username: &str,
+        password: &str,
+    ) -> Result<User, AppError> {
+        match self.users.find_one(doc! { "username": username }).await {
+            Ok(Some(user)) => {
+                if let Some(db_password) = user.password.as_ref() {
+                    if db_password == password {
+                        Ok(user)
+                    } else {
+                        Err(AppError::WrongPassword)
+                    }
+                } else {
+                    Err(AppError::BadReq("Password not set"))
+                }
+            }
             Ok(None) => Err(AppError::UserNotFound),
             Err(e) => {
                 tracing::error!("{e:?}");
@@ -94,7 +83,18 @@ impl crate::Db {
     }
 
     pub async fn get_user_by_email(self: &Arc<Self>, email: &str) -> Result<User, AppError> {
-        match self.users.find_one(doc! { "email": email}).await {
+        match self.users.find_one(doc! { "email": email }).await {
+            Ok(Some(user)) => Ok(user),
+            Ok(None) => Err(AppError::UserNotFound),
+            Err(e) => {
+                tracing::error!("{e:?}");
+                Err(AppError::ServerError)
+            }
+        }
+    }
+
+    pub async fn get_user_by_username(self: &Arc<Self>, username: &str) -> Result<User, AppError> {
+        match self.users.find_one(doc! { "username": username }).await {
             Ok(Some(user)) => Ok(user),
             Ok(None) => Err(AppError::UserNotFound),
             Err(e) => {
@@ -109,7 +109,7 @@ impl crate::Db {
     pub async fn get_user_by_active_session(
         self: &Arc<Self>,
         active_session: &ActiveSession,
-    ) -> Result<super::User, AppError> {
+    ) -> Result<User, AppError> {
         let filter = doc! { "sessions": { "$elemMatch": { "unsigned_ssid": &active_session.decrypted_ssid } } };
         match self.users.find_one(filter).await {
             Ok(Some(user)) => Ok(user),
