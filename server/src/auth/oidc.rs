@@ -3,6 +3,7 @@ use axum::{
     http::HeaderMap,
     response::{IntoResponse, Redirect},
 };
+use base64::Engine;
 use common::{AppError, session::ActiveSession};
 use database::Db;
 use std::sync::Arc;
@@ -15,7 +16,7 @@ pub struct ProviderQuery {
 pub async fn login(
     State(db): State<Arc<Db>>,
     Query(q): Query<ProviderQuery>,
-) -> Result<impl IntoResponse, AppError> {
+) -> Result<Redirect, AppError> {
     // Generate state, nonce, and PKCE
     let csrf_state = common::generate::random_string(32);
     let nonce = common::generate::random_string(32);
@@ -206,14 +207,26 @@ fn verify_and_decode_id_token(
     expected_audience: &str,
     expected_nonce: &str,
 ) -> Result<IdTokenClaims, AppError> {
-    // Decode without verification
-    let token_data =
-        jsonwebtoken::dangerous::insecure_decode::<IdTokenClaims>(token).map_err(|e| {
-            tracing::error!("failed to decode id token: {e:?}");
+    // Split JWT into parts (header.payload.signature)
+    let parts: Vec<&str> = token.split('.').collect();
+    if parts.len() != 3 {
+        tracing::error!("Invalid JWT format");
+        return Err(AppError::ServerError);
+    }
+
+    // Decode the payload (second part)
+    let payload_bytes = base64::prelude::BASE64_URL_SAFE_NO_PAD
+        .decode(parts[1])
+        .map_err(|e| {
+            tracing::error!("failed to decode JWT payload: {e:?}");
             AppError::ServerError
         })?;
 
-    let claims = token_data.claims;
+    // Deserialize the claims
+    let claims: IdTokenClaims = serde_json::from_slice(&payload_bytes).map_err(|e| {
+        tracing::error!("failed to deserialize id token claims: {e:?}");
+        AppError::ServerError
+    })?;
 
     // Verify audience
     if claims.aud != expected_audience {

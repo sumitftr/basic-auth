@@ -136,12 +136,16 @@ impl crate::Db {
     pub async fn update_profile(
         self: &Arc<Self>,
         username: &str,
+        banner: &Option<String>,
         icon: &Option<String>,
         display_name: &Option<String>,
         bio: &Option<String>,
     ) -> Result<(), AppError> {
         // Build the update document dynamically
         let mut set_doc = mongodb::bson::Document::new();
+        if let Some(banner_val) = banner {
+            set_doc.insert("banner", banner_val);
+        }
         if let Some(icon_val) = icon {
             set_doc.insert("icon", icon_val);
         }

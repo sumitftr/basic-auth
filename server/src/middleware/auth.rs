@@ -1,7 +1,7 @@
 use axum::{extract::Request, middleware::Next, response::Response};
 use common::{
     AppError,
-    session::{self, ActiveSession, SessionStatus},
+    session::{ActiveSession, SessionStatus},
 };
 
 pub async fn auth_middleware(mut req: Request, next: Next) -> Result<Response, AppError> {
@@ -17,7 +17,7 @@ pub async fn auth_middleware(mut req: Request, next: Next) -> Result<Response, A
 
     // User not cached, fetch from database (not found inside `Db::active`)
     let mut user = db.get_user_by_active_session(&active_session).await?;
-    let i = session::get_session_index(&user.sessions, &active_session)?;
+    let i = common::session::get_session_index(&user.sessions, &active_session)?;
 
     match user.sessions[i].session_status() {
         SessionStatus::Valid(_) => {
@@ -30,20 +30,21 @@ pub async fn auth_middleware(mut req: Request, next: Next) -> Result<Response, A
         SessionStatus::Expiring(_) | SessionStatus::Refreshable(_) => {
             // automatic session refresh code block
             let (db_session, new_active_session, set_cookie_headermap) =
-                session::create_session(req.headers());
+                common::session::create_session(req.headers());
 
             // replacing the old session with new session
             user.sessions[i] = db_session;
-            session::clear_expired_sessions(&mut user.sessions);
+            common::session::clear_expired_sessions(&mut user.sessions);
             db.update_sessions(&user.username, &user.sessions).await?;
             db.make_user_active(new_active_session, user);
 
+            // in the case of `Expiring` the new ssid will override the old one
             return Err(AppError::RefreshSession(set_cookie_headermap));
         }
 
         SessionStatus::Invalid => {
             let sessions_len = user.sessions.len();
-            session::clear_expired_sessions(&mut user.sessions);
+            common::session::clear_expired_sessions(&mut user.sessions);
 
             if user.sessions.len() < sessions_len {
                 db.update_sessions(&user.username, &user.sessions).await?;

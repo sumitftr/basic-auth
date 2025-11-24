@@ -166,6 +166,7 @@ impl crate::Db {
                 birth_date: entry.birth_date,
                 password: entry.password,
                 username,
+                banner: None,
                 icon: entry.icon,
                 display_name: entry.name,
                 bio: None,

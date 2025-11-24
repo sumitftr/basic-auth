@@ -1,18 +1,16 @@
-use axum::{
-    Json,
-    http::{HeaderMap, StatusCode},
-};
+use axum::http::{HeaderMap, StatusCode};
 
 #[derive(PartialEq, Debug)]
 pub enum AppError {
     BadReq(&'static str),
+    Unauthorized(&'static str),
     InvalidData(&'static str),
+    InvalidDataFmt(String),
     InvalidEmailFormat,
     UserNotFound,
     UsernameTaken,
     EmailTaken,
     WrongPassword,
-    Unauthorized(&'static str),
     SessionExpired,
     InvalidSession(HeaderMap),
     RefreshSession(HeaderMap),
@@ -26,8 +24,14 @@ impl axum::response::IntoResponse for AppError {
             Self::BadReq(e) => {
                 (StatusCode::BAD_REQUEST, JsonMsg::new(e)).into_response()
             }
+            Self::Unauthorized(e) => {
+                (StatusCode::UNAUTHORIZED, JsonMsg::new(e)).into_response()
+            }
             Self::InvalidData(e) => {
                 (StatusCode::BAD_REQUEST, JsonMsg::new(e)).into_response()
+            }
+            Self::InvalidDataFmt(e) => {
+                (StatusCode::BAD_REQUEST, JsonMsg::new(&e)).into_response()
             }
             Self::InvalidEmailFormat => {
                 (StatusCode::BAD_REQUEST, JsonMsg::new("Invalid Email Format")).into_response()
@@ -43,9 +47,6 @@ impl axum::response::IntoResponse for AppError {
             }
             Self::WrongPassword => {
                 (StatusCode::UNAUTHORIZED, JsonMsg::new("Password didn't match")).into_response()
-            }
-            Self::Unauthorized(e) => {
-                (StatusCode::UNAUTHORIZED, JsonMsg::new(e)).into_response()
             }
             Self::SessionExpired => {
                 (StatusCode::UNAUTHORIZED, JsonMsg::new("Your session has expired")).into_response()
@@ -70,7 +71,7 @@ pub struct JsonMsg<'a> {
 
 impl<'a> JsonMsg<'a> {
     #[inline]
-    pub fn new(error: &'a str) -> Json<Self> {
-        Json(Self { message: error })
+    pub fn new(error: &'a str) -> axum::Json<Self> {
+        axum::Json(Self { message: error })
     }
 }

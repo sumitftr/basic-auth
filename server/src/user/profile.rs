@@ -42,16 +42,12 @@ pub async fn update_profile(
     Extension(user): Extension<Arc<Mutex<User>>>,
     mut multipart: Multipart,
 ) -> Result<ErasedJson, AppError> {
-    let (username, _id, mut icon, mut display_name, mut bio) = {
+    let (username, _id) = {
         let guard = user.lock().unwrap();
-        (
-            guard.username.clone(),
-            guard._id.clone().to_string(),
-            None,
-            None,
-            None,
-        )
+        (guard.username.clone(), guard._id.clone().to_string())
     };
+
+    let (mut banner, mut icon, mut display_name, mut bio) = (None, None, None, None);
 
     // Parse multipart form data
     while let Some(field) = multipart.next_field().await.map_err(|e| {
@@ -63,6 +59,19 @@ pub async fn update_profile(
             .ok_or_else(|| AppError::InvalidData("Field has no name"))?;
 
         match name {
+            "banner" => {
+                let filename = field
+                    .file_name()
+                    .ok_or_else(|| AppError::InvalidData("No filename provided"))?
+                    .to_string();
+
+                let data = field.bytes().await.map_err(|e| {
+                    tracing::error!("Invalid multipart/form-data field body: {e:?}");
+                    AppError::InvalidData("Failed to read image")
+                })?;
+
+                banner = Some(db.upload_banner(data, filename, &_id).await?);
+            }
             "icon" => {
                 let filename = field
                     .file_name()
@@ -74,7 +83,7 @@ pub async fn update_profile(
                     AppError::InvalidData("Failed to read image")
                 })?;
 
-                icon = Some(db.upload_icon(data, filename, &_id.to_string()).await?);
+                icon = Some(db.upload_icon(data, filename, &_id).await?);
             }
             "display_name" => {
                 let text = field.text().await.map_err(|e| {
@@ -101,7 +110,7 @@ pub async fn update_profile(
     }
 
     // update user profile in database
-    db.update_profile(&username, &icon, &display_name, &bio)
+    db.update_profile(&username, &banner, &icon, &display_name, &bio)
         .await?;
     let res = {
         let mut guard = user.lock().unwrap();
