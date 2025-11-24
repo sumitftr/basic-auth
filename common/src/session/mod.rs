@@ -3,7 +3,7 @@ mod cookie;
 mod db_session;
 mod session_crud;
 
-pub use active_session::ActiveSession;
+pub use active_session::{ActiveSession, ActiveSessionError};
 pub use cookie::BASE64_DIGEST_LEN;
 use cookie::{sign, verify};
 pub use db_session::{Session, SessionStatus};
@@ -14,14 +14,20 @@ pub use session_crud::{
 #[cfg(test)]
 mod tests {
     #![allow(clippy::needless_range_loop)]
+    use axum::http::{HeaderMap, HeaderValue};
+    use reqwest::header;
+
     use super::*;
     use std::time::{Duration, SystemTime};
 
     #[test]
     fn db_session_test() {
         dotenv::dotenv().ok();
-        let (db_session, active_session, set_cookie_headermap) =
-            create_session("Mozilla Firefox".to_string());
+        let headers = HeaderMap::from_iter([(
+            header::USER_AGENT,
+            HeaderValue::from_str("Mozilla Firefox").unwrap(),
+        )]);
+        let (db_session, active_session, set_cookie_headermap) = create_session(&headers);
         dbg!(&db_session);
         dbg!(&active_session);
         dbg!(&set_cookie_headermap);
@@ -52,15 +58,17 @@ mod tests {
     #[test]
     fn syncing_session_test() {
         dotenv::dotenv().ok();
-        let (db_session1, _, _) = create_session("Mozilla Firefox".to_string());
+        let headers = HeaderMap::from_iter([(
+            header::USER_AGENT,
+            HeaderValue::from_str("Mozilla Firefox").unwrap(),
+        )]);
+        let (db_session1, _, _) = create_session(&headers);
         let db_session2 = Session {
-            unsigned_ssid: create_session("Mozilla Firefox".to_string())
-                .0
-                .unsigned_ssid,
+            unsigned_ssid: create_session(&headers).0.unsigned_ssid,
             expires: SystemTime::now() - Duration::from_secs(348738749374),
             user_agent: "some agent".to_string(),
         };
-        let (db_session3, _, _) = create_session("chrome browser".to_string());
+        let (db_session3, _, _) = create_session(&headers);
         let db_session4 = Session {
             unsigned_ssid: "ertnasotenoariesntoaiesnoa".to_string(),
             expires: SystemTime::now() - Duration::from_secs(23829389283),

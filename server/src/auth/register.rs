@@ -1,7 +1,4 @@
-use axum::http::{
-    StatusCode,
-    header::{self, HeaderMap},
-};
+use axum::http::{StatusCode, header::HeaderMap};
 use axum::{Json, extract::State, response::IntoResponse};
 use axum_extra::{json, response::ErasedJson};
 use common::AppError;
@@ -153,15 +150,9 @@ pub async fn set_username(
     // checking validity of the username
     common::validation::is_username_valid(&body.username)?;
 
-    // getting user-agent header
-    let user_agent = headers
-        .get(header::USER_AGENT)
-        .map(|v| v.to_str().unwrap_or_default().to_owned())
-        .unwrap_or_default();
-
     // creating session
     let (db_session, active_session, set_cookie_headermap) =
-        common::session::create_session(user_agent);
+        common::session::create_session(&headers);
 
     // registering user to primary database
     let user = Arc::clone(&db)

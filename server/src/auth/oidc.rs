@@ -147,48 +147,35 @@ pub async fn callback(
     };
 
     // create applicant from oauth_oidc
-    return match db.get_user_by_email(&user_info.email).await {
-        Ok(mut u) => {
-            // collecting all the user sent cookie headers into `cookies`
-            let cookies = headers
-                .get_all(axum::http::header::COOKIE)
-                .iter()
-                .map(|h| h.to_str().unwrap_or_default().to_string())
-                .collect::<Vec<String>>();
-
-            match ActiveSession::parse_and_verify(&cookies) {
-                Ok(active_session) => {
-                    db.make_user_active(active_session, u);
-                    db.remove_oauth_creds(&q.csrf_state);
-                    Ok(Redirect::to("/").into_response())
-                }
-                Err(_) => {
-                    let user_agent = headers
-                        .get(axum::http::header::USER_AGENT)
-                        .map(|v| v.to_str().unwrap_or_default().to_string())
-                        .unwrap_or_default();
-                    let (db_session, active_session, set_cookie_headermap) =
-                        common::session::create_session(user_agent);
-                    u.sessions.push(db_session);
-                    db.update_sessions(&u.username, &u.sessions).await?;
-                    db.make_user_active(active_session, u);
-                    db.remove_oauth_creds(&q.csrf_state);
-                    Ok((set_cookie_headermap, Redirect::to("/")).into_response())
-                }
+    match db.get_user_by_email(&user_info.email).await {
+        Ok(mut u) => match ActiveSession::parse_and_verify_from_headers(&headers) {
+            Ok(active_session) => {
+                db.make_user_active(active_session, u);
+                db.remove_oauth_creds(&q.csrf_state);
+                Ok(Redirect::to("/").into_response())
             }
-        }
+            Err(_) => {
+                let (db_session, active_session, set_cookie_headermap) =
+                    common::session::create_session(&headers);
+                u.sessions.push(db_session);
+                db.update_sessions(&u.username, &u.sessions).await?;
+                db.make_user_active(active_session, u);
+                db.remove_oauth_creds(&q.csrf_state);
+                Ok((set_cookie_headermap, Redirect::to("/")).into_response())
+            }
+        },
         Err(AppError::UserNotFound) => {
             db.create_applicant_oidc(user_info.name, user_info.email, user_info.picture)
                 .await?;
             db.remove_oauth_creds(&q.csrf_state);
-            Ok(Redirect::to("/").into_response()) // not decided yet
+            Ok(Redirect::to("/register/set_username").into_response())
         }
         Err(e) => Err(e),
-    };
+    }
 }
 
 // User information from OIDC
-#[derive(serde::Deserialize, Debug)]
+#[derive(serde::Deserialize)]
 struct UserInfo {
     sub: String,
     name: String,
@@ -202,7 +189,7 @@ struct UserInfo {
 
 // JWT Claims
 #[allow(dead_code)]
-#[derive(Debug, serde::Deserialize)]
+#[derive(serde::Deserialize)]
 struct IdTokenClaims {
     #[serde(flatten)]
     userinfo: UserInfo,

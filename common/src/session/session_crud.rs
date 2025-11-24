@@ -5,7 +5,12 @@ use std::time::{Duration, SystemTime};
 
 /// this function creates a session that is passed to the user
 /// and stored in both in-memory and primary database
-pub fn create_session(user_agent: String) -> (Session, ActiveSession, HeaderMap) {
+pub fn create_session(headers: &HeaderMap) -> (Session, ActiveSession, HeaderMap) {
+    let user_agent = headers
+        .get(header::USER_AGENT)
+        .map(|v| v.to_str().unwrap_or_default().to_owned())
+        .unwrap_or_default();
+
     #[allow(clippy::identity_op)]
     let expires = 30 * 86400 + 0; // days * 86400 + secs
     let uid = uuid::Uuid::new_v4().to_string();

@@ -7,11 +7,17 @@ pub struct ActiveSession {
     pub decrypted_ssid: String,
 }
 
+pub enum ActiveSessionError {
+    NoCookieHeader,
+    ParseError,
+    VerificationError(ActiveSession),
+}
+
 impl ActiveSession {
     /// parses all the cookies sent by a client and creates an `ActiveSession`
-    pub fn parse_and_verify(cookies_list: &Vec<String>) -> Result<Self, AppError> {
+    pub fn parse_and_verify(cookies_list: &Vec<String>) -> Result<Self, ActiveSessionError> {
         if cookies_list.is_empty() {
-            return Err(AppError::Unauthorized("No cookie header found"));
+            return Err(ActiveSessionError::NoCookieHeader);
         }
         let mut parsed_active_session = None;
         for cookies in cookies_list {
@@ -28,11 +34,21 @@ impl ActiveSession {
                 active_session.decrypted_ssid = s;
                 Ok(active_session)
             } else {
-                Err(AppError::InvalidSession(active_session.expire()))
+                Err(ActiveSessionError::VerificationError(active_session))
             }
         } else {
-            Err(AppError::Unauthorized("Invalid Session"))
+            Err(ActiveSessionError::ParseError)
         }
+    }
+
+    pub fn parse_and_verify_from_headers(headers: &HeaderMap) -> Result<Self, ActiveSessionError> {
+        // collecting all the user sent cookie headers into `cookies_list`
+        let cookies_list = headers
+            .get_all(header::COOKIE)
+            .iter()
+            .map(|h| h.to_str().unwrap_or_default().to_string())
+            .collect::<Vec<String>>();
+        Self::parse_and_verify(&cookies_list)
     }
 
     pub fn expire(&self) -> HeaderMap {
@@ -44,5 +60,17 @@ impl ActiveSession {
             ))
             .unwrap(),
         )])
+    }
+}
+
+impl From<ActiveSessionError> for AppError {
+    fn from(value: ActiveSessionError) -> Self {
+        match value {
+            ActiveSessionError::NoCookieHeader => AppError::Unauthorized("No cookie header found"),
+            ActiveSessionError::ParseError => AppError::InvalidSession(HeaderMap::new()),
+            ActiveSessionError::VerificationError(active_session) => {
+                AppError::InvalidSession(active_session.expire())
+            }
+        }
     }
 }

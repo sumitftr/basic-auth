@@ -1,7 +1,7 @@
 use axum::{
     Extension, Json,
     extract::State,
-    http::{HeaderMap, StatusCode, header},
+    http::{HeaderMap, StatusCode},
     response::IntoResponse,
 };
 use axum_extra::{json, response::ErasedJson};
@@ -41,13 +41,8 @@ pub async fn login(
         return Err(AppError::ServerError);
     };
 
-    // creating session for user
-    let user_agent = headers
-        .get(header::USER_AGENT)
-        .map(|v| v.to_str().unwrap_or_default().to_owned())
-        .unwrap_or_default();
     let (db_session, active_session, set_cookie_headermap) =
-        common::session::create_session(user_agent);
+        common::session::create_session(&headers);
 
     // clearing expired sessions
     common::session::clear_expired_sessions(&mut user.sessions);
