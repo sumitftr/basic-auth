@@ -15,12 +15,9 @@ impl crate::Db {
         let filter = doc! {"username": username};
         let update = doc! {"$set": {"username": new_username}};
         match self.users.update_one(filter, update).await {
-            Ok(v) => {
+            Ok(_) => {
                 tracing::info!(
-                    "[{:?}] Old Username: @{}, New Username: @{}",
-                    v.upserted_id,
-                    username,
-                    new_username
+                    "[Username Updated] Old Username: @{username}, New Username: @{new_username}",
                 );
                 Ok(())
             }
@@ -46,7 +43,7 @@ impl crate::Db {
         let update = doc! {"$set": {"sessions": sessions_bson}};
         match self.users.update_one(filter, update).await {
             Ok(_) => {
-                tracing::info!("Updated User Sessions: @{}", username);
+                tracing::info!("[Session Updated]: @{username}");
                 Ok(())
             }
             Err(e) => {
@@ -65,7 +62,7 @@ impl crate::Db {
         let update = doc! {"$set": {"legal_name": legal_name}};
         match self.users.update_one(filter, update).await {
             Ok(_) => {
-                tracing::info!("Updated Legal Name: @{}", username);
+                tracing::info!("[Legal Name Updated]: @{username}");
                 Ok(())
             }
             Err(e) => {
@@ -84,7 +81,7 @@ impl crate::Db {
         let update = doc! {"$set": {"birth_date": birth_date}};
         match self.users.update_one(filter, update).await {
             Ok(_) => {
-                tracing::info!("Updated Birth Date: @{}", username);
+                tracing::info!("[Birth Date Updated]: @{username}");
                 Ok(())
             }
             Err(e) => {
@@ -103,7 +100,7 @@ impl crate::Db {
         let update = doc! {"$set": {"gender": gender}};
         match self.users.update_one(filter, update).await {
             Ok(_) => {
-                tracing::info!("Updated Gender: @{}", username);
+                tracing::info!("[Gender Updated]: @{username}");
                 Ok(())
             }
             Err(e) => {
@@ -122,7 +119,7 @@ impl crate::Db {
         let update = doc! {"$set": {"country": country}};
         match self.users.update_one(filter, update).await {
             Ok(_) => {
-                tracing::info!("Updated Country: @{}", username);
+                tracing::info!("[Country Updated]: @{username}");
                 Ok(())
             }
             Err(e) => {
@@ -164,7 +161,7 @@ impl crate::Db {
         let update = doc! {"$set": set_doc};
         match self.users.update_one(filter, update).await {
             Ok(_) => {
-                tracing::info!("Updated User Profile: @{}", username);
+                tracing::info!("[User Profile Updated]: @{username}");
                 Ok(())
             }
             Err(e) => {

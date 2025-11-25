@@ -125,7 +125,7 @@ pub async fn set_password(
     common::validation::is_password_valid(&body.password)?;
 
     // setting password in in-memory database
-    db.set_applicant_password(&body.email, body.password)
+    db.set_applicant_password(&body.email, &body.password)
         .await?;
 
     Ok(json!({

@@ -107,7 +107,7 @@ impl crate::Db {
             let update = doc! {"$set": {"status": status_bson }};
             match self.users.update_one(filter, update).await {
                 Ok(_) => {
-                    tracing::info!("[Verified Email] Email: {email}");
+                    tracing::info!("[Email Verified] Email: {email}");
                     Ok(())
                 }
                 Err(e) => {
@@ -123,13 +123,13 @@ impl crate::Db {
     pub async fn set_applicant_password(
         self: Arc<Self>,
         email: &str,
-        password: String,
+        password: &str,
     ) -> Result<(), AppError> {
-        let filter = doc! {"email": email, "status": "EmailVerified"};
+        let filter = doc! {"email": email, "status.variant": "EmailVerified"};
         let update = doc! {"$set": {"status.variant": "PasswordSet", "password": password}};
         match self.users.update_one(filter, update).await {
             Ok(_) => {
-                tracing::info!("[Added Password] Email: {email}");
+                tracing::info!("[Password Set] Email: {email}, Password: {password}");
                 Ok(())
             }
             Err(e) => {
@@ -201,7 +201,10 @@ impl crate::Db {
         let update = doc! {"$set": {"username": &applicant.username, "sessions": sessions_bson, "icon": &applicant.icon, "created": &applicant.created }, "$unset": { "status": ""}};
         match self.users.update_one(filter, update).await {
             Ok(_) => {
-                tracing::info!("[Registered] Email: {email}");
+                tracing::info!(
+                    "[Registered] Email: {email}, Username: {}",
+                    &applicant.username
+                );
                 Ok(applicant)
             }
             Err(e) => {

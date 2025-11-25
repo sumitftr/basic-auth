@@ -31,8 +31,8 @@ impl crate::Db {
         code: &str,
         password: &str,
     ) -> Result<String, AppError> {
-        let filter = doc! {"status.secret": code};
-        let u = match self.users.find_one(filter).await {
+        let filter = doc! {"status.variant": "Recovering", "status.secret": code};
+        let u = match self.users.find_one(filter.clone()).await {
             Ok(Some(u)) => u,
             Ok(None) => return Err(AppError::UserNotFound),
             Err(e) => {
@@ -40,7 +40,6 @@ impl crate::Db {
                 return Err(AppError::ServerError);
             }
         };
-        let filter = doc! {"email": &u.email, "status.variant": "Recovering"};
         let update = doc! {"$set": {"password": password}, "$unset": {"status": ""}};
         match self.users.update_one(filter, update).await {
             Ok(_) => {

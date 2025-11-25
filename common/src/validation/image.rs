@@ -20,8 +20,8 @@ pub fn is_icon_valid(filepath: &mut String, data: &axum::body::Bytes) -> Result<
     if imgdata.height != imgdata.width {
         return Err(AppError::InvalidData("Recommended 1:1 ratio for Icon"));
     }
-    if imgdata.height < 512 {
-        return Err(AppError::InvalidData("Icon too small: min 512x512"));
+    if imgdata.height < 96 {
+        return Err(AppError::InvalidData("Icon too small: min 96x96"));
     }
     if imgdata.height > 2048 {
         return Err(AppError::InvalidData("Icon too large: max 2048x2048"));
