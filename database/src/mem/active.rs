@@ -11,9 +11,9 @@ impl crate::Db {
         active_session: ActiveSession,
         user: User,
     ) -> Arc<Mutex<User>> {
-        let wrapped_user = Arc::new(Mutex::new(user));
-        self.active.insert(active_session, wrapped_user.clone());
-        wrapped_user
+        let arc_wrapped_user = Arc::new(Mutex::new(user));
+        self.active.insert(active_session, arc_wrapped_user.clone());
+        arc_wrapped_user
     }
 
     #[inline]

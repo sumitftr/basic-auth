@@ -17,8 +17,9 @@ pub async fn forgot_password(
     State(db): State<Arc<Db>>,
     Json(body): Json<ForgotPasswordRequest>,
 ) -> Result<ErasedJson, AppError> {
+    common::validation::is_email_valid(&body.email)?;
     let code = common::generate::hex_64(&body.email);
-    db.add_recovery_entry(code.clone(), body.email.clone());
+    db.request_password_reset(&body.email, code.clone()).await?;
 
     common::mail::send(
         body.email.as_str(),
@@ -52,26 +53,19 @@ pub async fn reset_password(
     Query(q): Query<ResetPasswordQuery>,
     Json(body): Json<ResetPasswordRequest>,
 ) -> Result<ErasedJson, AppError> {
-    if let Some(email) = db.get_recovery_entry(&q.code) {
-        common::validation::is_password_valid(&body.password)?;
-        db.update_password(&email, &body.password).await?;
-        db.remove_recovery_entry(&email);
-
-        common::mail::send(
-            &email,
-            format!("Your {} password has been changed", &*common::SERVICE_NAME),
-            format!(
-                "Your password for {} has been changed.\nThanks, {}\n",
-                email,
-                &*common::SERVICE_NAME
-            ),
-        )
-        .await?;
-
-        Ok(json!({
-            "message": format!("Your password for {email} has been changed")
-        }))
-    } else {
-        Err(AppError::BadReq("Your password reset link has expired"))
-    }
+    common::validation::is_password_valid(&body.password)?;
+    let email = db.reset_password(&q.code, &body.password).await?;
+    common::mail::send(
+        &email,
+        format!("Your {} password has been changed", &*common::SERVICE_NAME),
+        format!(
+            "Your password for {} has been changed.\nThanks, {}\n",
+            email,
+            &*common::SERVICE_NAME
+        ),
+    )
+    .await?;
+    Ok(json!({
+        "message": format!("Your password for {email} has been changed")
+    }))
 }

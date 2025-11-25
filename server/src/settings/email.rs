@@ -28,6 +28,9 @@ pub async fn update_email(
     db.is_email_available(&body.new_email).await?;
     // generating otp
     let otp = common::generate::otp(&body.new_email);
+    // adding an entry to database for further checking
+    db.request_email_update(&email, body.new_email.clone(), otp.clone())
+        .await?;
     // sending mail to the new email for verification
     common::mail::send(
         &body.new_email,
@@ -38,10 +41,7 @@ pub async fn update_email(
         ),
     )
     .await?;
-    // adding an entry to in-memory cache for further checking
-    db.add_verification_entry(email, body.new_email, otp.clone());
     Ok(json!({
-        "otp": otp,
         "message": "Please verify your email",
     }))
 }
@@ -57,18 +57,10 @@ pub async fn verify_email(
     Json(body): Json<VerifyEmailRequest>,
 ) -> Result<ErasedJson, AppError> {
     let old_email = user.lock().unwrap().email.clone();
-    if let Some((new_email, otp)) = db.get_verification_entry(&old_email) {
-        if otp == body.otp {
-            db.update_email(&old_email, &new_email).await?;
-            db.remove_verification_entry(&old_email);
-            user.lock().unwrap().email = new_email;
-            Ok(json!({
-                "message": "Your email has been verified"
-            }))
-        } else {
-            Err(AppError::BadReq("Invalid OTP"))
-        }
-    } else {
-        Err(AppError::ServerError)
-    }
+    let new_email = db.update_email(&old_email, &body.otp).await?;
+    user.lock().unwrap().email = new_email.clone();
+    Ok(json!({
+        "email": new_email,
+        "message": "Your email has been verified",
+    }))
 }

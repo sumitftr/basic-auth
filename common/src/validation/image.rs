@@ -1,3 +1,4 @@
+#![allow(dead_code)]
 use crate::AppError;
 
 struct ImageData {
@@ -7,7 +8,6 @@ struct ImageData {
 }
 
 #[derive(Copy, Clone)]
-#[allow(dead_code)]
 enum ImageFormat {
     Jpg,
     Png,

@@ -1,4 +1,4 @@
-use crate::{mem::ApplicantEntry, user::User};
+use crate::user::User;
 use common::session::{ActiveSession, Session};
 use moka::sync::Cache;
 use mongodb::{Collection, error::ErrorKind};
@@ -18,10 +18,7 @@ pub struct Db {
     bucket: bucket::BlackBlazeB2,
     // in memory stores
     active: Cache<ActiveSession, Arc<Mutex<User>>>,
-    applicants: Cache<String, ApplicantEntry>,
     oauth_oidc: Cache<String, (String, String, common::oauth::OAuthProvider)>,
-    recovery: Cache<String, String>, // <QUERY_STRING, EMAIL>
-    verification: Cache<String, (String, String)>, // <EMAIL|PHONE, (NEW_EMAIL|NEW_PHONE, OTP)>
 }
 
 static DB: OnceCell<Arc<Db>> = OnceCell::const_new();
@@ -58,19 +55,7 @@ impl Db {
                     .max_capacity(32728)
                     .time_to_live(Duration::from_secs(Session::MEM_CACHE_DURATION))
                     .build(),
-                applicants: Cache::builder()
-                    .max_capacity(4096)
-                    .time_to_live(Duration::from_secs(1800))
-                    .build(),
                 oauth_oidc: Cache::builder()
-                    .max_capacity(4096)
-                    .time_to_live(Duration::from_secs(1800))
-                    .build(),
-                recovery: Cache::builder()
-                    .max_capacity(8192)
-                    .time_to_live(Duration::from_secs(1800))
-                    .build(),
-                verification: Cache::builder()
                     .max_capacity(4096)
                     .time_to_live(Duration::from_secs(1800))
                     .build(),

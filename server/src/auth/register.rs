@@ -3,12 +3,11 @@ use axum::{Json, extract::State, response::IntoResponse};
 use axum_extra::{json, response::ErasedJson};
 use common::AppError;
 use database::Db;
-use serde::Deserialize;
 use std::sync::Arc;
 
 /// first step of registering an user
 
-#[derive(Deserialize)]
+#[derive(serde::Deserialize)]
 pub struct CreateUserRequest {
     name: String,
     email: String,
@@ -28,7 +27,6 @@ pub async fn start(
 
     // generating otp
     let otp = common::generate::otp(&body.email);
-    tracing::info!("OTP: {otp}, Email: {}", body.email);
 
     // storing applicant data in memory
     db.create_applicant(name, body.email.clone(), birth_date, otp.clone())
@@ -50,7 +48,7 @@ pub async fn start(
     }))
 }
 
-#[derive(Deserialize)]
+#[derive(serde::Deserialize)]
 pub struct ResendOtpRequest {
     email: String,
 }
@@ -61,7 +59,7 @@ pub async fn resend_otp(
 ) -> Result<ErasedJson, AppError> {
     // generating otp
     let otp = common::generate::otp(&body.email);
-    db.update_applicant_otp(&body.email, &otp)?;
+    db.update_applicant_otp(&body.email, &otp).await?;
 
     // resending otp to the email
     common::mail::send(
@@ -81,7 +79,7 @@ pub async fn resend_otp(
 
 /// second step of registering an user
 
-#[derive(Deserialize)]
+#[derive(serde::Deserialize)]
 pub struct VerifyEmailRequest {
     email: String,
     otp: String,
@@ -113,7 +111,7 @@ pub async fn verify_email(
 
 /// third step of registering an user
 
-#[derive(Deserialize)]
+#[derive(serde::Deserialize)]
 pub struct SetPasswordRequest {
     email: String,
     password: String,
@@ -127,7 +125,8 @@ pub async fn set_password(
     common::validation::is_password_valid(&body.password)?;
 
     // setting password in in-memory database
-    db.set_applicant_password(&body.email, body.password)?;
+    db.set_applicant_password(&body.email, body.password)
+        .await?;
 
     Ok(json!({
         "message": format!("Your password for email {} has been set", body.email)
@@ -136,7 +135,7 @@ pub async fn set_password(
 
 /// last step of registering an user
 
-#[derive(Deserialize)]
+#[derive(serde::Deserialize)]
 pub struct SetUsernameRequest {
     email: String,
     username: String,
