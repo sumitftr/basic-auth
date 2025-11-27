@@ -21,10 +21,7 @@ fn main() -> Result<(), reqwest::Error> {
     let cookies = token.next_line::<String>();
 
     let s_endpoint = format!("{}/api/settings", SOCKET);
-    let res = client
-        .get(&s_endpoint)
-        .header(header::COOKIE, &cookies)
-        .send()?;
+    let res = client.get(&s_endpoint).header(header::COOKIE, &cookies).send()?;
     writeln!(out.inner, "{:#?}", res.text()?);
 
     let endpoint = format!("{}/api/logout_devices", SOCKET);

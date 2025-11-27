@@ -8,11 +8,7 @@ pub struct Scanner<R> {
 
 impl<R: std::io::BufRead> Scanner<R> {
     pub fn new(reader: R) -> Self {
-        Self {
-            reader,
-            buffer: vec![],
-            iter: "".split_ascii_whitespace(),
-        }
+        Self { reader, buffer: vec![], iter: "".split_ascii_whitespace() }
     }
 
     pub fn next<T: std::str::FromStr>(&mut self) -> T {

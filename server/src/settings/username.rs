@@ -24,8 +24,7 @@ pub async fn update_username(
     // checking if the new username is valid or not
     common::validation::is_username_valid(&body.new_username)?;
     // updating username in the primary database
-    db.check_and_update_username(&username, &body.new_username)
-        .await?;
+    db.check_and_update_username(&username, &body.new_username).await?;
     user.lock().unwrap().username = body.new_username.clone();
     Ok(json!({
         "username": body.new_username,

@@ -18,9 +18,7 @@ pub async fn update_email(
     let email = user.lock().unwrap().email.clone();
     // checking whether the new email is same as original email or not
     if email == body.new_email {
-        return Err(AppError::BadReq(
-            "Your new email cannot be same as of your original email",
-        ));
+        return Err(AppError::BadReq("Your new email cannot be same as of your original email"));
     }
     // checking if the new email is valid or not
     common::validation::is_email_valid(&body.new_email)?;
@@ -29,16 +27,12 @@ pub async fn update_email(
     // generating otp
     let otp = common::generate::otp(&body.new_email);
     // adding an entry to database for further checking
-    db.request_email_update(email, &body.new_email, &otp)
-        .await?;
+    db.request_email_update(email, &body.new_email, &otp).await?;
     // sending mail to the new email for verification
     common::mail::send(
         &body.new_email,
         format!("{otp} is your {} verification code", &*common::SERVICE_NAME),
-        format!(
-            "Confirm your email address\n {otp}\n Thanks,\n {}",
-            &*common::SERVICE_NAME
-        ),
+        format!("Confirm your email address\n {otp}\n Thanks,\n {}", &*common::SERVICE_NAME),
     )
     .await?;
     Ok(json!({

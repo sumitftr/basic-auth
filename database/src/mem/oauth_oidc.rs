@@ -11,8 +11,7 @@ impl crate::Db {
         nonce: String,
         provider: OAuthProvider,
     ) {
-        self.oauth_oidc
-            .insert(csrf_state, (code_verifier, nonce, provider));
+        self.oauth_oidc.insert(csrf_state, (code_verifier, nonce, provider));
     }
 
     #[inline]

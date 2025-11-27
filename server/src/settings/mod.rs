@@ -1,7 +1,4 @@
-use axum::{
-    Extension, Json,
-    routing::{get, post},
-};
+use axum::routing::{get, post};
 use database::user::User;
 use std::sync::{Arc, Mutex};
 
@@ -31,7 +28,23 @@ pub async fn settings_routes() -> axum::Router {
         .with_state(database::Db::new().await)
 }
 
-pub async fn fetch_settings(Extension(user): Extension<Arc<Mutex<User>>>) -> Json<User> {
+pub async fn fetch_settings(
+    axum::Extension(user): axum::Extension<Arc<Mutex<User>>>,
+) -> axum_extra::response::ErasedJson {
     let res = user.lock().unwrap().clone();
-    Json(res)
+    axum_extra::json!({
+        "email": res.email,
+        "birth_date": res.birth_date,
+        "username": res.username,
+        "display_name": res.display_name,
+        "icon": res.icon,
+        "banner": res.banner,
+        "bio": res.bio,
+        "legal_name": res.legal_name,
+        "gender": res.gender,
+        "phone": res.phone,
+        "country": res.country,
+        "sessions": res.sessions,
+        "created": res.created,
+    })
 }

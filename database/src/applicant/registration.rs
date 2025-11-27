@@ -13,7 +13,6 @@ impl crate::Db {
         birth_date: DateTime,
         otp: String,
     ) -> Result<(), AppError> {
-        // checking if the email is already used or not
         self.is_email_available(&email).await?;
 
         let applicant = Applicant {
@@ -44,8 +43,9 @@ impl crate::Db {
         otp: &str,
     ) -> Result<(), AppError> {
         let status_bson = bson::to_bson(&ApplicationStatus::Created(otp.to_string())).unwrap();
-        let filter =
-            doc! {"email": email, "status": {"tag": "Created", "value": {"$exists": true}}};
+        let filter = doc! {"email": email, "status": {"tag": "Created"}};
+        // let filter = doc! {"email": email, "status": {"tag": "Created", "value": otp}};
+        // let filter = doc! {"email": email, "status": {"tag": "Created", "value": {"$exists": true}}};
         let update = doc! {"$set": {"status": status_bson }};
         match self.applicants.update_one(filter, update).await {
             Ok(_) => {
@@ -64,8 +64,9 @@ impl crate::Db {
         email: &str,
         otp: &str,
     ) -> Result<(), AppError> {
-        let filter = doc! {"email": email, "status": {"tag": "Created", "value": otp}};
-        // doc! {"email": email, "status": {"tag": "Created", "value": {"$exists": true}}};
+        let filter = doc! {"email": email, "status": {"tag": "Created"}};
+        // let filter = doc! {"email": email, "status": {"tag": "Created", "value": otp}};
+        // let filter = doc! {"email": email, "status": {"tag": "Created", "value": {"$exists": true}}};
         let applicant = match self.applicants.find_one(filter.clone()).await {
             Ok(Some(v)) => v,
             Ok(None) => return Err(AppError::UserNotFound),
@@ -100,7 +101,6 @@ impl crate::Db {
         password: &str,
     ) -> Result<(), AppError> {
         let filter = doc! {"email": email, "status": {"tag": "EmailVerified"}};
-        // doc! {"email": email, "status": {"tag": "EmailVerified", "value": {"$exists": false}}};
         let update = doc! {"$set": {"password": password, "status.tag": "PasswordSet"}};
         match self.applicants.update_one(filter, update).await {
             Ok(_) => {
@@ -122,7 +122,6 @@ impl crate::Db {
     ) -> Result<User, AppError> {
         self.is_username_available(&username).await?;
         let filter = doc! {"email": &email, "status": {"tag": "PasswordSet"}};
-        // doc! {"email": &email, "status": {"tag": "PasswordSet", "value": {"$exists": false}}};
         let applicant = match self.applicants.find_one_and_delete(filter).await {
             Ok(Some(v)) => v,
             Ok(None) => return Err(AppError::UserNotFound),
@@ -149,7 +148,7 @@ impl crate::Db {
             sessions: vec![new_session],
             created: DateTime::now(),
         };
-        self.create_user(&user).await?;
+        self.create_user_forced(&user).await;
         Ok(user)
     }
 }

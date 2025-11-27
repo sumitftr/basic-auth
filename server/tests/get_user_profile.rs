@@ -22,10 +22,7 @@ fn main() -> Result<(), reqwest::Error> {
     out.write("Enter username: ");
     let username = token.next::<String>();
     let endpoint = format!("{}/api/user/@{}", SOCKET, username);
-    let res = client
-        .get(&endpoint)
-        .header(header::COOKIE, cookies)
-        .send()?;
+    let res = client.get(&endpoint).header(header::COOKIE, cookies).send()?;
     writeln!(out.inner, "{:?}", res.text()?);
 
     Ok(())

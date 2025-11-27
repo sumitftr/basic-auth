@@ -36,6 +36,7 @@ impl crate::Db {
             }
         }
     }
+
     pub async fn finish_oidc_application(
         self: Arc<Self>,
         email: String,
@@ -106,7 +107,7 @@ impl crate::Db {
             sessions: vec![new_session],
             created: DateTime::now(),
         };
-        self.create_user(&user).await?;
+        self.create_user_forced(&user).await;
         Ok(user)
     }
 }

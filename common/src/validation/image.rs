@@ -72,9 +72,7 @@ fn get_image_data(data: &axum::body::Bytes, filepath: &mut String) -> Result<Ima
     //     return Ok(ImageExt::Gif);
     // }
 
-    Err(AppError::InvalidData(
-        "Unknown image format: Only jpg, jpeg, png, webp are allowed.",
-    ))
+    Err(AppError::InvalidData("Unknown image format: Only jpg, jpeg, png, webp are allowed."))
 }
 
 #[allow(clippy::to_string_trait_impl)]
@@ -91,14 +89,8 @@ impl ToString for ImageFormat {
 }
 
 pub enum ResolutionError {
-    TooShort {
-        needed: usize,
-        got: usize,
-    },
-    InvalidFormat {
-        format: &'static str,
-        reason: &'static str,
-    },
+    TooShort { needed: usize, got: usize },
+    InvalidFormat { format: &'static str, reason: &'static str },
     UnknownFormat,
 }
 
@@ -123,10 +115,7 @@ fn jpeg_resolution(data: &axum::body::Bytes) -> Result<ImageData, ResolutionErro
 
     // JPEG must start with FF D8
     if len < 2 {
-        return Err(ResolutionError::TooShort {
-            needed: 2,
-            got: len,
-        });
+        return Err(ResolutionError::TooShort { needed: 2, got: len });
     }
 
     // JPEG SOF markers contain width/height
@@ -148,11 +137,7 @@ fn jpeg_resolution(data: &axum::body::Bytes) -> Result<ImageData, ResolutionErro
             // Skip 2 bytes (segment length) + 1 byte (precision)
             let height = u16::from_be_bytes([data[i + 3], data[i + 4]]) as u32;
             let width = u16::from_be_bytes([data[i + 5], data[i + 6]]) as u32;
-            return Ok(ImageData {
-                height,
-                width,
-                format: ImageFormat::Jpg,
-            });
+            return Ok(ImageData { height, width, format: ImageFormat::Jpg });
         }
         // skip segment length
         if i + 2 > len {
@@ -161,10 +146,7 @@ fn jpeg_resolution(data: &axum::body::Bytes) -> Result<ImageData, ResolutionErro
         let seg_len = u16::from_be_bytes([data[i], data[i + 1]]) as usize;
         i += seg_len; // len already includes the 2 bytes for the length field itself
     }
-    Err(ResolutionError::InvalidFormat {
-        format: "JPEG",
-        reason: "no Start of Frame marker found",
-    })
+    Err(ResolutionError::InvalidFormat { format: "JPEG", reason: "no Start of Frame marker found" })
 }
 
 fn png_resolution(data: &axum::body::Bytes) -> Result<ImageData, ResolutionError> {
@@ -173,18 +155,12 @@ fn png_resolution(data: &axum::body::Bytes) -> Result<ImageData, ResolutionError
     const MIN_SIZE: usize = 29;
 
     if len < MIN_SIZE {
-        return Err(ResolutionError::TooShort {
-            needed: MIN_SIZE,
-            got: len,
-        });
+        return Err(ResolutionError::TooShort { needed: MIN_SIZE, got: len });
     }
 
     // Verify IHDR chunk is present
     if &data[12..16] != b"IHDR" {
-        return Err(ResolutionError::InvalidFormat {
-            format: "PNG",
-            reason: "missing IHDR chunk",
-        });
+        return Err(ResolutionError::InvalidFormat { format: "PNG", reason: "missing IHDR chunk" });
     }
 
     let width = u32::from_be_bytes([data[16], data[17], data[18], data[19]]);
@@ -197,47 +173,30 @@ fn png_resolution(data: &axum::body::Bytes) -> Result<ImageData, ResolutionError
         });
     }
 
-    Ok(ImageData {
-        height,
-        width,
-        format: ImageFormat::Png,
-    })
+    Ok(ImageData { height, width, format: ImageFormat::Png })
 }
 
 fn webp_resolution(data: &axum::body::Bytes) -> Result<ImageData, ResolutionError> {
     let len = data.len();
 
     if len < 30 {
-        return Err(ResolutionError::TooShort {
-            needed: 30,
-            got: len,
-        });
+        return Err(ResolutionError::TooShort { needed: 30, got: len });
     }
 
     // Check VP8X extended header (most reliable)
     if &data[12..16] == b"VP8X" {
         if len < 26 {
-            return Err(ResolutionError::TooShort {
-                needed: 26,
-                got: len,
-            });
+            return Err(ResolutionError::TooShort { needed: 26, got: len });
         }
         let w = 1 + ((data[22] as u32) << 16 | (data[21] as u32) << 8 | data[20] as u32);
         let h = 1 + ((data[25] as u32) << 16 | (data[24] as u32) << 8 | data[23] as u32);
-        return Ok(ImageData {
-            height: h,
-            width: w,
-            format: ImageFormat::Webp,
-        });
+        return Ok(ImageData { height: h, width: w, format: ImageFormat::Webp });
     }
 
     // Fallback: VP8 (lossy)
     if &data[12..16] == b"VP8 " {
         if len < 30 {
-            return Err(ResolutionError::TooShort {
-                needed: 30,
-                got: len,
-            });
+            return Err(ResolutionError::TooShort { needed: 30, got: len });
         }
         let width = u16::from_le_bytes([data[26], data[27]]) as u32 & 0x3FFF;
         let height = u16::from_le_bytes([data[28], data[29]]) as u32 & 0x3FFF;
@@ -249,20 +208,13 @@ fn webp_resolution(data: &axum::body::Bytes) -> Result<ImageData, ResolutionErro
             });
         }
 
-        return Ok(ImageData {
-            height,
-            width,
-            format: ImageFormat::Webp,
-        });
+        return Ok(ImageData { height, width, format: ImageFormat::Webp });
     }
 
     // VP8L (lossless)
     if &data[12..16] == b"VP8L" {
         if len < 25 {
-            return Err(ResolutionError::TooShort {
-                needed: 25,
-                got: len,
-            });
+            return Err(ResolutionError::TooShort { needed: 25, got: len });
         }
         // Skip signature byte at data[20], start reading at data[21]
         // Bits 0-13: width-1, Bits 14-27: height-1
@@ -277,11 +229,7 @@ fn webp_resolution(data: &axum::body::Bytes) -> Result<ImageData, ResolutionErro
             });
         }
 
-        return Ok(ImageData {
-            height: h,
-            width: w,
-            format: ImageFormat::Webp,
-        });
+        return Ok(ImageData { height: h, width: w, format: ImageFormat::Webp });
     }
 
     Err(ResolutionError::InvalidFormat {
@@ -295,10 +243,7 @@ fn gif_resolution(data: &axum::body::Bytes) -> Result<ImageData, ResolutionError
     const MIN_SIZE: usize = 10;
 
     if len < MIN_SIZE {
-        return Err(ResolutionError::TooShort {
-            needed: MIN_SIZE,
-            got: len,
-        });
+        return Err(ResolutionError::TooShort { needed: MIN_SIZE, got: len });
     }
 
     let width = u16::from_le_bytes([data[6], data[7]]) as u32;
@@ -311,9 +256,5 @@ fn gif_resolution(data: &axum::body::Bytes) -> Result<ImageData, ResolutionError
         });
     }
 
-    Ok(ImageData {
-        width,
-        height,
-        format: ImageFormat::Gif,
-    })
+    Ok(ImageData { width, height, format: ImageFormat::Gif })
 }

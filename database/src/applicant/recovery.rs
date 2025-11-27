@@ -10,16 +10,20 @@ impl crate::Db {
         email: &str,
         code: &str,
     ) -> Result<(), AppError> {
-        let applicant = Applicant {
-            display_name: None,
-            email: email.to_string(),
-            birth_date: None,
-            password: None,
-            icon: None,
-            phone: None,
-            status: ApplicationStatus::Recovering(code.to_string()),
+        let applicant = doc! {
+            "$set": mongodb::bson::to_bson(&Applicant {
+                display_name: None,
+                email: email.to_string(),
+                birth_date: None,
+                password: None,
+                icon: None,
+                phone: None,
+                status: ApplicationStatus::Recovering(code.to_string()),
+            }).unwrap()
         };
-        match self.applicants.insert_one(applicant).await {
+        let filter = doc! {"email": email};
+        let options = mongodb::options::UpdateOptions::builder().upsert(true).build();
+        match self.applicants.update_one(filter, applicant).with_options(options).await {
             Ok(_) => {
                 tracing::info!("[Password Reset Request] Email: {email}, Code: {code}");
                 Ok(())
@@ -38,6 +42,7 @@ impl crate::Db {
         password: &str,
     ) -> Result<String, AppError> {
         let filter = doc! {"status": {"tag": "Recovering", "value": code}};
+        // let filter = doc! {"status.tag": "Recovering", "status.value": code};
         let applicant = match self.applicants.find_one_and_delete(filter).await {
             Ok(Some(v)) => v,
             Ok(None) => return Err(AppError::UserNotFound),

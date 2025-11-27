@@ -53,19 +53,14 @@ pub fn clear_expired_sessions(sessions: &mut Vec<Session>) {
     let tmp_sessions = std::mem::take(sessions);
 
     let now = SystemTime::now();
-    let filtered_sessions = tmp_sessions
-        .into_iter()
-        .filter(|s| now < s.expires)
-        .collect::<Vec<Session>>();
+    let filtered_sessions =
+        tmp_sessions.into_iter().filter(|s| now < s.expires).collect::<Vec<Session>>();
 
     let _ = std::mem::replace(sessions, filtered_sessions);
 }
 
 pub fn delete_current_session(sessions: &mut Vec<Session>, cur: &ActiveSession) {
-    *sessions = sessions
-        .drain(..)
-        .filter(|v| v.unsigned_ssid != cur.decrypted_ssid)
-        .collect();
+    *sessions = sessions.drain(..).filter(|v| v.unsigned_ssid != cur.decrypted_ssid).collect();
 }
 
 pub fn delete_selected_sessions(sessions: Vec<Session>, mut selected: Vec<String>) -> Vec<Session> {

@@ -21,15 +21,8 @@ impl Session {
 
     /// returns the timestamp difference of the session with current time
     pub fn session_status(&self) -> SessionStatus {
-        let diff = self
-            .expires
-            .duration_since(std::time::UNIX_EPOCH)
-            .unwrap()
-            .as_secs() as i64
-            - SystemTime::now()
-                .duration_since(std::time::UNIX_EPOCH)
-                .unwrap()
-                .as_secs() as i64;
+        let diff = self.expires.duration_since(std::time::UNIX_EPOCH).unwrap().as_secs() as i64
+            - SystemTime::now().duration_since(std::time::UNIX_EPOCH).unwrap().as_secs() as i64;
 
         if diff > 0 {
             if diff > Self::MEM_CACHE_DURATION as i64 {

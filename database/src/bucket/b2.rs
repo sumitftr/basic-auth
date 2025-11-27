@@ -120,9 +120,7 @@ impl BlackBlazeB2 {
             .client
             .post(format!("{}/b2api/v2/b2_get_upload_url", api_url))
             .header("Authorization", &auth_token)
-            .json(&GetUploadUrlRequest {
-                bucket_id: self.bucket_id.clone(),
-            })
+            .json(&GetUploadUrlRequest { bucket_id: self.bucket_id.clone() })
             .send()
             .await
             .map_err(|e| {
@@ -248,11 +246,8 @@ impl crate::Db {
             AppError::ServerError
         })?;
 
-        let file_info = list_result
-            .files
-            .into_iter()
-            .find(|f| f.file_name == filename)
-            .ok_or_else(|| {
+        let file_info =
+            list_result.files.into_iter().find(|f| f.file_name == filename).ok_or_else(|| {
                 tracing::error!("File not found: {}", filename);
                 AppError::ServerError
             })?;

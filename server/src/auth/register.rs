@@ -29,17 +29,13 @@ pub async fn start(
     let otp = common::generate::otp(&body.email);
 
     // storing applicant data in memory
-    db.create_applicant(name, body.email.clone(), birth_date, otp.clone())
-        .await?;
+    db.create_applicant(name, body.email.clone(), birth_date, otp.clone()).await?;
 
     // sending otp to the email
     common::mail::send(
         &body.email,
         format!("{otp} is your {} verification code", &*common::SERVICE_NAME),
-        format!(
-            "Confirm your email address\n {otp}\n Thanks,\n {}",
-            &*common::SERVICE_NAME
-        ),
+        format!("Confirm your email address\n {otp}\n Thanks,\n {}", &*common::SERVICE_NAME),
     )
     .await?;
 
@@ -65,10 +61,7 @@ pub async fn resend_otp(
     common::mail::send(
         &body.email,
         format!("{otp} is your {} verification code", &*common::SERVICE_NAME),
-        format!(
-            "Confirm your email address\n {otp}\n Thanks,\n {}",
-            &*common::SERVICE_NAME
-        ),
+        format!("Confirm your email address\n {otp}\n Thanks,\n {}", &*common::SERVICE_NAME),
     )
     .await?;
 
@@ -125,8 +118,7 @@ pub async fn set_password(
     common::validation::is_password_valid(&body.password)?;
 
     // setting password in in-memory database
-    db.set_applicant_password(&body.email, &body.password)
-        .await?;
+    db.set_applicant_password(&body.email, &body.password).await?;
 
     Ok(json!({
         "message": format!("Your password for email {} has been set", body.email)

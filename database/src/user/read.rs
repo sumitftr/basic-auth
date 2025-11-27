@@ -45,11 +45,7 @@ impl crate::Db {
         match self.users.find_one(doc! { "email": email }).await {
             Ok(Some(user)) => {
                 if let Some(db_password) = user.password.as_ref() {
-                    if db_password == password {
-                        Ok(user)
-                    } else {
-                        Err(AppError::WrongPassword)
-                    }
+                    if db_password == password { Ok(user) } else { Err(AppError::WrongPassword) }
                 } else {
                     Err(AppError::BadReq("Password not set"))
                 }
@@ -70,11 +66,7 @@ impl crate::Db {
         match self.users.find_one(doc! { "username": username }).await {
             Ok(Some(user)) => {
                 if let Some(db_password) = user.password.as_ref() {
-                    if db_password == password {
-                        Ok(user)
-                    } else {
-                        Err(AppError::WrongPassword)
-                    }
+                    if db_password == password { Ok(user) } else { Err(AppError::WrongPassword) }
                 } else {
                     Err(AppError::BadReq("Password not set"))
                 }

@@ -24,12 +24,7 @@ pub async fn login(
     let oauth_cfg =
         common::oauth::get_oauth_provider(common::oauth::OAuthProvider::try_from(q.by.as_str())?);
 
-    db.add_oauth_creds(
-        csrf_state.clone(),
-        code_verifier,
-        nonce.clone(),
-        oauth_cfg.provider,
-    );
+    db.add_oauth_creds(csrf_state.clone(), code_verifier, nonce.clone(), oauth_cfg.provider);
 
     let redirect_uri = format!("{}/api/oauth2/callback", &*common::SERVICE_DOMAIN);
     let mut request_uri = oauth_cfg.authorization_endpoint.clone();
@@ -96,10 +91,7 @@ pub async fn callback(
     {
         Ok(resp) => {
             if !resp.status().is_success() {
-                tracing::error!(
-                    "Token exchange failed: {}",
-                    resp.text().await.unwrap_or_default()
-                );
+                tracing::error!("Token exchange failed: {}", resp.text().await.unwrap_or_default());
                 return Err(AppError::ServerError);
             }
             resp.json::<TokenResponse>().await.map_err(|e| {
@@ -216,12 +208,10 @@ fn verify_and_decode_id_token(
     }
 
     // Decode the payload (second part)
-    let payload_bytes = base64::prelude::BASE64_URL_SAFE_NO_PAD
-        .decode(parts[1])
-        .map_err(|e| {
-            tracing::error!("failed to decode JWT payload: {e:?}");
-            AppError::ServerError
-        })?;
+    let payload_bytes = base64::prelude::BASE64_URL_SAFE_NO_PAD.decode(parts[1]).map_err(|e| {
+        tracing::error!("failed to decode JWT payload: {e:?}");
+        AppError::ServerError
+    })?;
 
     // Deserialize the claims
     let claims: IdTokenClaims = serde_json::from_slice(&payload_bytes).map_err(|e| {

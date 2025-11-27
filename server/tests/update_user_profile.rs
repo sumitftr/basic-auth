@@ -49,11 +49,7 @@ fn main() -> Result<(), reqwest::Error> {
     }
 
     let endpoint = format!("{}/api/user/profile", SOCKET);
-    let res = client
-        .post(&endpoint)
-        .header(header::COOKIE, cookies)
-        .multipart(form)
-        .send()?;
+    let res = client.post(&endpoint).header(header::COOKIE, cookies).multipart(form).send()?;
     writeln!(out.inner, "{:?}", res.text()?);
 
     Ok(())

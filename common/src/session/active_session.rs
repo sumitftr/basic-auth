@@ -22,10 +22,8 @@ impl ActiveSession {
         let mut parsed_active_session = None;
         for cookies in cookies_list {
             if let Some(s) = cookies.split(';').find(|s| s.trim().starts_with("SSID=")) {
-                parsed_active_session = Some(Self {
-                    ssid: s.trim()[5..].to_string(),
-                    decrypted_ssid: "".to_string(),
-                });
+                parsed_active_session =
+                    Some(Self { ssid: s.trim()[5..].to_string(), decrypted_ssid: "".to_string() });
                 break;
             }
         }

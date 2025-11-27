@@ -31,11 +31,9 @@ pub async fn login(
 
     // authenticating user by password
     let mut user = if let Some(email) = body.email {
-        db.authenticate_user_by_email(&email, &body.password)
-            .await?
+        db.authenticate_user_by_email(&email, &body.password).await?
     } else if let Some(username) = body.username {
-        db.authenticate_user_by_username(&username, &body.password)
-            .await?
+        db.authenticate_user_by_username(&username, &body.password).await?
     } else {
         // this is an unreachable statement
         return Err(AppError::ServerError);

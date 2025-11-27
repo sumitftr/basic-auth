@@ -54,9 +54,7 @@ pub async fn update_profile(
         tracing::error!("Invalid multipart/form-data field: {e:?}");
         AppError::InvalidData("Failed to read multipart field")
     })? {
-        let name = field
-            .name()
-            .ok_or_else(|| AppError::InvalidData("Field has no name"))?;
+        let name = field.name().ok_or_else(|| AppError::InvalidData("Field has no name"))?;
 
         match name {
             "banner" => {
@@ -110,8 +108,7 @@ pub async fn update_profile(
     }
 
     // update user profile in database
-    db.update_profile(&username, &banner, &icon, &display_name, &bio)
-        .await?;
+    db.update_profile(&username, &banner, &icon, &display_name, &bio).await?;
     let res = {
         let mut guard = user.lock().unwrap();
         if icon.is_some() {

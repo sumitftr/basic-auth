@@ -32,16 +32,8 @@ mod tests {
         dbg!(&db_session);
         dbg!(&active_session);
         dbg!(&set_cookie_headermap);
-        assert!(
-            active_session
-                .ssid
-                .ends_with(db_session.unsigned_ssid.as_str())
-        );
-        assert!(
-            active_session
-                .ssid
-                .starts_with(&sign(&db_session.unsigned_ssid))
-        );
+        assert!(active_session.ssid.ends_with(db_session.unsigned_ssid.as_str()));
+        assert!(active_session.ssid.starts_with(&sign(&db_session.unsigned_ssid)));
     }
 
     #[test]

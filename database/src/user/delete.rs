@@ -8,11 +8,7 @@ impl crate::Db {
         let query = doc! { "username": &user.username };
         match self.users.delete_one(query).await {
             Ok(_) => {
-                tracing::info!(
-                    "[User Deleted] Username: {}, Email: {}",
-                    user.username,
-                    user.email
-                );
+                tracing::info!("[User Deleted] Username: {}, Email: {}", user.username, user.email);
                 #[allow(clippy::unit_arg)]
                 Ok(self
                     .deleted_users

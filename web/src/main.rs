@@ -8,9 +8,7 @@ pub async fn main() {
     dotenv::dotenv().ok();
 
     tracing_subscriber::registry()
-        .with(tracing::level_filters::LevelFilter::from_level(
-            tracing::Level::TRACE,
-        ))
+        .with(tracing::level_filters::LevelFilter::from_level(tracing::Level::TRACE))
         .with(tracing_subscriber::fmt::Layer::default())
         .init();
 
@@ -29,9 +27,7 @@ pub async fn main() {
 /// a user presses Ctrl+C or Unix sends a terminate signal.
 pub async fn shutdown_signal() {
     let ctrl_c = async {
-        tokio::signal::ctrl_c()
-            .await
-            .expect("failed to install Ctrl+C handler");
+        tokio::signal::ctrl_c().await.expect("failed to install Ctrl+C handler");
     };
 
     #[cfg(unix)]

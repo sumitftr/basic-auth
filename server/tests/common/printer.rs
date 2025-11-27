@@ -7,9 +7,7 @@ pub struct Printer<'a> {
 
 impl<'a> Printer<'a> {
     pub fn new() -> Self {
-        Printer {
-            inner: BufWriter::new(std::io::stdout().lock()),
-        }
+        Printer { inner: BufWriter::new(std::io::stdout().lock()) }
     }
 
     pub fn write(&mut self, message: &str) {

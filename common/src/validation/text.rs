@@ -75,10 +75,7 @@ fn is_local_part_valid(local_part: &str) -> bool {
         prev = curr;
     }
     // no period, hypen or underscore at very end of local part
-    if allowed_symbols
-        .iter()
-        .any(|&p| p == local_part.chars().next_back().unwrap())
-    {
+    if allowed_symbols.iter().any(|&p| p == local_part.chars().next_back().unwrap()) {
         return false;
     }
     true
@@ -114,12 +111,7 @@ fn is_domain_valid(domain: &str) -> bool {
 }
 
 pub fn is_birth_date_valid(year: u32, month: u8, day: u8) -> Result<DateTime, AppError> {
-    match DateTime::builder()
-        .year(year as i32)
-        .month(month)
-        .day(day)
-        .build()
-    {
+    match DateTime::builder().year(year as i32).month(month).day(day).build() {
         Ok(v) if v > DateTime::now() => Err(AppError::BadReq("Invalid Date of Birth")),
         Ok(v) => Ok(v),
         Err(e) => {
@@ -139,9 +131,7 @@ pub fn is_birth_date_valid(year: u32, month: u8, day: u8) -> Result<DateTime, Ap
 
 pub fn is_password_valid(p: &str) -> Result<(), AppError> {
     if p.len() < 8 {
-        return Err(AppError::BadReq(
-            "Password cannot be less than 8 characters",
-        ));
+        return Err(AppError::BadReq("Password cannot be less than 8 characters"));
     }
     let (mut lower, mut upper, mut digit, mut special) = (false, false, false, false);
     for c in p.chars() {
@@ -168,27 +158,18 @@ pub fn is_password_valid(p: &str) -> Result<(), AppError> {
 
 pub fn is_username_valid(s: &str) -> Result<(), AppError> {
     if s.len() < 3 || s.len() > 16 {
-        return Err(AppError::BadReq(
-            "Username should be between 3 and 16 characters",
-        ));
+        return Err(AppError::BadReq("Username should be between 3 and 16 characters"));
     }
     if !s.chars().next().unwrap().is_ascii_lowercase() {
         return Err(AppError::BadReq(
             "Username should start with a lowercase alphabetic character",
         ));
     }
-    if !s
-        .chars()
-        .all(|c| c.is_ascii_lowercase() || c.is_ascii_digit() || c == '.')
-    {
-        return Err(AppError::BadReq(
-            "Only lowercase alphabets, digits and periods are allowed",
-        ));
+    if !s.chars().all(|c| c.is_ascii_lowercase() || c.is_ascii_digit() || c == '.') {
+        return Err(AppError::BadReq("Only lowercase alphabets, digits and periods are allowed"));
     }
     if s.contains("..") {
-        return Err(AppError::BadReq(
-            "Username can't contain more than one period together",
-        ));
+        return Err(AppError::BadReq("Username can't contain more than one period together"));
     }
     if s.ends_with('.') {
         return Err(AppError::BadReq("Username can't be ended with a period"));
@@ -201,9 +182,7 @@ pub fn is_display_name_valid(display_name: &str) -> Result<(), AppError> {
         return Err(AppError::InvalidData("Name cannot be empty"));
     }
     if !display_name.trim().is_ascii() {
-        return Err(AppError::InvalidData(
-            "Name can only contain ascii characters",
-        ));
+        return Err(AppError::InvalidData("Name can only contain ascii characters"));
     }
     Ok(())
 }
