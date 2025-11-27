@@ -42,10 +42,7 @@ pub fn get_session_index(
     active_session: &ActiveSession,
 ) -> Result<usize, AppError> {
     for (i, session) in sessions.iter().enumerate() {
-        if session
-            .unsigned_ssid
-            .contains(&active_session.decrypted_ssid)
-        {
+        if session.unsigned_ssid == active_session.decrypted_ssid {
             return Ok(i);
         }
     }
@@ -62,6 +59,13 @@ pub fn clear_expired_sessions(sessions: &mut Vec<Session>) {
         .collect::<Vec<Session>>();
 
     let _ = std::mem::replace(sessions, filtered_sessions);
+}
+
+pub fn delete_current_session(sessions: &mut Vec<Session>, cur: &ActiveSession) {
+    *sessions = sessions
+        .drain(..)
+        .filter(|v| v.unsigned_ssid != cur.decrypted_ssid)
+        .collect();
 }
 
 pub fn delete_selected_sessions(sessions: Vec<Session>, mut selected: Vec<String>) -> Vec<Session> {

@@ -25,3 +25,6 @@ urlencoding = { version = "2" }
 sha2 = { workspace = true }
 hmac = { workspace = true }
 const-hex = { workspace = true }
+
+[lints]
+workspace = true

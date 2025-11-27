@@ -155,7 +155,48 @@ pub async fn set_username(
 
     // registering user to primary database
     let user = Arc::clone(&db)
-        .set_applicant_username(body.email, body.username.clone(), db_session)
+        .set_applicant_username(body.email, body.username, db_session)
+        .await?;
+
+    // activating session by adding it to `Db::active`
+    db.make_user_active(active_session, user);
+
+    Ok((
+        StatusCode::CREATED,
+        set_cookie_headermap,
+        json!({
+            "message": "User Created"
+        }),
+    ))
+}
+
+/// for finishing oidc application
+
+#[derive(serde::Deserialize)]
+pub struct FinishOidcRequest {
+    email: String,
+    year: u32,
+    month: u8,
+    day: u8,
+    username: String,
+}
+
+pub async fn finish_oidc(
+    State(db): State<Arc<Db>>,
+    headers: HeaderMap,
+    Json(body): Json<FinishOidcRequest>,
+) -> Result<impl IntoResponse, AppError> {
+    // checking validity of the username
+    let birth_date = common::validation::is_birth_date_valid(body.year, body.month, body.day)?;
+    common::validation::is_username_valid(&body.username)?;
+
+    // creating session
+    let (db_session, active_session, set_cookie_headermap) =
+        common::session::create_session(&headers);
+
+    // registering user to primary database
+    let user = Arc::clone(&db)
+        .finish_oidc_application(body.email, birth_date, body.username, db_session)
         .await?;
 
     // activating session by adding it to `Db::active`

@@ -17,7 +17,7 @@ pub async fn update_legal_name(
     common::validation::is_name_valid(&body.legal_name)?;
     let username = user.lock().unwrap().username.clone();
     db.update_legal_name(&username, &body.legal_name).await?;
-    user.lock().unwrap().legal_name = body.legal_name.clone();
+    user.lock().unwrap().legal_name = Some(body.legal_name.clone());
     Ok(json!({
         "legal_name": body.legal_name,
         "message": "Your legal name has been updated"
@@ -39,7 +39,7 @@ pub async fn update_birth_date(
     let birth_date = common::validation::is_birth_date_valid(body.year, body.month, body.day)?;
     let username = user.lock().unwrap().username.clone();
     db.update_birth_date(&username, birth_date).await?;
-    user.lock().unwrap().birth_date = Some(birth_date);
+    user.lock().unwrap().birth_date = birth_date;
     Ok(json!({
         "birth_date": birth_date.to_string(),
         "message": "Your birth date has been updated"

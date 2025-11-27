@@ -8,7 +8,8 @@ pub use cookie::BASE64_DIGEST_LEN;
 use cookie::{sign, verify};
 pub use db_session::{Session, SessionStatus};
 pub use session_crud::{
-    clear_expired_sessions, create_session, delete_selected_sessions, get_session_index,
+    clear_expired_sessions, create_session, delete_current_session, delete_selected_sessions,
+    get_session_index,
 };
 
 #[cfg(test)]

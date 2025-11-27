@@ -16,7 +16,7 @@ pub enum SessionStatus {
 
 impl Session {
     // timestamp in seconds
-    pub const MEM_CACHE_DURATION: u64 = 10800; // 3 hours
+    pub const MEM_CACHE_DURATION: u64 = 28800; // 8 hours
     pub const MAX_REFRESH_DURATION: u64 = 604800; // 7 days
 
     /// returns the timestamp difference of the session with current time

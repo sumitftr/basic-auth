@@ -1,3 +1,8 @@
+# Limitations & Use Cases
+
+- **This server is dependent on `moka` (a fast, concurrent cache library) instead of other key value databases like redis, memcached, valkey, dragonfly, etc. So using load balancers without session affinity (sticky sessions) will break the origin servers**
+- **The session affinity ttl (Time to Live) must be equal to common::session::Session::MEM_CACHE_DURATION for consistency**
+
 ## Project Setup
 
 > Create a `.env` file inside project root

@@ -166,10 +166,11 @@ pub async fn callback(
             }
         },
         Err(AppError::UserNotFound) => {
-            db.create_applicant_oidc(user_info.name, user_info.email, user_info.picture)
+            Arc::clone(&db)
+                .create_applicant_oidc(user_info.name, user_info.email, user_info.picture)
                 .await?;
             db.remove_oauth_creds(&q.csrf_state);
-            Ok(Redirect::to("/register/set_username").into_response())
+            Ok(Redirect::to("/register/finish_oidc").into_response())
         }
         Err(e) => Err(e),
     }

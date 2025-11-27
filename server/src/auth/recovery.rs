@@ -19,7 +19,7 @@ pub async fn forgot_password(
 ) -> Result<ErasedJson, AppError> {
     common::validation::is_email_valid(&body.email)?;
     let code = common::generate::hex_64(&body.email);
-    db.request_password_reset(&body.email, code.clone()).await?;
+    db.request_password_reset(&body.email, &code).await?;
 
     common::mail::send(
         body.email.as_str(),

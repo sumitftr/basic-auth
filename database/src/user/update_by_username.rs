@@ -2,7 +2,7 @@ use common::{AppError, session::Session};
 use mongodb::bson::{DateTime, doc};
 use std::sync::Arc;
 
-// implementation block for checking and updating user attributes
+// implementation block for checking and updating user attributes by username
 impl crate::Db {
     // updates username of the given user to new username
     pub async fn check_and_update_username(

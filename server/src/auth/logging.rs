@@ -68,19 +68,12 @@ pub async fn logout(
     Extension(active_session): Extension<ActiveSession>,
     Extension(user): Extension<Arc<Mutex<User>>>,
 ) -> Result<impl IntoResponse, AppError> {
-    let (username, sessions) = {
-        let mut guard = user.lock().unwrap();
-        let i = common::session::get_session_index(&guard.sessions, &active_session)?;
-        // deleting the user specified session
-        if guard.sessions.len() == 1 {
-            guard.sessions.clear();
-        } else {
-            let tmp_session = guard.sessions.pop().unwrap();
-            guard.sessions[i] = tmp_session;
-        }
+    let (username, mut sessions) = {
+        let guard = user.lock().unwrap();
         (guard.username.clone(), guard.sessions.clone())
     };
 
+    common::session::delete_current_session(&mut sessions, &active_session);
     // updating sessions list in the primary and in-memory database
     db.update_sessions(&username, &sessions).await?;
     db.remove_active_user(&active_session);
@@ -112,14 +105,20 @@ pub async fn logout_devices(
     };
     // client could send a huge `Vec<String>` which could cause server overhead
     // to neglect that issue this condition is checked
-    if sessions.len() < body.sessions.len() {
+    if sessions.len() < body.sessions.len() && !sessions.is_empty() {
         return Err(AppError::BadReq("Your selected session list is too long"));
     }
-    // removing active session from `body.sessions` if passed
-    body.sessions
-        .iter_mut()
-        .filter(|v| **v != active_session.decrypted_ssid)
-        .for_each(|_| ());
+    // removing active session from `body.sessions` if present
+    for i in 0..body.sessions.len() {
+        if body.sessions[i] == active_session.decrypted_ssid {
+            if let Some(tmp_entry) = body.sessions.pop()
+                && !body.sessions.is_empty()
+            {
+                let _ = std::mem::replace(&mut body.sessions[i], tmp_entry);
+            }
+            break;
+        }
+    }
     let final_sessions = common::session::delete_selected_sessions(sessions, body.sessions);
     // updating primary and in-memory database with the remaining sessions
     db.update_sessions(&username, &final_sessions).await?;
@@ -139,21 +138,11 @@ pub async fn logout_all(
         let guard = user.lock().unwrap();
         (guard.username.clone(), guard.sessions.clone())
     };
-    // getting session index
-    let i = common::session::get_session_index(&sessions, &active_session)?;
-    // creating the final sessions vector
-    let only_session = {
-        if i == sessions.len() - 1 {
-            vec![sessions.pop().unwrap()]
-        } else {
-            let mut tmp = sessions.pop().unwrap();
-            std::mem::swap(&mut sessions[i], &mut tmp);
-            vec![tmp]
-        }
-    };
+    // deleting all other sessions except the current one
+    sessions.retain(|v| v.unsigned_ssid == active_session.decrypted_ssid);
     // updating primary and in-memory database with the only session
-    db.update_sessions(&username, &only_session).await?;
-    user.lock().unwrap().sessions = only_session;
+    db.update_sessions(&username, &sessions).await?;
+    user.lock().unwrap().sessions = sessions;
     Ok(json!({
         "message": "Deleted all other user sessions"
     }))
