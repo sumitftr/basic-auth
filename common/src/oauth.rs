@@ -20,7 +20,7 @@ pub struct OAuthConfig<'a> {
     pub provider: OAuthProvider,
 }
 
-#[derive(Copy, Clone)]
+#[derive(serde::Deserialize, serde::Serialize, Copy, Clone, Debug)]
 pub enum OAuthProvider {
     Google,
 }
@@ -48,6 +48,14 @@ impl TryFrom<&str> for OAuthProvider {
         match provider {
             "google" => Ok(OAuthProvider::Google),
             _ => Err(AppError::BadReq("Invalid OAuth Provider")),
+        }
+    }
+}
+
+impl OAuthProvider {
+    pub fn get_scopes(&self) -> &'static str {
+        match self {
+            OAuthProvider::Google => "openid email profile",
         }
     }
 }

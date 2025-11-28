@@ -1,4 +1,3 @@
-use common::session::Session;
 use mongodb::bson::{DateTime, oid::ObjectId};
 
 mod create;
@@ -7,7 +6,7 @@ mod read;
 mod update_by_email;
 mod update_by_username;
 
-#[derive(serde::Deserialize, serde::Serialize, Debug, Clone)]
+#[derive(serde::Deserialize, serde::Serialize, Clone, Debug)]
 pub struct User {
     pub _id: ObjectId,
     pub display_name: String,
@@ -22,14 +21,8 @@ pub struct User {
     pub gender: Option<String>,
     pub phone: Option<String>,
     pub country: Option<String>,
-    pub sessions: Vec<Session>,
+    pub oauth_provider: Option<common::oauth::OAuthProvider>,
+    pub sessions: Vec<common::session::Session>,
     pub created: DateTime,
-    // pub oauth: Option<OAuthDetails>,
     // pub last_accessed: DateTime,
-}
-
-pub struct OAuthDetails {
-    pub access_token: String,
-    pub refresh_token: String,
-    pub provider: common::oauth::OAuthProvider,
 }

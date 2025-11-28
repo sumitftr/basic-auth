@@ -66,4 +66,8 @@ impl Db {
         .await
         .clone()
     }
+
+    pub fn logged_users_count(self: &Arc<Self>) -> u64 {
+        self.active.entry_count()
+    }
 }

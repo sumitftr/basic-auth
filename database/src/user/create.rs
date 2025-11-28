@@ -18,14 +18,18 @@ impl crate::Db {
     }
 
     pub async fn create_user_forced(self: &Arc<Self>, user: &User) {
-        let mut t = 1;
+        let mut t = 0;
         loop {
             match self.create_user(user).await {
                 Ok(_) => break,
                 Err(_) => {
-                    tokio::time::sleep(std::time::Duration::from_secs(t)).await;
-                    t *= 2;
-                    continue;
+                    if t < 3 {
+                        tokio::time::sleep(std::time::Duration::from_secs(t)).await;
+                        t += 1;
+                        continue;
+                    } else {
+                        break;
+                    }
                 }
             }
         }

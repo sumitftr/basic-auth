@@ -19,6 +19,7 @@ impl crate::Db {
                 password: None,
                 icon: None,
                 phone: None,
+                oauth_provider: None,
                 status: ApplicationStatus::UpdatingEmail {
                     old_email: old_email.clone(),
                     otp: otp.to_string(),

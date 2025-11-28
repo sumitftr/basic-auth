@@ -33,7 +33,7 @@ pub async fn login(
         .append_pair("client_id", &oauth_cfg.client_id)
         .append_pair("redirect_uri", &redirect_uri)
         .append_pair("response_type", "code")
-        .append_pair("scope", "openid email profile")
+        .append_pair("scope", oauth_cfg.provider.get_scopes())
         .append_pair("state", &csrf_state)
         .append_pair("nonce", &nonce)
         .append_pair("code_challenge", &code_challenge)
@@ -159,7 +159,7 @@ pub async fn callback(
         },
         Err(AppError::UserNotFound) => {
             Arc::clone(&db)
-                .create_applicant_oidc(user_info.name, user_info.email, user_info.picture)
+                .create_applicant_oidc(user_info.name, user_info.email, user_info.picture, provider)
                 .await?;
             db.remove_oauth_creds(&q.csrf_state);
             Ok(Redirect::to("/register/finish_oidc").into_response())

@@ -18,6 +18,7 @@ impl crate::Db {
                 password: None,
                 icon: None,
                 phone: None,
+                oauth_provider: None,
                 status: ApplicationStatus::Recovering(code.to_string()),
             }).unwrap()
         };

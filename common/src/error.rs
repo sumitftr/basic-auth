@@ -6,6 +6,7 @@ pub enum AppError {
     Unauthorized(&'static str),
     InvalidData(&'static str),
     InvalidDataFmt(String),
+    NotFound,
     InvalidEmailFormat,
     InvalidOTP,
     UserNotFound,
@@ -33,6 +34,9 @@ impl axum::response::IntoResponse for AppError {
             }
             Self::InvalidDataFmt(e) => {
                 (StatusCode::BAD_REQUEST, JsonMsg::new(&e)).into_response()
+            }
+            Self::NotFound => {
+                (StatusCode::NOT_FOUND).into_response()
             }
             Self::InvalidEmailFormat => {
                 (StatusCode::BAD_REQUEST, JsonMsg::new("Invalid Email Format")).into_response()

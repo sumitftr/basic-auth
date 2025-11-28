@@ -22,6 +22,7 @@ impl crate::Db {
             password: None,
             icon: None,
             phone: None,
+            oauth_provider: None,
             status: ApplicationStatus::Created(otp),
         };
 
@@ -145,6 +146,7 @@ impl crate::Db {
             gender: None,
             phone: None,
             country: None,
+            oauth_provider: None,
             sessions: vec![new_session],
             created: DateTime::now(),
         };

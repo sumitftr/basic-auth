@@ -11,6 +11,7 @@ impl crate::Db {
         name: String,
         email: String,
         icon: String,
+        provider: common::oauth::OAuthProvider,
     ) -> Result<(), AppError> {
         // checking if the email is already used or not
         self.is_email_available(&email).await?;
@@ -22,6 +23,7 @@ impl crate::Db {
             password: None,
             icon: Some(icon),
             phone: None,
+            oauth_provider: Some(provider),
             status: ApplicationStatus::OidcVerified,
         };
 
@@ -104,6 +106,7 @@ impl crate::Db {
             gender: None,
             phone: None,
             country: None,
+            oauth_provider: applicant.oauth_provider,
             sessions: vec![new_session],
             created: DateTime::now(),
         };
