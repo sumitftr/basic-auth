@@ -115,7 +115,7 @@ pub async fn set_password(
     Json(body): Json<SetPasswordRequest>,
 ) -> Result<ErasedJson, AppError> {
     // checking if the user sent password is valid or not
-    common::validation::is_password_valid(&body.password)?;
+    common::validation::is_password_strong(&body.password)?;
 
     // setting password in in-memory database
     db.set_applicant_password(&body.email, &body.password).await?;

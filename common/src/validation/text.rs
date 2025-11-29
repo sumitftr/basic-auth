@@ -129,7 +129,7 @@ pub fn is_birth_date_valid(year: u32, month: u8, day: u8) -> Result<DateTime, Ap
     }
 }
 
-pub fn is_password_valid(p: &str) -> Result<(), AppError> {
+pub fn is_password_strong(p: &str) -> Result<(), AppError> {
     if p.len() < 8 {
         return Err(AppError::BadReq("Password cannot be less than 8 characters"));
     }

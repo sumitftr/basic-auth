@@ -53,7 +53,7 @@ pub async fn reset_password(
     Query(q): Query<ResetPasswordQuery>,
     Json(body): Json<ResetPasswordRequest>,
 ) -> Result<ErasedJson, AppError> {
-    common::validation::is_password_valid(&body.password)?;
+    common::validation::is_password_strong(&body.password)?;
     let email = db.reset_password(&q.code, &body.password).await?;
     common::mail::send(
         &email,

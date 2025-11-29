@@ -26,3 +26,10 @@ pub struct User {
     pub created: DateTime,
     // pub last_accessed: DateTime,
 }
+
+#[derive(serde::Deserialize, serde::Serialize, Clone, Debug)]
+pub struct DeletedUser {
+    #[serde(flatten)]
+    user: User,
+    deleted: DateTime,
+}

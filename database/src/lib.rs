@@ -14,7 +14,7 @@ pub mod user;
 
 pub struct Db {
     users: Collection<user::User>,
-    deleted_users: Collection<user::User>,
+    deleted_users: Collection<user::DeletedUser>,
     applicants: Collection<applicant::Applicant>,
     bucket: bucket::BlackBlazeB2,
     // in memory stores
