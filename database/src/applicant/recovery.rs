@@ -43,7 +43,6 @@ impl crate::Db {
         password: &str,
     ) -> Result<String, AppError> {
         let filter = doc! {"status": {"tag": "Recovering", "value": code}};
-        // let filter = doc! {"status.tag": "Recovering", "status.value": code};
         let applicant = match self.applicants.find_one_and_delete(filter).await {
             Ok(Some(v)) => v,
             Ok(None) => return Err(AppError::UserNotFound),

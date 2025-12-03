@@ -44,7 +44,7 @@ impl crate::Db {
         otp: &str,
     ) -> Result<(), AppError> {
         let status_bson = bson::to_bson(&ApplicationStatus::Created(otp.to_string())).unwrap();
-        let filter = doc! {"email": email, "status": {"tag": "Created"}};
+        let filter = doc! {"email": email, "status.tag": "Created"};
         // let filter = doc! {"email": email, "status": {"tag": "Created", "value": otp}};
         // let filter = doc! {"email": email, "status": {"tag": "Created", "value": {"$exists": true}}};
         let update = doc! {"$set": {"status": status_bson }};
@@ -65,9 +65,9 @@ impl crate::Db {
         email: &str,
         otp: &str,
     ) -> Result<(), AppError> {
-        let filter = doc! {"email": email, "status": {"tag": "Created"}};
+        let filter = doc! {"email": email, "status.tag": "Created"};
+        // let filter = doc! {"email": email, "status.tag": "Created", "status.value": {"$exists": true}};
         // let filter = doc! {"email": email, "status": {"tag": "Created", "value": otp}};
-        // let filter = doc! {"email": email, "status": {"tag": "Created", "value": {"$exists": true}}};
         let applicant = match self.applicants.find_one(filter.clone()).await {
             Ok(Some(v)) => v,
             Ok(None) => return Err(AppError::UserNotFound),
