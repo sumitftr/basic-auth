@@ -7,28 +7,6 @@ const SPECIAL: [char; 33] = [
     '=', '>', '?', '@', '[', '\\', ']', '^', '_', '`', '{', '|', '}', '~',
 ];
 
-// a valid name contains two or more words
-// each words should only contain english alphabets
-pub fn is_name_valid(s: &str) -> Result<String, AppError> {
-    let mut result = String::new();
-    let mut count = 0;
-    for part in s.split_whitespace() {
-        if part.chars().any(|b| !b.is_alphabetic()) {
-            return Err(AppError::BadReq("Only alphabets are allowed inside name"));
-        }
-        if !result.is_empty() {
-            result.push(' ');
-        }
-        count += 1;
-        result.push_str(part);
-    }
-    if !result.is_empty() && count >= 2 {
-        Ok(result)
-    } else {
-        Err(AppError::BadReq("Name must contain two or more words"))
-    }
-}
-
 pub fn is_email_valid(s: &str) -> Result<(), AppError> {
     let mut it = s.split('@');
     let Some(local_part) = it.next() else {
@@ -133,6 +111,9 @@ pub fn is_password_strong(p: &str) -> Result<(), AppError> {
     if p.len() < 8 {
         return Err(AppError::BadReq("Password cannot be less than 8 characters"));
     }
+    if p.len() > 128 {
+        return Err(AppError::BadReq("Password cannot be more than 128 characters"));
+    }
     let (mut lower, mut upper, mut digit, mut special) = (false, false, false, false);
     for c in p.chars() {
         if c.is_lowercase() {
@@ -177,6 +158,28 @@ pub fn is_username_valid(s: &str) -> Result<(), AppError> {
     Ok(())
 }
 
+// a valid name contains two or more words
+// each words should only contain english alphabets
+pub fn is_legal_name_valid(s: &str) -> Result<String, AppError> {
+    let mut result = String::new();
+    let mut count = 0;
+    for part in s.split_whitespace() {
+        if part.chars().any(|b| !b.is_alphabetic()) {
+            return Err(AppError::BadReq("Only alphabets are allowed inside name"));
+        }
+        if !result.is_empty() {
+            result.push(' ');
+        }
+        count += 1;
+        result.push_str(part);
+    }
+    if !result.is_empty() && count >= 2 {
+        Ok(result)
+    } else {
+        Err(AppError::BadReq("Name must contain two or more words"))
+    }
+}
+
 pub fn is_display_name_valid(display_name: &str) -> Result<(), AppError> {
     if display_name.trim().is_empty() {
         return Err(AppError::InvalidData("Name cannot be empty"));
@@ -219,7 +222,7 @@ mod tests {
                 #[test]
                 fn $name() {
                     let (haystack, expected) = $exp;
-                    assert_eq!(is_name_valid(haystack).ok(), expected);
+                    assert_eq!(is_legal_name_valid(haystack).ok(), expected);
                 }
             )*
         };

@@ -21,7 +21,7 @@ pub async fn start(
     Json(body): Json<CreateUserRequest>,
 ) -> Result<ErasedJson, AppError> {
     // validating user sent data
-    let name = common::validation::is_name_valid(&body.name)?;
+    common::validation::is_display_name_valid(&body.name)?;
     common::validation::is_email_valid(&body.email)?;
     let birth_date = common::validation::is_birth_date_valid(body.year, body.month, body.day)?;
 
@@ -29,7 +29,8 @@ pub async fn start(
     let otp = common::generate::otp(&body.email);
 
     // storing applicant data in memory
-    db.create_applicant(name, body.email.clone(), birth_date, otp.clone()).await?;
+    db.create_applicant(body.name, body.email.clone(), birth_date, otp.clone())
+        .await?;
 
     // sending otp to the email
     common::mail::send(

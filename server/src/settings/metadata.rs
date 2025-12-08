@@ -14,7 +14,7 @@ pub async fn update_legal_name(
     Extension(user): Extension<Arc<Mutex<User>>>,
     Json(body): Json<UpdateLegalNameRequest>,
 ) -> Result<ErasedJson, AppError> {
-    common::validation::is_name_valid(&body.legal_name)?;
+    common::validation::is_legal_name_valid(&body.legal_name)?;
     let username = user.lock().unwrap().username.clone();
     db.update_legal_name(&username, &body.legal_name).await?;
     user.lock().unwrap().legal_name = Some(body.legal_name.clone());
