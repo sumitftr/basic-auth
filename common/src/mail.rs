@@ -1,19 +1,18 @@
 use crate::AppError;
 use lettre::{
-    message::Mailbox,
+    AsyncSmtpTransport, AsyncTransport, Message, Tokio1Executor, message::Mailbox,
     transport::smtp::authentication::Credentials,
-    {Message, SmtpTransport, Transport},
 };
 use std::sync::LazyLock;
 
 // this is initialized in this static to not drop the connection after each mail send
-static MAILER: LazyLock<SmtpTransport> = LazyLock::new(|| {
+static MAILER: LazyLock<AsyncSmtpTransport<Tokio1Executor>> = LazyLock::new(|| {
     let creds = Credentials::new(
         std::env::var("NOREPLY_EMAIL").unwrap(),
         std::env::var("SMTP_KEY").unwrap(),
     );
     // opening a remote connection to the mail server
-    SmtpTransport::relay(&std::env::var("SMTP_HOST").unwrap())
+    AsyncSmtpTransport::<Tokio1Executor>::relay(&std::env::var("SMTP_HOST").unwrap())
         .unwrap()
         .credentials(creds)
         .build()
@@ -59,7 +58,8 @@ pub async fn send_internal(
 
     // sending the email
     MAILER
-        .send(&msg)
+        .send(msg)
+        .await
         .map_err(|e| {
             tracing::error!("{e:?}");
             AppError::ServerError
