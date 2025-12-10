@@ -23,8 +23,30 @@ static MAILER: LazyLock<SmtpTransport> = LazyLock::new(|| {
 static NOREPLY_EMAIL: LazyLock<Mailbox> =
     LazyLock::new(|| std::env::var("NOREPLY_EMAIL").unwrap().parse().unwrap());
 
+// Fire-and-forget version - returns immediately
+pub fn send(to_email: String, subject: String, body: String) {
+    tokio::spawn(async move {
+        if let Err(e) = send_internal(to_email.clone(), subject, body).await {
+            tracing::error!("Failed to send email to {}: {:?}", to_email, e);
+        }
+    });
+}
+
+// Wait for completion version - returns a JoinHandle you can await
+pub fn send_async(
+    to_email: String,
+    subject: String,
+    body: String,
+) -> tokio::task::JoinHandle<Result<(), AppError>> {
+    tokio::spawn(send_internal(to_email, subject, body))
+}
+
 // function to send any mail to the given mail address
-pub async fn send(to_email: &str, subject: String, body: String) -> Result<(), AppError> {
+pub async fn send_internal(
+    to_email: String,
+    subject: String,
+    body: String,
+) -> Result<(), AppError> {
     let msg: Message = Message::builder()
         .from(NOREPLY_EMAIL.clone())
         .to(to_email.parse().map_err(|_| AppError::InvalidEmailFormat)?)

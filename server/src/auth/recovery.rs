@@ -22,7 +22,7 @@ pub async fn forgot_password(
     db.request_password_reset(&body.email, &code).await?;
 
     common::mail::send(
-        body.email.as_str(),
+        body.email.clone(),
         format!("{} password reset request", &*common::SERVICE_NAME),
         format!(
             "<h1>Reset your password?</h1>\nIf you requested a password reset for {} press on this link {}\nIf you didn't make the request, please ignore this email.\nThanks, {}\n",
@@ -30,8 +30,7 @@ pub async fn forgot_password(
             format_args!("{}/api/reset_password?code={code}", &*common::SERVICE_DOMAIN),
             &*common::SERVICE_NAME
         ),
-    )
-    .await?;
+    );
 
     Ok(json!({
         "message": format!("Check your email to reset password")
@@ -55,16 +54,17 @@ pub async fn reset_password(
 ) -> Result<ErasedJson, AppError> {
     common::validation::is_password_strong(&body.password)?;
     let email = db.reset_password(&q.code, &body.password).await?;
+
     common::mail::send(
-        &email,
+        email.clone(),
         format!("Your {} password has been changed", &*common::SERVICE_NAME),
         format!(
             "Your password for {} has been changed.\nThanks, {}\n",
             email,
             &*common::SERVICE_NAME
         ),
-    )
-    .await?;
+    );
+
     Ok(json!({
         "message": format!("Your password for {email} has been changed")
     }))

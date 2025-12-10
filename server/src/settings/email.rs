@@ -28,13 +28,14 @@ pub async fn update_email(
     let otp = common::generate::otp(&body.new_email);
     // adding an entry to database for further checking
     db.request_email_update(email, &body.new_email, &otp).await?;
+
     // sending mail to the new email for verification
     common::mail::send(
-        &body.new_email,
+        body.new_email,
         format!("{otp} is your {} verification code", &*common::SERVICE_NAME),
         format!("Confirm your email address\n {otp}\n Thanks,\n {}", &*common::SERVICE_NAME),
-    )
-    .await?;
+    );
+
     Ok(json!({
         "message": "Please verify your email",
     }))
