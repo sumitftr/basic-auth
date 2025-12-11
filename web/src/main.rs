@@ -1,8 +1,5 @@
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 
-pub static SOCKET: std::sync::LazyLock<String> =
-    std::sync::LazyLock::new(|| std::env::var("SOCKET").unwrap());
-
 #[tokio::main]
 pub async fn main() {
     dotenv::dotenv().ok();
@@ -12,15 +9,15 @@ pub async fn main() {
         .with(tracing_subscriber::fmt::Layer::default())
         .init();
 
-    let router = server::routes().await;
-
-    let listener = tokio::net::TcpListener::bind(&*SOCKET).await.unwrap();
-
-    tracing::info!("[+] listening on {}", listener.local_addr().unwrap());
-    axum::serve(listener, router) // app.into_make_service_with_connect_info::<conn_info::ClientConnInfo>(),
-        .with_graceful_shutdown(shutdown_signal())
-        .await
-        .unwrap();
+    axum::serve(
+        server::get_custom_listener().await,
+        server::routes()
+            .await
+            .into_make_service_with_connect_info::<server::ClientSocket>(),
+    )
+    .with_graceful_shutdown(shutdown_signal())
+    .await
+    .unwrap();
 }
 
 /// Shutdown signal to run axum with graceful shutdown when

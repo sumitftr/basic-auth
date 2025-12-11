@@ -2,12 +2,13 @@ use super::{Applicant, ApplicationStatus};
 use crate::user::User;
 use common::AppError;
 use mongodb::bson::{self, DateTime, doc, oid::ObjectId};
-use std::sync::Arc;
+use std::{net::SocketAddr, sync::Arc};
 
 // sub steps for registering an user
 impl crate::Db {
     pub async fn create_applicant(
         self: Arc<Self>,
+        socket: SocketAddr,
         name: String,
         email: String,
         birth_date: DateTime,
@@ -16,6 +17,7 @@ impl crate::Db {
         self.is_email_available(&email).await?;
 
         let applicant = Applicant {
+            socket_addr: socket,
             display_name: Some(name),
             email: email.clone(),
             birth_date: Some(birth_date),

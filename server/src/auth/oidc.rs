@@ -1,5 +1,6 @@
+use crate::ClientSocket;
 use axum::{
-    extract::{Query, State},
+    extract::{ConnectInfo, Query, State},
     http::HeaderMap,
     response::{IntoResponse, Redirect},
 };
@@ -15,6 +16,7 @@ pub struct ProviderQuery {
 
 pub async fn login(
     State(db): State<Arc<Db>>,
+    ConnectInfo(conn_info): ConnectInfo<ClientSocket>,
     Query(q): Query<ProviderQuery>,
 ) -> Result<Redirect, AppError> {
     // Generate state, nonce, and PKCE
@@ -24,7 +26,13 @@ pub async fn login(
     let oauth_cfg =
         common::oauth::get_oauth_provider(common::oauth::OAuthProvider::try_from(q.by.as_str())?);
 
-    db.add_oauth_creds(csrf_state.clone(), code_verifier, nonce.clone(), oauth_cfg.provider);
+    db.add_oauth_creds(
+        *conn_info,
+        csrf_state.clone(),
+        code_verifier,
+        nonce.clone(),
+        oauth_cfg.provider,
+    );
 
     let redirect_uri = format!("{}/api/oauth2/callback", &*common::SERVICE_DOMAIN);
     let mut request_uri = oauth_cfg.authorization_endpoint.clone();
@@ -64,14 +72,19 @@ struct TokenResponse {
 
 pub async fn callback(
     State(db): State<Arc<Db>>,
+    ConnectInfo(conn_info): ConnectInfo<ClientSocket>,
     Query(q): Query<ProviderRedirect>,
     headers: HeaderMap,
 ) -> Result<impl IntoResponse, AppError> {
-    let (code_verifier, nonce, provider) = db
-        .get_oauth_creds(&q.csrf_state)
-        .ok_or_else(|| AppError::BadReq("CSRF State didn't match"))?;
+    let oauth_info = db
+        .get_oauth_creds(&conn_info)
+        .ok_or(AppError::BadReq("OAuth credentials not found"))?;
 
-    let oauth_cfg = common::oauth::get_oauth_provider(provider);
+    if oauth_info.csrf_state != q.csrf_state {
+        return Err(AppError::BadReq("CSRF state didn't match"));
+    }
+
+    let oauth_cfg = common::oauth::get_oauth_provider(oauth_info.provider);
     let client = reqwest::Client::new();
     let redirect_uri = format!("{}/api/oauth2/callback", &*common::SERVICE_DOMAIN);
 
@@ -84,7 +97,7 @@ pub async fn callback(
             ("code", &q.authorization_code),
             ("redirect_uri", &redirect_uri),
             ("grant_type", &"authorization_code".to_string()),
-            ("code_verifier", &code_verifier),
+            ("code_verifier", &oauth_info.code_verifier),
         ])
         .send()
         .await
@@ -123,7 +136,7 @@ pub async fn callback(
     };
 
     let user_info = if let Some(id_token) = token_response.id_token {
-        match verify_and_decode_id_token(&id_token, &oauth_cfg.client_id, &nonce) {
+        match verify_and_decode_id_token(&id_token, &oauth_cfg.client_id, &oauth_info.nonce) {
             Ok(claims) => UserInfo {
                 sub: claims.userinfo.sub,
                 email: claims.userinfo.email,
@@ -144,7 +157,7 @@ pub async fn callback(
         Ok(mut u) => match ActiveSession::parse_and_verify_from_headers(&headers) {
             Ok(active_session) => {
                 db.make_user_active(active_session, u);
-                db.remove_oauth_creds(&q.csrf_state);
+                db.remove_oauth_creds(&conn_info);
                 Ok(Redirect::to("/").into_response())
             }
             Err(_) => {
@@ -153,15 +166,21 @@ pub async fn callback(
                 u.sessions.push(db_session);
                 db.update_sessions(&u.username, &u.sessions).await?;
                 db.make_user_active(active_session, u);
-                db.remove_oauth_creds(&q.csrf_state);
+                db.remove_oauth_creds(&conn_info);
                 Ok((set_cookie_headermap, Redirect::to("/")).into_response())
             }
         },
         Err(AppError::UserNotFound) => {
             Arc::clone(&db)
-                .create_applicant_oidc(user_info.name, user_info.email, user_info.picture, provider)
+                .create_applicant_oidc(
+                    *conn_info,
+                    user_info.name,
+                    user_info.email,
+                    user_info.picture,
+                    oauth_info.provider,
+                )
                 .await?;
-            db.remove_oauth_creds(&q.csrf_state);
+            db.remove_oauth_creds(&conn_info);
             Ok(Redirect::to("/register/finish_oidc").into_response())
         }
         Err(e) => Err(e),

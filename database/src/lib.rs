@@ -1,10 +1,7 @@
 use common::session::{ActiveSession, Session};
 use moka::sync::Cache;
 use mongodb::{Collection, error::ErrorKind};
-use std::{
-    sync::{Arc, Mutex},
-    time::Duration,
-};
+use std::{net::SocketAddr, sync::Arc, time::Duration};
 use tokio::sync::OnceCell;
 
 pub mod applicant;
@@ -18,8 +15,8 @@ pub struct Db {
     applicants: Collection<applicant::Applicant>,
     bucket: bucket::BlackBlazeB2,
     // in memory stores
-    active: Cache<ActiveSession, Arc<Mutex<user::User>>>,
-    oauth_oidc: Cache<String, (String, String, common::oauth::OAuthProvider)>,
+    active: Cache<ActiveSession, Arc<std::sync::Mutex<user::User>>>,
+    oauth_oidc: Cache<SocketAddr, applicant::OAuthInfo>,
 }
 
 static DB: OnceCell<Arc<Db>> = OnceCell::const_new();

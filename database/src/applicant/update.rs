@@ -1,18 +1,20 @@
 use crate::applicant::{Applicant, ApplicationStatus};
 use common::AppError;
 use mongodb::bson::doc;
-use std::sync::Arc;
+use std::{net::SocketAddr, sync::Arc};
 
 // implementation block for checking and updating user attributes by email
 impl crate::Db {
     pub async fn request_email_update(
         self: &Arc<Self>,
+        socket_addr: SocketAddr,
         old_email: String,
         new_email: &str,
         otp: &str,
     ) -> Result<(), AppError> {
         let applicant = doc! {
             "$set": mongodb::bson::to_bson(&Applicant {
+                socket_addr,
                 display_name: None,
                 email: new_email.to_string(),
                 birth_date: None,

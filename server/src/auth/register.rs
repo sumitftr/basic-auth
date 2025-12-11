@@ -1,3 +1,5 @@
+use crate::ClientSocket;
+use axum::extract::ConnectInfo;
 use axum::http::{StatusCode, header::HeaderMap};
 use axum::{Json, extract::State, response::IntoResponse};
 use axum_extra::{json, response::ErasedJson};
@@ -18,6 +20,7 @@ pub struct CreateUserRequest {
 
 pub async fn start(
     State(db): State<Arc<Db>>,
+    ConnectInfo(conn_info): ConnectInfo<ClientSocket>,
     Json(body): Json<CreateUserRequest>,
 ) -> Result<ErasedJson, AppError> {
     // validating user sent data
@@ -29,7 +32,7 @@ pub async fn start(
     let otp = common::generate::otp(&body.email);
 
     // storing applicant data in memory
-    db.create_applicant(body.name, body.email.clone(), birth_date, otp.clone())
+    db.create_applicant(*conn_info, body.name, body.email.clone(), birth_date, otp.clone())
         .await?;
 
     // sending otp to the email

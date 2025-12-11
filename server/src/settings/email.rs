@@ -1,4 +1,8 @@
-use axum::{Extension, Json, extract::State};
+use crate::ClientSocket;
+use axum::{
+    Extension, Json,
+    extract::{ConnectInfo, State},
+};
 use axum_extra::{json, response::ErasedJson};
 use common::AppError;
 use database::{Db, user::User};
@@ -12,6 +16,7 @@ pub struct UpdateEmailRequest {
 
 pub async fn update_email(
     State(db): State<Arc<Db>>,
+    ConnectInfo(conn_info): ConnectInfo<ClientSocket>,
     Extension(user): Extension<Arc<Mutex<User>>>,
     Json(body): Json<UpdateEmailRequest>,
 ) -> Result<ErasedJson, AppError> {
@@ -27,7 +32,7 @@ pub async fn update_email(
     // generating otp
     let otp = common::generate::otp(&body.new_email);
     // adding an entry to database for further checking
-    db.request_email_update(email, &body.new_email, &otp).await?;
+    db.request_email_update(*conn_info, email, &body.new_email, &otp).await?;
 
     // sending mail to the new email for verification
     common::mail::send(
