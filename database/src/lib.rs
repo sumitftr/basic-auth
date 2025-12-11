@@ -16,7 +16,8 @@ pub struct Db {
     bucket: bucket::BlackBlazeB2,
     // in memory stores
     active: Cache<ActiveSession, Arc<std::sync::Mutex<user::User>>>,
-    oauth_oidc: Cache<SocketAddr, applicant::OAuthInfo>,
+    openid_connecting: Cache<SocketAddr, mem::OAuthInfo>,
+    recovering: Cache<String, mem::PasswordResetInfo>, // code
 }
 
 static DB: OnceCell<Arc<Db>> = OnceCell::const_new();
@@ -54,9 +55,13 @@ impl Db {
                     .max_capacity(32728)
                     .time_to_live(Duration::from_secs(Session::MEM_CACHE_DURATION))
                     .build(),
-                oauth_oidc: Cache::builder()
+                openid_connecting: Cache::builder()
                     .max_capacity(4096)
-                    .time_to_live(Duration::from_secs(1800))
+                    .time_to_live(Duration::from_secs(300))
+                    .build(),
+                recovering: Cache::builder()
+                    .max_capacity(4096)
+                    .time_to_live(Duration::from_secs(300))
                     .build(),
             })
         })

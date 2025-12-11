@@ -1,3 +1,4 @@
+use crate::ClientSocket;
 use axum::{
     Json,
     extract::{ConnectInfo, Query, State},
@@ -6,8 +7,6 @@ use axum_extra::{json, response::ErasedJson};
 use common::AppError;
 use database::Db;
 use std::sync::Arc;
-
-use crate::ClientSocket;
 
 #[derive(serde::Deserialize)]
 pub struct ForgotPasswordRequest {
@@ -22,7 +21,7 @@ pub async fn forgot_password(
 ) -> Result<ErasedJson, AppError> {
     common::validation::is_email_valid(&body.email)?;
     let code = common::generate::hex_64(&body.email);
-    db.request_password_reset(*conn_info, &body.email, &code).await?;
+    db.request_password_reset(*conn_info, body.email.clone(), code.clone());
 
     common::mail::send(
         body.email.clone(),
@@ -52,11 +51,12 @@ pub struct ResetPasswordRequest {
 
 pub async fn reset_password(
     State(db): State<Arc<Db>>,
+    ConnectInfo(conn_info): ConnectInfo<ClientSocket>,
     Query(q): Query<ResetPasswordQuery>,
     Json(body): Json<ResetPasswordRequest>,
 ) -> Result<ErasedJson, AppError> {
     common::validation::is_password_strong(&body.password)?;
-    let email = db.reset_password(&q.code, &body.password).await?;
+    let email = db.reset_password(*conn_info, &q.code, &body.password).await?;
 
     common::mail::send(
         email.clone(),

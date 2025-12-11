@@ -1,5 +1,4 @@
 mod from_oidc;
-mod recovery;
 mod registration;
 mod update;
 
@@ -23,17 +22,8 @@ pub enum ApplicationStatus {
     EmailVerified,
     PasswordSet,
     OidcVerified,
-    Recovering(String),                               // HEX HASH
     UpdatingEmail { old_email: String, otp: String }, // OTP
     UpdatingPhone { old_phone: String, otp: String }, // OTP
-}
-
-#[derive(Clone)]
-pub struct OAuthInfo {
-    pub csrf_state: String,
-    pub code_verifier: String,
-    pub nonce: String,
-    pub provider: common::oauth::OAuthProvider,
 }
 
 impl crate::Db {
