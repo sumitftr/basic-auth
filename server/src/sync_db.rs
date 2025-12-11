@@ -4,11 +4,11 @@ pub struct CustomStream(tokio::net::TcpStream);
 
 impl tokio::io::AsyncRead for CustomStream {
     fn poll_read(
-        self: std::pin::Pin<&mut Self>,
+        mut self: std::pin::Pin<&mut Self>,
         cx: &mut std::task::Context<'_>,
-        _: &mut tokio::io::ReadBuf<'_>,
+        buf: &mut tokio::io::ReadBuf<'_>,
     ) -> std::task::Poll<std::io::Result<()>> {
-        self.0.poll_read_ready(cx)
+        std::pin::Pin::new(&mut self.0).poll_read(cx, buf)
     }
 }
 

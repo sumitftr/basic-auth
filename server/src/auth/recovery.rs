@@ -33,7 +33,7 @@ pub async fn forgot_password(
             format_args!("{}/api/reset_password?code={code}", &*common::SERVICE_DOMAIN),
             &*common::SERVICE_NAME
         ),
-    );
+    ).await?;
 
     Ok(json!({
         "message": format!("Check your email to reset password")
@@ -66,7 +66,8 @@ pub async fn reset_password(
             email,
             &*common::SERVICE_NAME
         ),
-    );
+    )
+    .await?;
 
     Ok(json!({
         "message": format!("Your password for {email} has been changed")

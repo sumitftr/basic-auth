@@ -40,7 +40,8 @@ pub async fn start(
         body.email,
         format!("{otp} is your {} verification code", &*common::SERVICE_NAME),
         format!("Confirm your email address\n {otp}\n Thanks,\n {}", &*common::SERVICE_NAME),
-    );
+    )
+    .await?;
 
     Ok(json!({
         "message": "Your information has been accepted"
@@ -65,7 +66,8 @@ pub async fn resend_otp(
         body.email,
         format!("{otp} is your {} verification code", &*common::SERVICE_NAME),
         format!("Confirm your email address\n {otp}\n Thanks,\n {}", &*common::SERVICE_NAME),
-    );
+    )
+    .await?;
 
     Ok(json!({
         "message": "The email has been sent"
@@ -96,7 +98,8 @@ pub async fn verify_email(
             body.email,
             &*common::SERVICE_NAME
         ),
-    );
+    )
+    .await?;
 
     Ok(json!({
         "message": "Email Verification successful"
