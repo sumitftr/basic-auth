@@ -9,71 +9,58 @@ impl crate::Db {
         self: &Arc<Self>,
         socket_addr: SocketAddr,
         old_email: String,
-        new_email: &str,
-        otp: &str,
+        new_email: String,
+        otp: String,
     ) -> Result<(), AppError> {
-        let applicant = doc! {
-            "$set": mongodb::bson::to_bson(&Applicant {
+        self.is_email_available(&new_email).await?;
+        self.applicants.insert(
+            new_email,
+            Applicant {
                 socket_addr,
                 display_name: None,
-                email: new_email.to_string(),
                 birth_date: None,
                 password: None,
                 icon: None,
                 phone: None,
                 oauth_provider: None,
-                status: ApplicationStatus::UpdatingEmail {
-                    old_email: old_email.clone(),
-                    otp: otp.to_string(),
-                },
-            }).unwrap()
-        };
-        let filter = doc! {"status": {"tag": "UpdatingEmail", "value": {"email": &old_email, "otp": {"$exists": true}}}};
-        let options = mongodb::options::UpdateOptions::builder().upsert(true).build();
-        match self.applicants.update_one(filter, applicant).with_options(options).await {
-            Ok(_) => {
-                tracing::info!("[Email Update Request] Old: {old_email}, New: {new_email}");
-                Ok(())
-            }
-            Err(e) => {
-                tracing::error!("{e:?}");
-                Err(AppError::ServerError)
-            }
-        }
+                status: ApplicationStatus::UpdatingEmail { old_email, otp },
+            },
+        );
+        Ok(())
     }
 
-    // checks and updates email of the given user (returns updated email)
+    // checks and updates email of the given user
     pub async fn update_email(
         self: &Arc<Self>,
         old_email: &str,
+        new_email: String,
         otp: &str,
-    ) -> Result<String, AppError> {
-        let filter = doc! {"status": {"tag": "UpdatingEmail", "value": {"old_email": old_email, "otp": otp}}};
-        // let filter = doc! {"status": {"tag": "UpdatingEmail", "value": {"old_email": old_email}}};
-        // let filter = doc! {"status": {"tag": "UpdatingEmail", "value": {"old_email": old_email, "otp": {"$exists": true}}}};
-        let applicant = match self.applicants.find_one(filter).await {
-            Ok(Some(v)) => v,
-            Ok(None) => return Err(AppError::InvalidOTP),
-            Err(e) => {
-                tracing::error!("{e:?}");
-                return Err(AppError::ServerError);
+    ) -> Result<(), AppError> {
+        let entry = self.applicants.get(&new_email).ok_or(AppError::UserNotFound)?;
+        match &entry.status {
+            ApplicationStatus::UpdatingEmail { old_email: mem_old_email, otp: mem_otp }
+                if otp == mem_otp && old_email == mem_old_email =>
+            {
+                let filter = doc! {"email": old_email};
+                let update = doc! {"$set": {"email": &new_email}};
+                match self.users.update_one(filter, update).await {
+                    Ok(_) => {
+                        tracing::info!("[Email Updated] Old: {old_email}, New: {new_email}");
+                        Ok(())
+                    }
+                    Err(e) => {
+                        tracing::error!("{e:?}");
+                        Err(AppError::ServerError)
+                    }
+                }
             }
-        };
-
-        // no need to check for email availablity
-
-        // checking and updating old email to new email
-        let filter = doc! {"email": old_email};
-        let update = doc! {"$set": {"email": &applicant.email}};
-        match self.users.update_one(filter, update).await {
-            Ok(_) => {
-                tracing::info!("[Email Updated] Old: {old_email}, New: {}", applicant.email);
-                Ok(applicant.email)
+            ApplicationStatus::UpdatingEmail { otp: mem_otp, .. } if otp != mem_otp => {
+                Err(AppError::InvalidOTP)
             }
-            Err(e) => {
-                tracing::error!("{e:?}");
-                Err(AppError::ServerError)
+            ApplicationStatus::UpdatingEmail { .. } => {
+                Err(AppError::BadReq("New email didn't match"))
             }
+            _ => Err(AppError::BadReq("Please verify the email")),
         }
     }
 }

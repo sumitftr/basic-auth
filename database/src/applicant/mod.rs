@@ -1,12 +1,14 @@
+use moka::sync::Cache;
+use std::{net::SocketAddr, time::Duration};
+
 mod from_oidc;
 mod registration;
 mod update;
 
-#[derive(serde::Deserialize, serde::Serialize)]
+#[derive(serde::Deserialize, serde::Serialize, Clone)]
 pub struct Applicant {
     pub socket_addr: std::net::SocketAddr,
     pub display_name: Option<String>,
-    pub email: String,
     pub birth_date: Option<mongodb::bson::DateTime>,
     pub password: Option<String>,
     pub icon: Option<String>,
@@ -26,36 +28,55 @@ pub enum ApplicationStatus {
     UpdatingPhone { old_phone: String, otp: String }, // OTP
 }
 
+pub struct ApplicantsCache {
+    entries: Cache<String, Applicant>,            // Email to Metadata
+    mapping: Cache<std::net::SocketAddr, String>, // Socket Address to Email
+}
+
+impl ApplicantsCache {
+    #[allow(clippy::new_without_default)]
+    pub fn new() -> Self {
+        Self {
+            entries: Cache::builder()
+                .max_capacity(4096)
+                .time_to_live(Duration::from_secs(3600))
+                .build(),
+            mapping: Cache::builder()
+                .max_capacity(4096)
+                .time_to_live(Duration::from_secs(3600))
+                .build(),
+        }
+    }
+
+    pub fn insert(&self, email: String, metadata: Applicant) {
+        self.mapping.insert(metadata.socket_addr, email.clone());
+        self.entries.insert(email, metadata);
+    }
+
+    pub fn get(&self, email: &str) -> Option<Applicant> {
+        self.entries.get(email)
+    }
+
+    pub fn remove(&self, email: &str) -> Option<Applicant> {
+        let entry = self.entries.remove(email);
+        if let Some(ref applicant) = entry {
+            self.mapping.remove(&applicant.socket_addr);
+        }
+        entry
+    }
+
+    pub fn drop(&self, socket_addr: &SocketAddr) -> Option<Applicant> {
+        if let Some(email) = self.mapping.remove(socket_addr) {
+            self.entries.remove(&email)
+        } else {
+            None
+        }
+    }
+}
+
 impl crate::Db {
-    pub async fn remove_applicant(self: std::sync::Arc<Self>, socket_addr: std::net::SocketAddr) {
-        use mongodb::bson;
-        use std::net::SocketAddr;
-        let filter = match socket_addr {
-            SocketAddr::V4(v4_addr) => {
-                let octets = v4_addr.ip().octets();
-                bson::doc! {
-                    "socket_addr": { "$elemMatch": { "V4": [
-                        [octets[0] as i32, octets[1] as i32, octets[2] as i32, octets[3] as i32],
-                        v4_addr.port() as i32
-                    ] } }
-                }
-            }
-            SocketAddr::V6(v6_addr) => {
-                let segments = v6_addr.ip().segments();
-                bson::doc! {
-                    "socket_addr": { "$elemMatch": { "V6": [
-                        segments.iter().map(|&s| s as i32).collect::<Vec<_>>(),
-                        v6_addr.port() as i32,
-                        v6_addr.flowinfo() as i32,
-                        v6_addr.scope_id() as i32
-                    ] } }
-                }
-            }
-        };
-        dbg!(&filter);
-        match self.applicants.delete_one(filter).await {
-            Ok(v) => tracing::info!("{v:?}"),
-            Err(e) => tracing::info!("{e:?}"),
-        };
+    #[inline]
+    pub fn drop_applicant(self: &std::sync::Arc<Self>, socket_addr: &SocketAddr) {
+        self.applicants.drop(socket_addr);
     }
 }

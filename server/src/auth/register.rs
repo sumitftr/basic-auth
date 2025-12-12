@@ -59,7 +59,7 @@ pub async fn resend_otp(
 ) -> Result<ErasedJson, AppError> {
     // generating otp
     let otp = common::generate::otp(&body.email);
-    db.update_applicant_otp(&body.email, &otp).await?;
+    db.update_applicant_otp(&body.email, otp.clone()).await?;
 
     // resending otp to the email
     common::mail::send(
@@ -122,7 +122,7 @@ pub async fn set_password(
     common::validation::is_password_strong(&body.password)?;
 
     // setting password in in-memory database
-    db.set_applicant_password(&body.email, &body.password).await?;
+    db.set_applicant_password(&body.email, body.password).await?;
 
     Ok(json!({
         "message": format!("Your password for email {} has been set", body.email)
@@ -191,7 +191,7 @@ pub async fn finish_oidc(
         common::session::create_session(&headers);
 
     // registering user to primary database
-    let user = Arc::clone(&db)
+    let user = db
         .finish_oidc_application(body.email, birth_date, body.username, db_session)
         .await?;
 

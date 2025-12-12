@@ -27,11 +27,11 @@ pub async fn update_email(
     }
 
     common::validation::is_email_valid(&body.new_email)?;
-    db.is_email_available(&body.new_email).await?;
     let otp = common::generate::otp(&body.new_email);
 
     // adding an entry to database for further checking
-    db.request_email_update(*conn_info, email, &body.new_email, &otp).await?;
+    db.request_email_update(*conn_info, email, body.new_email.clone(), otp.clone())
+        .await?;
 
     // sending mail to the new email for verification
     common::mail::send(
@@ -48,6 +48,7 @@ pub async fn update_email(
 
 #[derive(Deserialize)]
 pub struct VerifyEmailRequest {
+    new_email: String,
     otp: String,
 }
 
@@ -57,10 +58,10 @@ pub async fn verify_email(
     Json(body): Json<VerifyEmailRequest>,
 ) -> Result<ErasedJson, AppError> {
     let old_email = user.lock().unwrap().email.clone();
-    let new_email = db.update_email(&old_email, &body.otp).await?;
-    user.lock().unwrap().email = new_email.clone();
+    db.update_email(&old_email, body.new_email.clone(), &body.otp).await?;
+    user.lock().unwrap().email = body.new_email.clone();
     Ok(json!({
-        "email": new_email,
+        "email": body.new_email,
         "message": "Your email has been verified",
     }))
 }

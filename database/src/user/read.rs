@@ -7,13 +7,8 @@ use std::sync::Arc;
 impl crate::Db {
     // checks if the email is available or not
     pub async fn is_email_available(self: &Arc<Self>, email: &str) -> Result<(), AppError> {
-        match self.applicants.find_one(doc! { "email": email }).await {
-            Ok(Some(_)) => return Err(AppError::EmailTaken),
-            Ok(None) => {}
-            Err(e) => {
-                tracing::error!("{e:?}");
-                return Err(AppError::ServerError);
-            }
+        if self.applicants.get(email).is_some() {
+            return Err(AppError::EmailTaken);
         }
         match self.users.find_one(doc! { "email": email }).await {
             Ok(Some(_)) => Err(AppError::EmailTaken),

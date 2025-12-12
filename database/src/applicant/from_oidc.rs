@@ -1,63 +1,45 @@
 use super::{Applicant, ApplicationStatus};
 use crate::user::User;
 use common::AppError;
-use mongodb::bson::{DateTime, doc, oid::ObjectId};
+use mongodb::bson::{DateTime, oid::ObjectId};
 use std::{net::SocketAddr, sync::Arc};
 
 // sub steps for registering an user
 impl crate::Db {
     pub async fn create_applicant_oidc(
-        self: Arc<Self>,
+        self: &Arc<Self>,
         socket_addr: SocketAddr,
         name: String,
         email: String,
         icon: String,
         provider: common::oauth::OAuthProvider,
     ) -> Result<(), AppError> {
-        // checking if the email is already used or not
         self.is_email_available(&email).await?;
-
-        let applicant = Applicant {
-            socket_addr,
-            display_name: Some(name),
+        self.applicants.insert(
             email,
-            birth_date: None,
-            password: None,
-            icon: Some(icon),
-            phone: None,
-            oauth_provider: Some(provider),
-            status: ApplicationStatus::OidcVerified,
-        };
-
-        match self.applicants.insert_one(&applicant).await {
-            Ok(_) => {
-                tracing::info!("[Created OIDC Applicant] Email: {}", applicant.email);
-                Ok(())
-            }
-            Err(e) => {
-                tracing::error!("{e:?}");
-                Err(AppError::ServerError)
-            }
-        }
+            Applicant {
+                socket_addr,
+                display_name: Some(name),
+                birth_date: None,
+                password: None,
+                icon: Some(icon),
+                phone: None,
+                oauth_provider: Some(provider),
+                status: ApplicationStatus::OidcVerified,
+            },
+        );
+        Ok(())
     }
 
     pub async fn finish_oidc_application(
-        self: Arc<Self>,
+        self: &Arc<Self>,
         email: String,
         birth_date: DateTime,
         username: String,
         new_session: common::session::Session,
     ) -> Result<User, AppError> {
         self.is_username_available(&username).await?;
-        let filter = doc! {"email": &email, "status": {"tag": "OidcVerified"}};
-        let mut applicant = match self.applicants.find_one_and_delete(filter).await {
-            Ok(Some(v)) => v,
-            Ok(None) => return Err(AppError::UserNotFound),
-            Err(e) => {
-                tracing::error!("{e:?}");
-                return Err(AppError::ServerError);
-            }
-        };
+        let mut applicant = self.applicants.get(&email).ok_or(AppError::UserNotFound)?;
 
         let _id = ObjectId::new();
         // creating a new object in the bucket from the cdn url
@@ -113,6 +95,7 @@ impl crate::Db {
             created: DateTime::now(),
         };
         self.create_user_forced(&user).await;
+        self.applicants.remove(&user.email);
         Ok(user)
     }
 }
