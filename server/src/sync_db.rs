@@ -46,7 +46,7 @@ impl Drop for CustomStream {
         tokio::spawn(async move {
             let db = database::Db::new().await;
             if db.remove_oauth_creds(&socket_addr).is_none() {
-                let _ = db.remove_applicant(socket_addr).await;
+                db.remove_applicant(socket_addr).await;
             }
         });
     }

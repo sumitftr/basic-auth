@@ -1,7 +1,4 @@
-use axum::{
-    Router,
-    routing::{get, post},
-};
+use axum::routing::{get, post};
 
 mod logging;
 mod oidc;
@@ -9,8 +6,8 @@ mod recovery;
 mod register;
 
 #[rustfmt::skip]
-pub async fn auth_routes() -> Router {
-    Router::new()
+pub async fn auth_routes() -> axum::Router {
+    axum::Router::new()
         .route("/api/logout_all", post(logging::logout_all))
         .route("/api/logout_devices", post(logging::logout_devices))
         .route("/api/logout", post(logging::logout))

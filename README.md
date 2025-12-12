@@ -1,7 +1,10 @@
 # Limitations & Use Cases
 
-- **This server is dependent on `moka` (a fast, concurrent cache library) instead of other key value databases like redis, memcached, valkey, dragonfly, etc. So using load balancers without session affinity (sticky sessions) will break the origin servers**
-- **The session affinity ttl (Time to Live) must be equal to common::session::Session::MEM_CACHE_DURATION for consistency**
+- This server is dependent on `moka` (a fast, concurrent cache library) instead of other key value databases like redis, memcached, valkey, dragonfly, etc. So using load balancers without session affinity (sticky sessions) will break the origin servers
+- The session affinity ttl (Time to Live) must be equal to `common::session::Session::MEM_CACHE_DURATION` for consistency
+- The `Db::finish_oidc_application` could fail to upload icon which will remove the applicant from the database without registering
+- The `Db::remove_applicant` method is failing to filter the specified socket, thus not removing the applicant on closing TCP Stream.
+- Most of the database handlers are not transaction based which is very little likely to cause problem in few edge cases.
 
 ## Project Setup
 
