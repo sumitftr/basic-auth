@@ -1,4 +1,4 @@
-use crate::mem::PasswordResetInfo;
+use super::PasswordResetInfo;
 use common::AppError;
 use std::{net::SocketAddr, sync::Arc};
 

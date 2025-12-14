@@ -13,10 +13,10 @@ common = { path = "../common" }
 axum = { workspace = true }
 base64 = { workspace = true }
 moka = { workspace = true }
-mongodb = { workspace = true }
 reqwest = { workspace = true }
 serde = { workspace = true }
 serde_json = { workspace = true }
+sqlx = { workspace = true }
 tokio = { workspace = true }
 tracing = { workspace = true }
 

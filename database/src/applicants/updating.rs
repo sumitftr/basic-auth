@@ -1,6 +1,5 @@
 use crate::applicant::{Applicant, ApplicationStatus};
 use common::AppError;
-use mongodb::bson::doc;
 use std::{net::SocketAddr, sync::Arc};
 
 // implementation block for checking and updating user attributes by email
@@ -41,18 +40,16 @@ impl crate::Db {
             ApplicationStatus::UpdatingEmail { old_email: mem_old_email, otp: mem_otp }
                 if otp == mem_otp && old_email == mem_old_email =>
             {
-                let filter = doc! {"email": old_email};
-                let update = doc! {"$set": {"email": &new_email}};
-                match self.users.update_one(filter, update).await {
-                    Ok(_) => {
-                        tracing::info!("[Email Updated] Old: {old_email}, New: {new_email}");
-                        Ok(())
-                    }
-                    Err(e) => {
-                        tracing::error!("{e:?}");
-                        Err(AppError::ServerError)
-                    }
-                }
+                sqlx::query!("UPDATE users SET email = $1 WHERE email = $2", new_email, old_email)
+                    .execute(&self.pool)
+                    .await
+                    .map_err(|e| {
+                        tracing::error!("{:?}", e);
+                        AppError::ServerError
+                    })?;
+
+                tracing::info!("[Email Updated] Old: {old_email}, New: {new_email}");
+                Ok(())
             }
             ApplicationStatus::UpdatingEmail { otp: mem_otp, .. } if otp != mem_otp => {
                 Err(AppError::InvalidOTP)

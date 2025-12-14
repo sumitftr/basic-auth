@@ -150,9 +150,7 @@ pub async fn set_username(
         common::session::create_session(&headers);
 
     // registering user to primary database
-    let user = Arc::clone(&db)
-        .set_applicant_username(body.email, body.username, db_session)
-        .await?;
+    let user = db.set_applicant_username(body.email, body.username, db_session).await?;
 
     // activating session by adding it to `Db::active`
     db.make_user_active(active_session, user);

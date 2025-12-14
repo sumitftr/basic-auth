@@ -4,7 +4,11 @@ use common::{
     session::{ActiveSession, SessionStatus},
 };
 
-pub async fn auth_middleware(mut req: Request, next: Next) -> Result<Response, AppError> {
+pub async fn auth_middleware(
+    ConnectInfo(conn_info): ConnectInfo<ClientSocket>,
+    mut req: Request,
+    next: Next,
+) -> Result<Response, AppError> {
     let active_session = ActiveSession::parse_and_verify_from_headers(req.headers())?;
     let db = database::Db::new().await;
 
@@ -30,7 +34,7 @@ pub async fn auth_middleware(mut req: Request, next: Next) -> Result<Response, A
         SessionStatus::Expiring(_) | SessionStatus::Refreshable(_) => {
             // automatic session refresh code block
             let (db_session, new_active_session, set_cookie_headermap) =
-                common::session::create_session(req.headers());
+                common::session::create_session(user.id, req.headers(), conn_info);
 
             // replacing the old session with new session
             user.sessions[i] = db_session;
@@ -50,7 +54,7 @@ pub async fn auth_middleware(mut req: Request, next: Next) -> Result<Response, A
                 db.update_sessions(&user.username, &user.sessions).await?;
             }
 
-            return Err(AppError::InvalidSession(active_session.expire()));
+            return Err(AppError::InvalidSession(common::session::expire_session()));
         }
     }
 

@@ -1,118 +1,54 @@
 use crate::AppError;
-use mongodb::bson::DateTime;
 use std::str::FromStr;
+use time::OffsetDateTime;
 
 const SPECIAL: [char; 33] = [
     ' ', '!', '"', '#', '$', '%', '&', '\'', '(', ')', '*', '+', ',', '-', '.', '/', ':', ';', '<',
     '=', '>', '?', '@', '[', '\\', ']', '^', '_', '`', '{', '|', '}', '~',
 ];
 
-pub fn is_email_valid(s: &str) -> Result<(), AppError> {
-    let mut it = s.split('@');
-    let Some(local_part) = it.next() else {
-        return Err(AppError::InvalidEmailFormat);
-    };
-    let Some(domain) = it.next() else {
-        return Err(AppError::InvalidEmailFormat);
-    };
-    if it.next().is_some() {
-        return Err(AppError::InvalidEmailFormat);
-    }
-
-    if is_local_part_valid(local_part) && is_domain_valid(domain) {
-        Ok(())
-    } else {
-        Err(AppError::InvalidEmailFormat)
-    }
-}
-
-fn is_local_part_valid(local_part: &str) -> bool {
-    if local_part.is_empty() || local_part.len() > 64 {
-        return false;
-    }
-    // local part should start with alphanumeric character
-    if !local_part.chars().next().unwrap().is_ascii_alphanumeric() {
-        return false;
-    }
-    // local part should only contain alphabets, digits and periods
-    if !local_part
-        .chars()
-        .all(|c| c.is_ascii_alphanumeric() || c == '.' || c == '-' || c == '_')
-    {
-        return false;
-    }
-    // local part should not contain more than one period, hypen or underscore together
-    let allowed_symbols = ['.', '-', '_'];
-    let mut it = local_part.chars();
-    let mut prev = it.next().unwrap();
-    for _ in 1..local_part.len() {
-        let curr = it.next().unwrap();
-        if allowed_symbols.contains(&prev) && allowed_symbols.contains(&curr) {
-            return false;
+pub fn is_birth_date_valid(
+    year: u32,
+    month: u8,
+    day: u8,
+    offset: time::UtcOffset,
+) -> Result<OffsetDateTime, AppError> {
+    // Convert month number to time::Month enum
+    let month_enum = match time::Month::try_from(month) {
+        Ok(m) => m,
+        Err(_) => {
+            tracing::error!("Invalid month: {month}");
+            return Err(AppError::InvalidData("Invalid month"));
         }
-        prev = curr;
-    }
-    // no period, hypen or underscore at very end of local part
-    if allowed_symbols.iter().any(|&p| p == local_part.chars().next_back().unwrap()) {
-        return false;
-    }
-    true
-}
+    };
 
-fn is_domain_valid(domain: &str) -> bool {
-    if domain.is_empty() || domain.len() > 255 || domain.contains("..") || !domain.contains(".") {
-        return false;
-    }
-    let mut it = domain.split('.');
-    // top level domain check
-    if let Some(tld) = it.next_back()
-        && (tld.is_empty() || !tld.chars().all(|c| c.is_ascii_alphabetic()))
-    {
-        return false;
-    }
-    // second, third and fourth level domain check
-    for _ in 0..3 {
-        if let Some(ld) = it.next_back()
-            && (ld.is_empty()
-                || !ld.chars().all(|c| c.is_ascii_alphanumeric() || c == '-')
-                || !ld.chars().next().unwrap().is_ascii_alphabetic()
-                || ld.ends_with('-'))
-        {
-            return false;
-        }
-    }
-    // no fifth level domain allowed
-    if it.next_back().is_some() {
-        return false;
-    }
-    true
-}
-
-pub fn is_birth_date_valid(year: u32, month: u8, day: u8) -> Result<DateTime, AppError> {
-    match DateTime::builder().year(year as i32).month(month).day(day).build() {
-        Ok(v) if v > DateTime::now() => Err(AppError::BadReq("Invalid Date of Birth")),
-        Ok(v) => Ok(v),
+    // Try to create a valid date
+    let date = match time::Date::from_calendar_date(year as i32, month_enum, day) {
+        Ok(d) => d,
         Err(e) => {
-            tracing::error!("{e:?}");
-            match e {
-                mongodb::bson::datetime::Error::InvalidTimestamp { .. } => {
-                    Err(AppError::BadReq("Invalid Timestamp"))
-                }
-                mongodb::bson::datetime::Error::CannotFormat { .. } => {
-                    Err(AppError::BadReq("Failed to format `Date of Birth`"))
-                }
-                _ => Err(AppError::ServerError),
-            }
+            tracing::error!("Invalid date: year={year}, month={month}, day={day}, error={e:?}");
+            return Err(AppError::InvalidData("Invalid Birth Date"));
         }
+    };
+
+    // Create a OffsetDateTime at midnight
+    let birth_datetime = OffsetDateTime::new_in_offset(date, time::Time::MIDNIGHT, offset);
+
+    // Check if birth date is in the future
+    if birth_datetime > OffsetDateTime::now_utc() {
+        tracing::error!("Birth date is in the future: {:?}", birth_datetime);
+        return Err(AppError::InvalidData("Date of Birth cannot be in the future"));
     }
+
+    Ok(birth_datetime)
 }
 
 pub fn is_password_strong(p: &str) -> Result<(), AppError> {
     if p.len() < 8 {
-        return Err(AppError::BadReq("Password cannot be less than 8 characters"));
+        return Err(AppError::InvalidData("Password cannot be less than 8 characters"));
     }
     if p.len() > 128 {
-        return Err(AppError::BadReq("Password cannot be more than 128 characters"));
+        return Err(AppError::InvalidData("Password cannot be more than 128 characters"));
     }
     let (mut lower, mut upper, mut digit, mut special) = (false, false, false, false);
     for c in p.chars() {
@@ -132,40 +68,22 @@ pub fn is_password_strong(p: &str) -> Result<(), AppError> {
     if lower && upper && digit && special {
         return Ok(());
     }
-    Err(AppError::BadReq(
+    Err(AppError::InvalidData(
         "Password must contain a lowercase alphabet, a uppercase alphabet, a digit and a special character",
     ))
-}
-
-pub fn is_username_valid(s: &str) -> Result<(), AppError> {
-    if s.len() < 3 || s.len() > 16 {
-        return Err(AppError::BadReq("Username should be between 3 and 16 characters"));
-    }
-    if !s.chars().next().unwrap().is_ascii_lowercase() {
-        return Err(AppError::BadReq(
-            "Username should start with a lowercase alphabetic character",
-        ));
-    }
-    if !s.chars().all(|c| c.is_ascii_lowercase() || c.is_ascii_digit() || c == '.') {
-        return Err(AppError::BadReq("Only lowercase alphabets, digits and periods are allowed"));
-    }
-    if s.contains("..") {
-        return Err(AppError::BadReq("Username can't contain more than one period together"));
-    }
-    if s.ends_with('.') {
-        return Err(AppError::BadReq("Username can't be ended with a period"));
-    }
-    Ok(())
 }
 
 // a valid name contains two or more words
 // each words should only contain english alphabets
 pub fn is_legal_name_valid(s: &str) -> Result<String, AppError> {
+    if s.len() > 256 {
+        return Err(AppError::InvalidData("Legal Name should be lesser than 256 characters"));
+    }
     let mut result = String::new();
     let mut count = 0;
     for part in s.split_whitespace() {
         if part.chars().any(|b| !b.is_alphabetic()) {
-            return Err(AppError::BadReq("Only alphabets are allowed inside name"));
+            return Err(AppError::InvalidData("Only alphabets are allowed inside name"));
         }
         if !result.is_empty() {
             result.push(' ');
@@ -176,13 +94,16 @@ pub fn is_legal_name_valid(s: &str) -> Result<String, AppError> {
     if !result.is_empty() && count >= 2 {
         Ok(result)
     } else {
-        Err(AppError::BadReq("Name must contain two or more words"))
+        Err(AppError::InvalidData("Name must contain two or more words"))
     }
 }
 
 pub fn is_display_name_valid(display_name: &str) -> Result<(), AppError> {
     if display_name.trim().is_empty() {
         return Err(AppError::InvalidData("Name cannot be empty"));
+    }
+    if display_name.len() > 64 {
+        return Err(AppError::InvalidData("Name should be lesser than 64 characters"));
     }
     if !display_name.trim().is_ascii() {
         return Err(AppError::InvalidData("Name can only contain ascii characters"));
@@ -191,15 +112,15 @@ pub fn is_display_name_valid(display_name: &str) -> Result<(), AppError> {
 }
 
 pub fn is_bio_valid(bio: &str) -> Result<(), AppError> {
-    if bio.len() > 500 {
-        return Err(AppError::InvalidData("Bio too long"));
+    if bio.len() > 3000 {
+        return Err(AppError::InvalidData("Bio too long (MAX: 3000)"));
     }
     Ok(())
 }
 
 pub fn is_gender_valid(gender: &str) -> Result<(), AppError> {
-    if gender.chars().any(|c| !c.is_alphabetic()) {
-        return Err(AppError::BadReq("Gender not valid"));
+    if gender.chars().any(|c| !c.is_ascii_alphabetic()) {
+        return Err(AppError::InvalidData("Invalid Gender"));
     }
     Ok(())
 }
@@ -207,7 +128,7 @@ pub fn is_gender_valid(gender: &str) -> Result<(), AppError> {
 pub fn is_country_valid(country: &str) -> Result<String, AppError> {
     let c = celes::Country::from_str(country.trim()).map_err(|e| {
         tracing::error!("{e:?}");
-        AppError::BadReq("Invalid Country")
+        AppError::InvalidData("Invalid Country")
     })?;
     Ok(c.long_name.to_string())
 }
@@ -242,62 +163,5 @@ mod tests {
         name_test11: (" abc_def  ", None),
         name_test12: (" abc-def  ", None),
         name_test13: (" abc@def  ", None),
-    }
-
-    macro_rules! email_test {
-        ($($name:ident: $exp:expr,)*) => {
-            $(
-                #[test]
-                fn $name() {
-                    let (haystack, expected): (&str, Option<()>) = $exp;
-                    assert_eq!(is_email_valid(haystack).ok(), expected);
-                }
-            )*
-        };
-    }
-
-    email_test! {
-        email_test_01: ("gggggg@example.com", Some(())),
-        email_test_02: ("helo123@mail.google.com", Some(())),
-        email_test_03: ("my-email@hotmail.com", Some(())),
-        email_test_04: ("helo-.123@gmail.com", None),
-        email_test_05: ("hello123@gma1.haha", Some(())),
-        email_test_06: ("hello123@x.co7", None),
-        email_test_07: ("baj-1-3@y.x.in", Some(())),
-        email_test_08: ("a0-0-0.@hello.xyz", None),
-        email_test_09: (".0.0.0@hello.in", None),
-        email_test_10: ("u.0..0@example.in", None),
-        email_test_11: ("a1-4-7@hello.i", Some(())),
-        email_test_12: ("nana-7@hello", None),
-        email_test_13: ("a1-@foo.rs", None),
-        email_test_14: ("woosh@.foo", None),
-        email_test_15: ("rosent0--7-0@y.x.in", None),
-        email_test_16: ("hello0@example--com", None),
-        email_test_17: ("hi@sample-.com", None),
-    }
-
-    macro_rules! username_test {
-        ($($name:ident: $exp:expr,)*) => {
-            $(
-                #[test]
-                fn $name() {
-                    let (haystack, expected) = $exp;
-                    assert_eq!(is_username_valid(haystack).ok(), expected);
-                }
-            )*
-        };
-    }
-
-    username_test! {
-        username_test_01: ("su-xe_ij_", None),
-        username_test_02: ("su-x-_ij_", None),
-        username_test_03: ("su-x32-ij_", None),
-        username_test_04: ("su-x32-", None),
-        username_test_05: ("ab-_re", None),
-        username_test_06: ("ab...resno", None),
-        username_test_07: ("ab---re", None),
-        username_test_08: ("a-7-8-8", None),
-        username_test_09: ("a.7.b.xetn", Some(())),
-        username_test_10: ("example.com", Some(())),
     }
 }

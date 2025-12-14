@@ -14,11 +14,11 @@ const-hex = { workspace = true }
 celes = { workspace = true }
 hmac = { workspace = true }
 lettre = { workspace = true }
-mongodb = { workspace = true }
 rand = { workspace = true }
 reqwest = { workspace = true }
 serde = { workspace = true }
 sha2 = { workspace = true }
+time = { workspace = true }
 tokio = { workspace = true }
 tracing = { workspace = true }
 uuid = { workspace = true }

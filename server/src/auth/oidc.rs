@@ -118,6 +118,7 @@ pub async fn callback(
         }
     };
 
+    // function for fetching user info if the information is not present inside id_token
     let fetch_user_info = || async {
         let resp = client
             .get(oauth_cfg.userinfo_endpoint)
@@ -135,6 +136,7 @@ pub async fn callback(
         })
     };
 
+    // getting user info by decoding id_token or by `fetch_user_info` function
     let user_info = if let Some(id_token) = token_response.id_token {
         match verify_and_decode_id_token(&id_token, &oauth_cfg.client_id, &oauth_info.nonce) {
             Ok(claims) => UserInfo {
@@ -152,7 +154,7 @@ pub async fn callback(
         fetch_user_info().await?
     };
 
-    // create applicant from oauth_oidc
+    // create applicant from openid_connecting entry
     match db.get_user_by_email(&user_info.email).await {
         Ok(mut u) => match ActiveSession::parse_and_verify_from_headers(&headers) {
             Ok(active_session) => {

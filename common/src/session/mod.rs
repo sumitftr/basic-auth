@@ -1,16 +1,16 @@
 mod active_session;
 mod cookie;
-mod db_session;
 mod session_crud;
+mod session_struct;
 
 pub use active_session::{ActiveSession, ActiveSessionError};
 pub use cookie::BASE64_DIGEST_LEN;
 use cookie::{sign, verify};
-pub use db_session::{Session, SessionStatus};
 pub use session_crud::{
     clear_expired_sessions, create_session, delete_current_session, delete_selected_sessions,
-    get_session_index,
+    expire_session, get_session_index,
 };
+pub use session_struct::{Session, SessionStatus};
 
 #[cfg(test)]
 mod tests {

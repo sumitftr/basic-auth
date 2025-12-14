@@ -108,7 +108,7 @@ pub async fn logout_devices(
     }
     // removing active session from `body.sessions` if present
     for i in 0..body.sessions.len() {
-        if body.sessions[i] == active_session.decrypted_ssid {
+        if body.sessions[i] == active_session.unsigned_ssid {
             if let Some(tmp_entry) = body.sessions.pop()
                 && !body.sessions.is_empty()
             {
@@ -137,7 +137,7 @@ pub async fn logout_all(
         (guard.username.clone(), guard.sessions.clone())
     };
     // deleting all other sessions except the current one
-    sessions.retain(|v| v.unsigned_ssid == active_session.decrypted_ssid);
+    sessions.retain(|v| v.unsigned_ssid == active_session.unsigned_ssid);
     // updating primary and in-memory database with the only session
     db.update_sessions(&username, &sessions).await?;
     user.lock().unwrap().sessions = sessions;

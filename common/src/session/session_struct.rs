@@ -1,10 +1,12 @@
-use std::time::SystemTime;
-
-#[derive(serde::Serialize, serde::Deserialize, Clone, Debug)]
+#[derive(Clone, Debug)]
 pub struct Session {
     pub unsigned_ssid: String,
-    pub expires: SystemTime,
+    pub user_id: uuid::Uuid,
     pub user_agent: String,
+    pub ip_address: std::net::IpAddr,
+    pub created_at: time::OffsetDateTime,
+    pub last_used: time::OffsetDateTime,
+    pub expires_at: time::OffsetDateTime,
 }
 
 pub enum SessionStatus {
@@ -21,8 +23,7 @@ impl Session {
 
     /// returns the timestamp difference of the session with current time
     pub fn session_status(&self) -> SessionStatus {
-        let diff = self.expires.duration_since(std::time::UNIX_EPOCH).unwrap().as_secs() as i64
-            - SystemTime::now().duration_since(std::time::UNIX_EPOCH).unwrap().as_secs() as i64;
+        let diff = (self.expires_at - time::OffsetDateTime::now_utc()).whole_seconds();
 
         if diff > 0 {
             if diff > Self::MEM_CACHE_DURATION as i64 {

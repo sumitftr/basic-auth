@@ -1,7 +1,7 @@
 use super::{Applicant, ApplicationStatus};
 use crate::user::User;
 use common::AppError;
-use mongodb::bson::{DateTime, oid::ObjectId};
+use sqlx::types::time::PrimitiveDateTime;
 use std::{net::SocketAddr, sync::Arc};
 
 // sub steps for registering an user
@@ -11,7 +11,7 @@ impl crate::Db {
         socket: SocketAddr,
         name: String,
         email: String,
-        birth_date: DateTime,
+        birth_date: PrimitiveDateTime,
         otp: String,
     ) -> Result<(), AppError> {
         self.is_email_available(&email).await?;
@@ -32,7 +32,7 @@ impl crate::Db {
     }
 
     pub async fn update_applicant_otp(
-        self: Arc<Self>,
+        self: &Arc<Self>,
         email: &str,
         otp: String,
     ) -> Result<(), AppError> {
@@ -85,7 +85,7 @@ impl crate::Db {
         let applicant = self.applicants.get(&email).ok_or(AppError::UserNotFound)?;
 
         let user = User {
-            _id: ObjectId::new(),
+            id: sqlx::types::Uuid::new_v4(),
             display_name: applicant.display_name.unwrap(),
             email,
             birth_date: applicant.birth_date.unwrap(),
@@ -100,7 +100,7 @@ impl crate::Db {
             country: None,
             oauth_provider: None,
             sessions: vec![new_session],
-            created: DateTime::now(),
+            created: PrimitiveDateTime::now(),
         };
         self.create_user_forced(&user).await;
         self.applicants.remove(&user.email);

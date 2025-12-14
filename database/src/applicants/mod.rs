@@ -1,15 +1,25 @@
 use moka::sync::Cache;
 use std::{net::SocketAddr, time::Duration};
 
-mod from_oidc;
+mod post_oidc;
+mod pre_oidc;
+mod recovering;
 mod registration;
-mod update;
+mod updating;
 
-#[derive(serde::Deserialize, serde::Serialize, Clone)]
+#[derive(Clone)]
+pub struct OAuthInfo {
+    pub csrf_state: String,
+    pub code_verifier: String,
+    pub nonce: String,
+    pub provider: common::oauth::OAuthProvider,
+}
+
+#[derive(Clone)]
 pub struct Applicant {
     pub socket_addr: std::net::SocketAddr,
     pub display_name: Option<String>,
-    pub birth_date: Option<mongodb::bson::DateTime>,
+    pub birth_date: Option<sqlx::types::time::PrimitiveDateTime>,
     pub password: Option<String>,
     pub icon: Option<String>,
     pub phone: Option<String>,
@@ -17,7 +27,7 @@ pub struct Applicant {
     pub status: ApplicationStatus,
 }
 
-#[derive(serde::Deserialize, serde::Serialize, PartialEq, Debug, Clone)]
+#[derive(PartialEq, Debug, Clone)]
 #[serde(tag = "tag", content = "value")]
 pub enum ApplicationStatus {
     Created(String), // OTP
@@ -26,6 +36,12 @@ pub enum ApplicationStatus {
     OidcVerified,
     UpdatingEmail { old_email: String, otp: String }, // OTP
     UpdatingPhone { old_phone: String, otp: String }, // OTP
+}
+
+#[derive(Clone)]
+pub struct PasswordResetInfo {
+    pub email: String,
+    pub socket_addr: std::net::SocketAddr,
 }
 
 pub struct ApplicantsCache {

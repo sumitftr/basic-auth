@@ -1,16 +1,18 @@
 use crate::AppError;
-use axum::http::{HeaderMap, HeaderValue, header};
+use axum::http::{HeaderMap, header};
+use std::str::FromStr;
 
 #[derive(Hash, Eq, PartialEq, Clone, Debug)]
 pub struct ActiveSession {
-    pub ssid: String, // SSID=
-    pub decrypted_ssid: String,
+    pub ssid: String, // SSID={}
+    pub unsigned_ssid: String,
+    pub user_id: uuid::Uuid,
 }
 
 pub enum ActiveSessionError {
     NoCookieHeader,
     ParseError,
-    VerificationError(ActiveSession),
+    VerificationError,
 }
 
 impl ActiveSession {
@@ -19,21 +21,27 @@ impl ActiveSession {
         if cookies_list.is_empty() {
             return Err(ActiveSessionError::NoCookieHeader);
         }
-        let mut parsed_active_session = None;
+        let mut ssid = None;
+        let mut unsigned_ssid = None;
+        let mut uuid = None;
         for cookies in cookies_list {
             if let Some(s) = cookies.split(';').find(|s| s.trim().starts_with("SSID=")) {
-                parsed_active_session =
-                    Some(Self { ssid: s.trim()[5..].to_string(), decrypted_ssid: "".to_string() });
-                break;
+                ssid = Some(s.trim()[5..].to_string());
+                unsigned_ssid = Some(
+                    super::verify(&s.trim()[5..]).ok_or(ActiveSessionError::VerificationError)?,
+                );
+            }
+            if let Some(s) = cookies.split(';').find(|s| s.trim().starts_with("UUID=")) {
+                uuid = Some(
+                    uuid::Uuid::from_str(s).map_err(|_| ActiveSessionError::VerificationError)?,
+                );
             }
         }
-        if let Some(mut active_session) = parsed_active_session {
-            if let Some(s) = super::verify(&active_session.ssid) {
-                active_session.decrypted_ssid = s;
-                Ok(active_session)
-            } else {
-                Err(ActiveSessionError::VerificationError(active_session))
-            }
+        if let Some(ssid) = ssid
+            && let Some(unsigned_ssid) = unsigned_ssid
+            && let Some(user_id) = uuid
+        {
+            Ok(Self { ssid, unsigned_ssid, user_id })
         } else {
             Err(ActiveSessionError::ParseError)
         }
@@ -48,17 +56,6 @@ impl ActiveSession {
             .collect::<Vec<String>>();
         Self::parse_and_verify(&cookies_list)
     }
-
-    pub fn expire(&self) -> HeaderMap {
-        HeaderMap::from_iter([(
-            header::SET_COOKIE,
-            HeaderValue::from_str(&format!(
-                "SSID={}; HttpOnly; SameSite=Strict; Secure; Path=/; Max-Age=0",
-                self.ssid
-            ))
-            .unwrap(),
-        )])
-    }
 }
 
 impl From<ActiveSessionError> for AppError {
@@ -66,8 +63,8 @@ impl From<ActiveSessionError> for AppError {
         match value {
             ActiveSessionError::NoCookieHeader => AppError::Unauthorized("No cookie header found"),
             ActiveSessionError::ParseError => AppError::InvalidSession(HeaderMap::new()),
-            ActiveSessionError::VerificationError(active_session) => {
-                AppError::InvalidSession(active_session.expire())
+            ActiveSessionError::VerificationError => {
+                AppError::InvalidSession(super::expire_session())
             }
         }
     }

@@ -1,4 +1,4 @@
-use crate::user::User;
+use crate::users::User;
 use common::session::ActiveSession;
 use std::sync::{Arc, Mutex};
 

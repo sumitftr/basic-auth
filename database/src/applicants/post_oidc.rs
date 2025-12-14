@@ -1,7 +1,7 @@
 use super::{Applicant, ApplicationStatus};
-use crate::user::User;
+use crate::users::User;
 use common::AppError;
-use mongodb::bson::{DateTime, oid::ObjectId};
+use sqlx::types::time::PrimitiveDateTime;
 use std::{net::SocketAddr, sync::Arc};
 
 // sub steps for registering an user
@@ -34,14 +34,14 @@ impl crate::Db {
     pub async fn finish_oidc_application(
         self: &Arc<Self>,
         email: String,
-        birth_date: DateTime,
+        birth_date: PrimitiveDateTime,
         username: String,
         new_session: common::session::Session,
     ) -> Result<User, AppError> {
         self.is_username_available(&username).await?;
         let mut applicant = self.applicants.get(&email).ok_or(AppError::UserNotFound)?;
 
-        let _id = ObjectId::new();
+        let id = sqlx::types::Uuid::new_v4();
         // creating a new object in the bucket from the cdn url
         if applicant.icon.is_some() {
             let cdn_icon_url = applicant.icon.unwrap();
@@ -73,11 +73,12 @@ impl crate::Db {
                 .next()
                 .unwrap()
                 .to_owned();
-            applicant.icon = Some(self.upload_icon(data, filename, &_id.to_string()).await?);
+            applicant.icon = Some(self.upload_icon(data, filename, &id.to_string()).await?);
         }
 
+        let now = OffsetDateTime::now_utc();
         let user = User {
-            _id,
+            id,
             display_name: applicant.display_name.unwrap(),
             email,
             birth_date,
@@ -92,7 +93,7 @@ impl crate::Db {
             country: None,
             oauth_provider: applicant.oauth_provider,
             sessions: vec![new_session],
-            created: DateTime::now(),
+            created: PrimitiveDateTime::new(now.date(), now.time()),
         };
         self.create_user_forced(&user).await;
         self.applicants.remove(&user.email);

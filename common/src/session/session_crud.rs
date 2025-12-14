@@ -2,37 +2,55 @@ use super::ActiveSession;
 use crate::{AppError, session::Session};
 use axum::http::{HeaderMap, HeaderValue, header};
 use std::time::{Duration, SystemTime};
+use time::OffsetDateTime;
 
 /// this function creates a session that is passed to the user
 /// and stored in both in-memory and primary database
-pub fn create_session(headers: &HeaderMap) -> (Session, ActiveSession, HeaderMap) {
+pub fn create_session(
+    user_id: uuid::Uuid,
+    headers: &HeaderMap,
+    socket_addr: std::net::SocketAddr,
+) -> (Session, ActiveSession, HeaderMap) {
     let user_agent = headers
         .get(header::USER_AGENT)
         .map(|v| v.to_str().unwrap_or_default().to_owned())
         .unwrap_or_default();
 
+    let now = OffsetDateTime::now_utc();
     #[allow(clippy::identity_op)]
-    let expires = 30 * 86400 + 0; // days * 86400 + secs
+    let expires_at = now + Duration::from_secs(30 * 86400 + 0); // days * 86400 + secs
     let uid = uuid::Uuid::new_v4().to_string();
     let signed_uid = super::sign(&uid);
 
     (
         Session {
             unsigned_ssid: uid.clone(),
-            expires: SystemTime::now() + Duration::from_secs(expires),
+            user_id,
             user_agent,
+            ip_address: socket_addr.ip(),
+            created_at: now,
+            last_used: now,
+            expires_at,
         },
         ActiveSession {
             ssid: format!("{signed_uid}{uid}"),
-            decrypted_ssid: uid.clone(),
+            unsigned_ssid: uid.clone(),
+            user_id,
         },
         HeaderMap::from_iter([(
             header::SET_COOKIE,
             HeaderValue::from_str(&format!(
-                "SSID={signed_uid}{uid}; HttpOnly; SameSite=Strict; Secure; Path=/; Max-Age={expires}",
+                "SSID={signed_uid}{uid}; HttpOnly; SameSite=Strict; Secure; Path=/; Expires={expires_at}",
             ))
             .unwrap(),
-        )]),
+        ),(
+            header::SET_COOKIE,
+            HeaderValue::from_str(&format!(
+                "UUID={user_id}; HttpOnly; SameSite=Strict; Secure; Path=/; Expires={expires_at}",
+            ))
+            .unwrap(),
+        )
+        ]),
     )
 }
 
@@ -42,7 +60,7 @@ pub fn get_session_index(
     active_session: &ActiveSession,
 ) -> Result<usize, AppError> {
     for (i, session) in sessions.iter().enumerate() {
-        if session.unsigned_ssid == active_session.decrypted_ssid {
+        if session.unsigned_ssid == active_session.unsigned_ssid {
             return Ok(i);
         }
     }
@@ -53,14 +71,16 @@ pub fn clear_expired_sessions(sessions: &mut Vec<Session>) {
     let tmp_sessions = std::mem::take(sessions);
 
     let now = SystemTime::now();
-    let filtered_sessions =
-        tmp_sessions.into_iter().filter(|s| now < s.expires).collect::<Vec<Session>>();
+    let filtered_sessions = tmp_sessions
+        .into_iter()
+        .filter(|s| now < s.expires_at)
+        .collect::<Vec<Session>>();
 
     let _ = std::mem::replace(sessions, filtered_sessions);
 }
 
 pub fn delete_current_session(sessions: &mut Vec<Session>, cur: &ActiveSession) {
-    *sessions = sessions.drain(..).filter(|v| v.unsigned_ssid != cur.decrypted_ssid).collect();
+    *sessions = sessions.drain(..).filter(|v| v.unsigned_ssid != cur.unsigned_ssid).collect();
 }
 
 pub fn delete_selected_sessions(sessions: Vec<Session>, mut selected: Vec<String>) -> Vec<Session> {
@@ -77,4 +97,19 @@ pub fn delete_selected_sessions(sessions: Vec<Session>, mut selected: Vec<String
             true
         })
         .collect::<Vec<Session>>()
+}
+
+pub fn expire_session() -> HeaderMap {
+    HeaderMap::from_iter([
+        (
+            header::SET_COOKIE,
+            HeaderValue::from_str("SSID={}; HttpOnly; SameSite=Strict; Secure; Path=/; Max-Age=0")
+                .unwrap(),
+        ),
+        (
+            header::SET_COOKIE,
+            HeaderValue::from_str("UUID={}; HttpOnly; SameSite=Strict; Secure; Path=/; Max-Age=0")
+                .unwrap(),
+        ),
+    ])
 }

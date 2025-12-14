@@ -1,4 +1,4 @@
-use crate::mem::OAuthInfo;
+use super::OAuthInfo;
 use common::oauth::OAuthProvider;
 use std::{net::SocketAddr, sync::Arc};
 
