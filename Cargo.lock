@@ -252,6 +252,7 @@ dependencies = [
  "reqwest",
  "serde",
  "sha2",
+ "sqlx",
  "time",
  "tokio",
  "tracing",

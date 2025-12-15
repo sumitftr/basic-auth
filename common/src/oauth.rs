@@ -1,7 +1,6 @@
+use crate::AppError;
 use reqwest::Url;
 use std::sync::Arc;
-
-use crate::AppError;
 
 static OAUTH_PROVIDERS: std::sync::LazyLock<OAuthProviders> =
     std::sync::LazyLock::new(OAuthProviders::default);
@@ -20,11 +19,6 @@ pub struct OAuthConfig<'a> {
     pub provider: OAuthProvider,
 }
 
-#[derive(serde::Deserialize, serde::Serialize, Copy, Clone, Debug)]
-pub enum OAuthProvider {
-    Google,
-}
-
 impl<'a> Default for OAuthProviders<'a> {
     fn default() -> Self {
         Self {
@@ -41,12 +35,17 @@ impl<'a> Default for OAuthProviders<'a> {
     }
 }
 
+#[derive(serde::Deserialize, serde::Serialize, Copy, Clone, Debug)]
+pub enum OAuthProvider {
+    Google,
+}
+
 impl TryFrom<&str> for OAuthProvider {
     type Error = AppError;
 
     fn try_from(provider: &str) -> Result<Self, AppError> {
         match provider {
-            "google" => Ok(OAuthProvider::Google),
+            google if google == (OAuthProvider::Google).as_str() => Ok(OAuthProvider::Google),
             _ => Err(AppError::BadReq("Invalid OAuth Provider")),
         }
     }
@@ -58,10 +57,40 @@ impl OAuthProvider {
             OAuthProvider::Google => "openid email profile",
         }
     }
+
+    pub fn as_str(&self) -> &'static str {
+        match self {
+            OAuthProvider::Google => "google",
+        }
+    }
 }
 
 pub fn get_oauth_provider(provider: OAuthProvider) -> Arc<OAuthConfig<'static>> {
     match provider {
         OAuthProvider::Google => OAUTH_PROVIDERS.google.clone(),
+    }
+}
+
+// Implement sqlx traits
+impl sqlx::Type<sqlx::Postgres> for OAuthProvider {
+    fn type_info() -> sqlx::postgres::PgTypeInfo {
+        <String as sqlx::Type<sqlx::Postgres>>::type_info()
+    }
+}
+
+impl<'q> sqlx::Encode<'q, sqlx::Postgres> for OAuthProvider {
+    fn encode_by_ref(
+        &self,
+        buf: &mut sqlx::postgres::PgArgumentBuffer,
+    ) -> Result<sqlx::encode::IsNull, sqlx::error::BoxDynError> {
+        <&str as sqlx::Encode<'_, sqlx::Postgres>>::encode_by_ref(&self.as_str(), buf)
+    }
+}
+
+impl<'r> sqlx::Decode<'r, sqlx::Postgres> for OAuthProvider {
+    fn decode(value: sqlx::postgres::PgValueRef<'r>) -> Result<Self, sqlx::error::BoxDynError> {
+        let s = <String as sqlx::Decode<sqlx::Postgres>>::decode(value)?;
+        OAuthProvider::try_from(s.as_str())
+            .map_err(|_| format!("Invalid OAuth provider: {}", s).into())
     }
 }

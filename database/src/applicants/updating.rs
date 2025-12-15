@@ -1,4 +1,4 @@
-use crate::applicant::{Applicant, ApplicationStatus};
+use crate::applicants::{Applicant, ApplicationStatus};
 use common::AppError;
 use std::{net::SocketAddr, sync::Arc};
 

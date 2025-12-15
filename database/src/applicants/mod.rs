@@ -19,7 +19,7 @@ pub struct OAuthInfo {
 pub struct Applicant {
     pub socket_addr: std::net::SocketAddr,
     pub display_name: Option<String>,
-    pub birth_date: Option<sqlx::types::time::PrimitiveDateTime>,
+    pub birth_date: Option<sqlx::types::time::OffsetDateTime>,
     pub password: Option<String>,
     pub icon: Option<String>,
     pub phone: Option<String>,
@@ -28,7 +28,6 @@ pub struct Applicant {
 }
 
 #[derive(PartialEq, Debug, Clone)]
-#[serde(tag = "tag", content = "value")]
 pub enum ApplicationStatus {
     Created(String), // OTP
     EmailVerified,

@@ -1,5 +1,5 @@
-use super::ActiveSession;
-use crate::{AppError, session::Session};
+use super::{ActiveSession, Session};
+use crate::AppError;
 use axum::http::{HeaderMap, HeaderValue, header};
 use std::time::{Duration, SystemTime};
 use time::OffsetDateTime;
@@ -17,8 +17,7 @@ pub fn create_session(
         .unwrap_or_default();
 
     let now = OffsetDateTime::now_utc();
-    #[allow(clippy::identity_op)]
-    let expires_at = now + Duration::from_secs(30 * 86400 + 0); // days * 86400 + secs
+    let expires_at = now + Duration::from_secs(37 * 86400 + 60); // days * 86400 + secs
     let uid = uuid::Uuid::new_v4().to_string();
     let signed_uid = super::sign(&uid);
 

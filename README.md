@@ -1,8 +1,13 @@
+# Features
+
+- Consistency across sessions: When a user logs in with multiple devices having different sessions, the user data will stay consistent across all devices upon reload.
+- User sent cookies are not directly stored in database. User sent cookies are signed with the `SECRET_KEY` and the unsigned version is stored in database.
+- Auto Refreshing Sessions: If a user tries to log in within 7 days after the session has expired then the user is automatically logged back in.
+
 # Limitations & Use Cases
 
 - This server is dependent on `moka` (a fast, concurrent cache library) instead of other key value databases like redis, memcached, valkey, dragonfly, etc. So using load balancers without session affinity (sticky sessions) will break the origin servers
 - The session affinity ttl (Time to Live) must be equal to `common::session::Session::MEM_CACHE_DURATION` for consistency
-- Most of the database handlers are not transaction based which is very little likely to cause problem in few edge cases.
 
 ## Project Setup
 
@@ -16,8 +21,7 @@ SERVICE_NAME=your_service_name
 SERVICE_DOMAIN=your_service_domain_with_scheme
 
 # Database
-DATABASE_URL=your_database_url
-DATABASE_NAME=your_database_name
+DATABASE_URL=your_postgres_database_url
 
 # Object Storage
 BUCKET_ACCESS_KEY=your_bucket_access_key

@@ -1,4 +1,4 @@
-use sqlx::types::time::PrimitiveDateTime;
+use sqlx::types::time::OffsetDateTime;
 
 mod create;
 mod delete;
@@ -17,7 +17,7 @@ macro_rules! user_struct {
             pub id: sqlx::types::Uuid,
             pub display_name: String,
             pub email: String,
-            pub birth_date: PrimitiveDateTime,
+            pub birth_date: OffsetDateTime,
             pub password: Option<String>,
             pub username: String,
             pub banner: Option<String>,
@@ -28,7 +28,7 @@ macro_rules! user_struct {
             pub phone: Option<String>,
             pub country: Option<String>,
             pub oauth_provider: Option<common::oauth::OAuthProvider>,
-            pub created: PrimitiveDateTime,
+            pub created: OffsetDateTime,
             $(pub $extra_field: $extra_type,)*
         }
     };
@@ -38,4 +38,4 @@ user_struct!(User {
     sessions: Vec<common::session::Session>
 });
 
-user_struct!(DeletedUser { deleted: PrimitiveDateTime });
+user_struct!(DeletedUser { deleted: OffsetDateTime });

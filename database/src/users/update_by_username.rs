@@ -1,9 +1,8 @@
-use common::{AppError, session::Session};
+use common::AppError;
 use std::sync::Arc;
 
 // implementation block for checking and updating user attributes by username
 impl crate::Db {
-    // updates username of the given user to new username
     pub async fn check_and_update_username(
         self: &Arc<Self>,
         username: &str,
@@ -38,14 +37,14 @@ impl crate::Db {
                 AppError::ServerError
             })?;
 
-        tracing::info!("[Legal Name Updated]: @{username}");
+        tracing::info!("[Legal Name Updated] @{username}");
         Ok(())
     }
 
     pub async fn update_birth_date(
         self: &Arc<Self>,
         username: &str,
-        birth_date: sqlx::types::time::PrimitiveDateTime,
+        birth_date: sqlx::types::time::OffsetDateTime,
     ) -> Result<(), AppError> {
         sqlx::query!("UPDATE users SET birth_date = $1 WHERE username = $2", birth_date, username)
             .execute(&self.pool)
@@ -55,7 +54,7 @@ impl crate::Db {
                 AppError::ServerError
             })?;
 
-        tracing::info!("[Birth Date Updated]: @{username}");
+        tracing::info!("[Birth Date Updated] @{username}");
         Ok(())
     }
 
@@ -72,7 +71,7 @@ impl crate::Db {
                 AppError::ServerError
             })?;
 
-        tracing::info!("[Gender Updated]: @{username}");
+        tracing::info!("[Gender Updated] @{username}");
         Ok(())
     }
 
@@ -89,7 +88,7 @@ impl crate::Db {
                 AppError::ServerError
             })?;
 
-        tracing::info!("[Country Updated]: @{username}");
+        tracing::info!("[Country Updated] @{username}");
         Ok(())
     }
 
@@ -125,7 +124,6 @@ impl crate::Db {
         if let Some(val) = bio {
             updates.push(format!("bio = ${param_index}"));
             params.push(val.clone());
-            param_index += 1;
         }
 
         if updates.is_empty() {
@@ -144,7 +142,7 @@ impl crate::Db {
             AppError::ServerError
         })?;
 
-        tracing::info!("[User Profile Updated]: @{username}");
+        tracing::info!("[User Profile Updated] @{username}");
         Ok(())
     }
 }

@@ -29,7 +29,7 @@ impl crate::Db {
             user.gender,
             user.phone,
             user.country,
-            user.oauth_provider,
+            user.oauth_provider.as_ref().map(|p| p.as_str()),
             user.created,
         )
         .execute(&mut *tx)

@@ -18,6 +18,9 @@ impl crate::Db {
                     tracing::error!("{:?}", e);
                     AppError::ServerError
                 }
-            })
+            })?;
+
+        tracing::info!("[Password Updated] Email: {email}");
+        Ok(())
     }
 }

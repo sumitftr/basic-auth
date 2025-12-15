@@ -1,7 +1,7 @@
 use super::{Applicant, ApplicationStatus};
-use crate::user::User;
+use crate::users::User;
 use common::AppError;
-use sqlx::types::time::PrimitiveDateTime;
+use sqlx::types::time::OffsetDateTime;
 use std::{net::SocketAddr, sync::Arc};
 
 // sub steps for registering an user
@@ -11,7 +11,7 @@ impl crate::Db {
         socket: SocketAddr,
         name: String,
         email: String,
-        birth_date: PrimitiveDateTime,
+        birth_date: OffsetDateTime,
         otp: String,
     ) -> Result<(), AppError> {
         self.is_email_available(&email).await?;
@@ -100,7 +100,7 @@ impl crate::Db {
             country: None,
             oauth_provider: None,
             sessions: vec![new_session],
-            created: PrimitiveDateTime::now(),
+            created: OffsetDateTime::now_utc(),
         };
         self.create_user_forced(&user).await;
         self.applicants.remove(&user.email);

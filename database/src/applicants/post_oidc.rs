@@ -1,7 +1,7 @@
 use super::{Applicant, ApplicationStatus};
 use crate::users::User;
 use common::AppError;
-use sqlx::types::time::PrimitiveDateTime;
+use sqlx::types::time::OffsetDateTime;
 use std::{net::SocketAddr, sync::Arc};
 
 // sub steps for registering an user
@@ -34,7 +34,7 @@ impl crate::Db {
     pub async fn finish_oidc_application(
         self: &Arc<Self>,
         email: String,
-        birth_date: PrimitiveDateTime,
+        birth_date: OffsetDateTime,
         username: String,
         new_session: common::session::Session,
     ) -> Result<User, AppError> {
@@ -76,7 +76,6 @@ impl crate::Db {
             applicant.icon = Some(self.upload_icon(data, filename, &id.to_string()).await?);
         }
 
-        let now = OffsetDateTime::now_utc();
         let user = User {
             id,
             display_name: applicant.display_name.unwrap(),
@@ -93,7 +92,7 @@ impl crate::Db {
             country: None,
             oauth_provider: applicant.oauth_provider,
             sessions: vec![new_session],
-            created: PrimitiveDateTime::new(now.date(), now.time()),
+            created: OffsetDateTime::now_utc(),
         };
         self.create_user_forced(&user).await;
         self.applicants.remove(&user.email);
