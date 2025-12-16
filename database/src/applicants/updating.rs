@@ -21,7 +21,7 @@ impl crate::Db {
                 password: None,
                 icon: None,
                 phone: None,
-                oauth_provider: None,
+                oauth_provider: common::oauth::OAuthProvider::None,
                 status: ApplicationStatus::UpdatingEmail { old_email, otp },
             },
         );

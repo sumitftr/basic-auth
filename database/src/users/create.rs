@@ -23,7 +23,7 @@ impl crate::Db {
             user.gender,
             user.phone,
             user.country,
-            user.oauth_provider.as_ref().map(|p| p.as_str()),
+            user.oauth_provider.get_str(),
             user.created
         )
         .execute(&self.pool)
@@ -38,11 +38,11 @@ impl crate::Db {
                 tracing::error!("Failed to create user: {:?}", e);
                 if let Some(db_err) = e.as_database_error() {
                     if db_err.code() == Some(std::borrow::Cow::Borrowed("23505")) {
-                        return Err(AppError::InvalidData(if db_err.message().contains("email") {
-                            "Email already exists"
+                        if db_err.message().contains("email") {
+                            return Err(AppError::EmailTaken);
                         } else {
-                            "Username already exists"
-                        }));
+                            return Err(AppError::UsernameTaken);
+                        }
                     }
                 }
                 Err(AppError::ServerError)

@@ -9,11 +9,9 @@
 - This server is dependent on `moka` (a fast, concurrent cache library) instead of other key value databases like redis, memcached, valkey, dragonfly, etc. So using load balancers without session affinity (sticky sessions) will break the origin servers
 - The session affinity ttl (Time to Live) must be equal to `common::session::Session::MEM_CACHE_DURATION` for consistency
 
-## Project Setup
+# Build and Run
 
-> Create a `.env` file inside project root
-> And set the following environment variables inside `.env` file
-
+Step 1: Create a `.env` file inside project root, and set the following environment variables inside `.env` file
 ```dotenv
 SOCKET=your_ip:your_port
 SECRET_KEY=your_secret_key_for_signing_cookies
@@ -42,11 +40,19 @@ GOOGLE_CLIENT_ID=your_google_client_id
 GOOGLE_CLIENT_SECRET=your_google_client_secret
 ```
 
-## Run your project
+Step 2: Run database migrations
+```
+  sqlx migrate run --source .migrations
+```
+```
+  cargo sqlx prepare --workspace
+```
+
+Step 3: Run your project
 ```
   cargo run --release
 ```
-> For hot reloading use:
+or (for hot reloading)
 ```
   cargo watch -x run
 ```

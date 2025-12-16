@@ -30,8 +30,7 @@ pub async fn update_email(
     let otp = common::generate::otp(&body.new_email);
 
     // adding an entry to database for further checking
-    db.request_email_update(*conn_info, email, body.new_email.clone(), otp.clone())
-        .await?;
+    db.request_email_update(*conn_info, email, body.new_email.clone(), otp.clone()).await?;
 
     // sending mail to the new email for verification
     common::mail::send(

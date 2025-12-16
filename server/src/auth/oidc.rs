@@ -76,9 +76,8 @@ pub async fn callback(
     Query(q): Query<ProviderRedirect>,
     headers: HeaderMap,
 ) -> Result<impl IntoResponse, AppError> {
-    let oauth_info = db
-        .get_oauth_creds(&conn_info)
-        .ok_or(AppError::BadReq("OAuth credentials not found"))?;
+    let oauth_info =
+        db.get_oauth_creds(&conn_info).ok_or(AppError::BadReq("OAuth credentials not found"))?;
 
     if oauth_info.csrf_state != q.csrf_state {
         return Err(AppError::BadReq("CSRF state didn't match"));

@@ -3,7 +3,7 @@ use common::AppError;
 use std::sync::Arc;
 
 impl crate::Db {
-    pub async fn delete_user_manual(self: &Arc<Self>, user: User) -> Result<(), AppError> {
+    pub async fn delete_user(self: &Arc<Self>, user: User) -> Result<(), AppError> {
         // Start a transaction for atomic operation
         let mut tx = self.pool.begin().await.map_err(|e| {
             tracing::error!("{:?}", e);
@@ -29,7 +29,7 @@ impl crate::Db {
             user.gender,
             user.phone,
             user.country,
-            user.oauth_provider.as_ref().map(|p| p.as_str()),
+            user.oauth_provider.get_str(),
             user.created,
         )
         .execute(&mut *tx)
@@ -40,13 +40,12 @@ impl crate::Db {
         })?;
 
         // Delete from users table
-        sqlx::query!("DELETE FROM users WHERE id = $1", user.id)
-            .execute(&mut *tx)
-            .await
-            .map_err(|e| {
+        sqlx::query!("DELETE FROM users WHERE id = $1", user.id).execute(&mut *tx).await.map_err(
+            |e| {
                 tracing::error!("{:?}", e);
                 AppError::ServerError
-            })?;
+            },
+        )?;
 
         // Commit transaction
         tx.commit().await.map_err(|e| {

@@ -12,7 +12,7 @@ impl crate::Db {
         name: String,
         email: String,
         icon: String,
-        provider: common::oauth::OAuthProvider,
+        oauth_provider: common::oauth::OAuthProvider,
     ) -> Result<(), AppError> {
         self.is_email_available(&email).await?;
         self.applicants.insert(
@@ -24,7 +24,7 @@ impl crate::Db {
                 password: None,
                 icon: Some(icon),
                 phone: None,
-                oauth_provider: Some(provider),
+                oauth_provider,
                 status: ApplicationStatus::OidcVerified,
             },
         );
@@ -65,14 +65,8 @@ impl crate::Db {
                 AppError::ServerError
             })?;
 
-            let filename = cdn_icon_url
-                .split('/')
-                .next_back()
-                .unwrap()
-                .split('=')
-                .next()
-                .unwrap()
-                .to_owned();
+            let filename =
+                cdn_icon_url.split('/').next_back().unwrap().split('=').next().unwrap().to_owned();
             applicant.icon = Some(self.upload_icon(data, filename, &id.to_string()).await?);
         }
 

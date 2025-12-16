@@ -11,10 +11,8 @@ pub fn create_session(
     headers: &HeaderMap,
     socket_addr: std::net::SocketAddr,
 ) -> (Session, ParsedSession, HeaderMap) {
-    let user_agent = headers
-        .get(header::USER_AGENT)
-        .map(|v| v.to_str().unwrap_or_default().to_owned())
-        .unwrap_or_default();
+    let user_agent =
+        headers.get(header::USER_AGENT).map(|v| v.to_str().unwrap_or_default().to_owned());
 
     let now = OffsetDateTime::now_utc();
     let expires_at = now + Duration::from_secs(37 * 86400 + 60); // days * 86400 + secs
@@ -70,10 +68,8 @@ pub fn clear_expired_sessions(sessions: &mut Vec<Session>) {
     let tmp_sessions = std::mem::take(sessions);
 
     let now = SystemTime::now();
-    let filtered_sessions = tmp_sessions
-        .into_iter()
-        .filter(|s| now < s.expires_at)
-        .collect::<Vec<Session>>();
+    let filtered_sessions =
+        tmp_sessions.into_iter().filter(|s| now < s.expires_at).collect::<Vec<Session>>();
 
     let _ = std::mem::replace(sessions, filtered_sessions);
 }

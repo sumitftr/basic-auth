@@ -28,10 +28,7 @@ fn is_local_part_valid(local_part: &str) -> bool {
         return false;
     }
     // local part should only contain alphabets, digits and periods
-    if !local_part
-        .chars()
-        .all(|c| c.is_ascii_alphanumeric() || c == '.' || c == '-' || c == '_')
-    {
+    if !local_part.chars().all(|c| c.is_ascii_alphanumeric() || c == '.' || c == '-' || c == '_') {
         return false;
     }
     // local part should not contain more than one period, hypen or underscore together

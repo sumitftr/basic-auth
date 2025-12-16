@@ -24,7 +24,7 @@ impl crate::Db {
                 password: None,
                 icon: None,
                 phone: None,
-                oauth_provider: None,
+                oauth_provider: common::oauth::OAuthProvider::None,
                 status: ApplicationStatus::Created(otp),
             },
         );
@@ -98,7 +98,7 @@ impl crate::Db {
             gender: None,
             phone: None,
             country: None,
-            oauth_provider: None,
+            oauth_provider: common::oauth::OAuthProvider::None,
             created: OffsetDateTime::now_utc(),
         };
         self.create_user_forced(&user).await;

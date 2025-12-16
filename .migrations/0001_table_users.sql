@@ -12,7 +12,7 @@ CREATE TABLE IF NOT EXISTS users (
     gender         VARCHAR(50),
     phone          VARCHAR(50),
     country        VARCHAR(100),
-    oauth_provider VARCHAR(50),
+    oauth_provider VARCHAR(32) NOT NULL,
     created        TIMESTAMPTZ NOT NULL
 );
 

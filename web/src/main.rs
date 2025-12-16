@@ -11,9 +11,7 @@ pub async fn main() {
 
     axum::serve(
         server::get_custom_listener().await,
-        server::routes()
-            .await
-            .into_make_service_with_connect_info::<server::ClientSocket>(),
+        server::routes().await.into_make_service_with_connect_info::<server::ClientSocket>(),
     )
     .with_graceful_shutdown(shutdown_signal())
     .await

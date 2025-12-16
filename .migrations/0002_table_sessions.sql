@@ -4,7 +4,7 @@ CREATE TABLE IF NOT EXISTS sessions (
     user_id        UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
 
     user_agent     TEXT,
-    ip_address     INET,
+    ip_address     INET NOT NULL,
 
     created_at     TIMESTAMPTZ NOT NULL,
     last_used      TIMESTAMPTZ NOT NULL,

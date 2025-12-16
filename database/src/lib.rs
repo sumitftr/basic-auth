@@ -29,7 +29,7 @@ impl Db {
                 .await
                 .unwrap();
 
-            sqlx::migrate!("./migrations").run(&pool).await.unwrap();
+            sqlx::migrate!("../.migrations").run(&pool).await.unwrap();
 
             Arc::new(Db {
                 pool,

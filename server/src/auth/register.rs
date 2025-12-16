@@ -32,8 +32,7 @@ pub async fn start(
     let otp = common::generate::otp(&body.email);
 
     // storing applicant data in memory
-    db.create_applicant(*conn_info, body.name, body.email.clone(), birth_date, otp.clone())
-        .await?;
+    db.create_applicant(*conn_info, body.name, body.email.clone(), birth_date, otp.clone()).await?;
 
     // sending otp to the email
     common::mail::send(
@@ -189,9 +188,8 @@ pub async fn finish_oidc(
         common::session::create_session(&headers);
 
     // registering user to primary database
-    let user = db
-        .finish_oidc_application(body.email, birth_date, body.username, db_session)
-        .await?;
+    let user =
+        db.finish_oidc_application(body.email, birth_date, body.username, db_session).await?;
 
     // activating session by adding it to `Db::active`
     db.make_user_active(parsed_session, user);

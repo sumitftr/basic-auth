@@ -23,7 +23,7 @@ pub struct Applicant {
     pub password: Option<String>,
     pub icon: Option<String>,
     pub phone: Option<String>,
-    pub oauth_provider: Option<common::oauth::OAuthProvider>,
+    pub oauth_provider: common::oauth::OAuthProvider,
     pub status: ApplicationStatus,
 }
 

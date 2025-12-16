@@ -19,7 +19,7 @@ impl crate::Db {
                     AppError::ServerError
                 })?;
 
-        if exists { Err(AppError::EmailTaken) } else { Ok(()) }
+        if exists.unwrap_or(false) { Err(AppError::EmailTaken) } else { Ok(()) }
     }
 
     // Check if username is available
@@ -33,7 +33,7 @@ impl crate::Db {
                     AppError::ServerError
                 })?;
 
-        if exists { Err(AppError::UsernameTaken) } else { Ok(()) }
+        if exists.unwrap_or(false) { Err(AppError::UsernameTaken) } else { Ok(()) }
     }
 
     // Authenticate user by email

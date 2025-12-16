@@ -8,8 +8,6 @@ impl crate::Db {
         username: &str,
         new_username: &str,
     ) -> Result<(), AppError> {
-        self.is_username_available(new_username).await?;
-
         sqlx::query!("UPDATE users SET username = $1 WHERE username = $2", new_username, username)
             .execute(&self.pool)
             .await
