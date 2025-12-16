@@ -146,14 +146,14 @@ pub async fn set_username(
     common::validation::is_username_valid(&body.username)?;
 
     // creating session
-    let (db_session, active_session, set_cookie_headermap) =
+    let (db_session, parsed_session, set_cookie_headermap) =
         common::session::create_session(&headers);
 
     // registering user to primary database
     let user = db.set_applicant_username(body.email, body.username, db_session).await?;
 
     // activating session by adding it to `Db::active`
-    db.make_user_active(active_session, user);
+    db.make_user_active(parsed_session, user);
 
     Ok((
         StatusCode::CREATED,
@@ -185,7 +185,7 @@ pub async fn finish_oidc(
     common::validation::is_username_valid(&body.username)?;
 
     // creating session
-    let (db_session, active_session, set_cookie_headermap) =
+    let (db_session, parsed_session, set_cookie_headermap) =
         common::session::create_session(&headers);
 
     // registering user to primary database
@@ -194,7 +194,7 @@ pub async fn finish_oidc(
         .await?;
 
     // activating session by adding it to `Db::active`
-    db.make_user_active(active_session, user);
+    db.make_user_active(parsed_session, user);
 
     Ok((
         StatusCode::CREATED,

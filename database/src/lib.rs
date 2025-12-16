@@ -1,6 +1,6 @@
-use common::session::{ActiveSession, Session};
+use common::session::Session;
 use moka::sync::Cache;
-use std::{net::SocketAddr, sync::Arc, time::Duration};
+use std::{sync::Arc, time::Duration};
 use tokio::sync::OnceCell;
 
 mod active;
@@ -13,9 +13,9 @@ pub struct Db {
     pool: sqlx::Pool<sqlx::Postgres>,
     bucket: bucket::BlackBlazeB2,
     // in memory stores
-    active: Cache<ActiveSession, Arc<std::sync::Mutex<users::User>>>,
+    active: Cache<sqlx::types::Uuid, Arc<std::sync::Mutex<(users::User, Vec<Session>)>>>,
     applicants: applicants::ApplicantsCache,
-    openid_connecting: Cache<SocketAddr, applicants::OAuthInfo>,
+    openid_connecting: Cache<std::net::SocketAddr, applicants::OAuthInfo>,
     recovering: Cache<String, applicants::PasswordResetInfo>, // code
 }
 

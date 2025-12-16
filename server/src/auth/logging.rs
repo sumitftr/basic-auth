@@ -5,7 +5,7 @@ use axum::{
     response::IntoResponse,
 };
 use axum_extra::{json, response::ErasedJson};
-use common::{AppError, session::ActiveSession};
+use common::{AppError, session::ParsedSession};
 use database::{Db, user::User};
 use std::sync::{Arc, Mutex};
 
@@ -39,7 +39,7 @@ pub async fn login(
         return Err(AppError::ServerError);
     };
 
-    let (db_session, active_session, set_cookie_headermap) =
+    let (db_session, parsed_session, set_cookie_headermap) =
         common::session::create_session(&headers);
 
     // clearing expired sessions
@@ -50,7 +50,7 @@ pub async fn login(
     db.update_sessions(&user.username, &user.sessions).await?;
 
     // activating session by adding it to `Db::active`
-    db.make_user_active(active_session, user);
+    db.make_user_active(parsed_session, user);
 
     Ok((
         StatusCode::CREATED,
@@ -63,7 +63,7 @@ pub async fn login(
 
 pub async fn logout(
     State(db): State<Arc<Db>>,
-    Extension(active_session): Extension<ActiveSession>,
+    Extension(parsed_session): Extension<ParsedSession>,
     Extension(user): Extension<Arc<Mutex<User>>>,
 ) -> Result<impl IntoResponse, AppError> {
     let (username, mut sessions) = {
@@ -71,14 +71,14 @@ pub async fn logout(
         (guard.username.clone(), guard.sessions.clone())
     };
 
-    common::session::delete_current_session(&mut sessions, &active_session);
+    common::session::delete_current_session(&mut sessions, &parsed_session);
     // updating sessions list in the primary and in-memory database
     db.update_sessions(&username, &sessions).await?;
-    db.remove_active_user(&active_session);
+    db.remove_active_user(&parsed_session);
 
     Ok((
         StatusCode::CREATED,
-        active_session.expire(),
+        parsed_session.expire(),
         json!({
             "message": "Logout Successful"
         }),
@@ -92,7 +92,7 @@ pub struct LogoutDevicesRequest {
 
 pub async fn logout_devices(
     State(db): State<Arc<Db>>,
-    Extension(active_session): Extension<ActiveSession>,
+    Extension(parsed_session): Extension<ParsedSession>,
     Extension(user): Extension<Arc<Mutex<User>>>,
     Json(mut body): Json<LogoutDevicesRequest>,
 ) -> Result<impl IntoResponse, AppError> {
@@ -108,7 +108,7 @@ pub async fn logout_devices(
     }
     // removing active session from `body.sessions` if present
     for i in 0..body.sessions.len() {
-        if body.sessions[i] == active_session.unsigned_ssid {
+        if body.sessions[i] == parsed_session.unsigned_ssid {
             if let Some(tmp_entry) = body.sessions.pop()
                 && !body.sessions.is_empty()
             {
@@ -128,7 +128,7 @@ pub async fn logout_devices(
 
 pub async fn logout_all(
     State(db): State<Arc<Db>>,
-    Extension(active_session): Extension<ActiveSession>,
+    Extension(parsed_session): Extension<ParsedSession>,
     Extension(user): Extension<Arc<Mutex<User>>>,
 ) -> Result<ErasedJson, AppError> {
     // cloning username and sessions
@@ -137,7 +137,7 @@ pub async fn logout_all(
         (guard.username.clone(), guard.sessions.clone())
     };
     // deleting all other sessions except the current one
-    sessions.retain(|v| v.unsigned_ssid == active_session.unsigned_ssid);
+    sessions.retain(|v| v.unsigned_ssid == parsed_session.unsigned_ssid);
     // updating primary and in-memory database with the only session
     db.update_sessions(&username, &sessions).await?;
     user.lock().unwrap().sessions = sessions;

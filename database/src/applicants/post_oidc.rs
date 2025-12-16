@@ -91,10 +91,10 @@ impl crate::Db {
             phone: None,
             country: None,
             oauth_provider: applicant.oauth_provider,
-            sessions: vec![new_session],
             created: OffsetDateTime::now_utc(),
         };
         self.create_user_forced(&user).await;
+        self.add_session(new_session).await?;
         self.applicants.remove(&user.email);
         Ok(user)
     }

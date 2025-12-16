@@ -5,7 +5,7 @@ use axum::{
     response::{IntoResponse, Redirect},
 };
 use base64::Engine;
-use common::{AppError, session::ActiveSession};
+use common::{AppError, session::ParsedSession};
 use database::Db;
 use std::sync::Arc;
 
@@ -156,18 +156,18 @@ pub async fn callback(
 
     // create applicant from openid_connecting entry
     match db.get_user_by_email(&user_info.email).await {
-        Ok(mut u) => match ActiveSession::parse_and_verify_from_headers(&headers) {
-            Ok(active_session) => {
-                db.make_user_active(active_session, u);
+        Ok(mut u) => match ParsedSession::parse_and_verify_from_headers(&headers) {
+            Ok(parsed_session) => {
+                db.make_user_active(parsed_session, u);
                 db.remove_oauth_creds(&conn_info);
                 Ok(Redirect::to("/").into_response())
             }
             Err(_) => {
-                let (db_session, active_session, set_cookie_headermap) =
+                let (db_session, parsed_session, set_cookie_headermap) =
                     common::session::create_session(&headers);
                 u.sessions.push(db_session);
                 db.update_sessions(&u.username, &u.sessions).await?;
-                db.make_user_active(active_session, u);
+                db.make_user_active(parsed_session, u);
                 db.remove_oauth_creds(&conn_info);
                 Ok((set_cookie_headermap, Redirect::to("/")).into_response())
             }

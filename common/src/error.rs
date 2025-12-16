@@ -15,7 +15,6 @@ pub enum AppError {
     WrongPassword,
     SessionExpired,
     InvalidSession(HeaderMap),
-    RefreshSession(HeaderMap),
     ServerError,
 }
 
@@ -61,9 +60,6 @@ impl axum::response::IntoResponse for AppError {
             }
             Self::InvalidSession(set_cookies) => {
                 (StatusCode::UNAUTHORIZED, set_cookies, JsonMsg::new("Invalid Session")).into_response()
-            }
-            Self::RefreshSession(set_cookies) => {
-                (StatusCode::OK, set_cookies, JsonMsg::new("Session Refreshed")).into_response()
             }
             Self::ServerError => {
                 (StatusCode::INTERNAL_SERVER_ERROR, JsonMsg::new("Something went wrong")).into_response()

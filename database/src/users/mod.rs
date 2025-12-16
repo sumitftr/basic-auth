@@ -34,8 +34,6 @@ macro_rules! user_struct {
     };
 }
 
-user_struct!(User {
-    sessions: Vec<common::session::Session>
-});
+user_struct!(User {});
 
 user_struct!(DeletedUser { deleted: OffsetDateTime });

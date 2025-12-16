@@ -1,4 +1,4 @@
-use super::{ActiveSession, Session};
+use super::{ParsedSession, Session};
 use crate::AppError;
 use axum::http::{HeaderMap, HeaderValue, header};
 use std::time::{Duration, SystemTime};
@@ -10,7 +10,7 @@ pub fn create_session(
     user_id: uuid::Uuid,
     headers: &HeaderMap,
     socket_addr: std::net::SocketAddr,
-) -> (Session, ActiveSession, HeaderMap) {
+) -> (Session, ParsedSession, HeaderMap) {
     let user_agent = headers
         .get(header::USER_AGENT)
         .map(|v| v.to_str().unwrap_or_default().to_owned())
@@ -18,12 +18,12 @@ pub fn create_session(
 
     let now = OffsetDateTime::now_utc();
     let expires_at = now + Duration::from_secs(37 * 86400 + 60); // days * 86400 + secs
-    let uid = uuid::Uuid::new_v4().to_string();
-    let signed_uid = super::sign(&uid);
+    let uid = uuid::Uuid::new_v4();
+    let signed_uid = super::sign(&uid.to_string());
 
     (
         Session {
-            unsigned_ssid: uid.clone(),
+            unsigned_ssid: uid,
             user_id,
             user_agent,
             ip_address: socket_addr.ip(),
@@ -31,9 +31,9 @@ pub fn create_session(
             last_used: now,
             expires_at,
         },
-        ActiveSession {
+        ParsedSession {
             ssid: format!("{signed_uid}{uid}"),
-            unsigned_ssid: uid.clone(),
+            unsigned_ssid: uid,
             user_id,
         },
         HeaderMap::from_iter([(
@@ -56,10 +56,10 @@ pub fn create_session(
 /// finds the current used session from a list of `UserSession`s
 pub fn get_session_index(
     sessions: &[Session],
-    active_session: &ActiveSession,
+    parsed_session: &ParsedSession,
 ) -> Result<usize, AppError> {
     for (i, session) in sessions.iter().enumerate() {
-        if session.unsigned_ssid == active_session.unsigned_ssid {
+        if session.unsigned_ssid == parsed_session.unsigned_ssid {
             return Ok(i);
         }
     }
@@ -78,7 +78,7 @@ pub fn clear_expired_sessions(sessions: &mut Vec<Session>) {
     let _ = std::mem::replace(sessions, filtered_sessions);
 }
 
-pub fn delete_current_session(sessions: &mut Vec<Session>, cur: &ActiveSession) {
+pub fn delete_current_session(sessions: &mut Vec<Session>, cur: &ParsedSession) {
     *sessions = sessions.drain(..).filter(|v| v.unsigned_ssid != cur.unsigned_ssid).collect();
 }
 
@@ -88,7 +88,7 @@ pub fn delete_selected_sessions(sessions: Vec<Session>, mut selected: Vec<String
         .filter(|v| {
             #[allow(clippy::needless_range_loop)]
             for i in 0..selected.len() {
-                if selected[i] == v.unsigned_ssid {
+                if selected[i] == v.unsigned_ssid.to_string() {
                     std::mem::take(&mut selected[i]);
                     return false;
                 }

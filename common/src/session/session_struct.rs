@@ -1,6 +1,6 @@
 #[derive(Clone, Debug)]
 pub struct Session {
-    pub unsigned_ssid: String,
+    pub unsigned_ssid: uuid::Uuid,
     pub user_id: uuid::Uuid,
     pub user_agent: String,
     pub ip_address: std::net::IpAddr,

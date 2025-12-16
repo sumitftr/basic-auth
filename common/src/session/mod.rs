@@ -1,11 +1,11 @@
-mod active_session;
 mod cookie;
+mod parsed_session;
 mod session_crud;
 mod session_struct;
 
-pub use active_session::{ActiveSession, ActiveSessionError};
 pub use cookie::BASE64_DIGEST_LEN;
 use cookie::{sign, verify};
+pub use parsed_session::{ParsedSession, ParsedSessionError};
 pub use session_crud::{
     clear_expired_sessions, create_session, delete_current_session, delete_selected_sessions,
     expire_session, get_session_index,
@@ -28,12 +28,12 @@ mod tests {
             header::USER_AGENT,
             HeaderValue::from_str("Mozilla Firefox").unwrap(),
         )]);
-        let (db_session, active_session, set_cookie_headermap) = create_session(&headers);
+        let (db_session, parsed_session, set_cookie_headermap) = create_session(&headers);
         dbg!(&db_session);
-        dbg!(&active_session);
+        dbg!(&parsed_session);
         dbg!(&set_cookie_headermap);
-        assert!(active_session.ssid.ends_with(db_session.unsigned_ssid.as_str()));
-        assert!(active_session.ssid.starts_with(&sign(&db_session.unsigned_ssid)));
+        assert!(parsed_session.ssid.ends_with(db_session.unsigned_ssid.as_str()));
+        assert!(parsed_session.ssid.starts_with(&sign(&db_session.unsigned_ssid)));
     }
 
     #[test]
