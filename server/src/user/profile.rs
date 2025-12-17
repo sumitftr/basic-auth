@@ -4,7 +4,7 @@ use axum::{
 };
 use axum_extra::{json, response::ErasedJson};
 use common::AppError;
-use database::{Db, user::User};
+use database::{Db, users::User};
 use std::sync::{Arc, Mutex};
 
 pub async fn get_user_profile(
@@ -44,7 +44,7 @@ pub async fn update_profile(
 ) -> Result<ErasedJson, AppError> {
     let (username, _id) = {
         let guard = user.lock().unwrap();
-        (guard.username.clone(), guard._id.clone().to_string())
+        (guard.username.clone(), guard.id.clone().to_string())
     };
 
     let (mut banner, mut icon, mut display_name, mut bio) = (None, None, None, None);

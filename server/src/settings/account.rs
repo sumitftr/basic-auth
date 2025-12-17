@@ -1,7 +1,7 @@
 use axum::{Extension, extract::State};
 use axum_extra::{json, response::ErasedJson};
 use common::{AppError, session::ParsedSession};
-use database::{Db, user::User};
+use database::{Db, users::User};
 use std::sync::{Arc, Mutex};
 
 pub async fn delete_account(

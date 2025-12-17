@@ -23,11 +23,8 @@ fn main() -> Result<(), reqwest::Error> {
     out.write("Enter password: ");
     let password = token.next_line::<String>();
     let body = format!(r#"{{"username": "{username}", "password": "{password}"}}"#);
-    let res = client
-        .post(&endpoint)
-        .header(header::CONTENT_TYPE, "application/json")
-        .body(body)
-        .send()?;
+    let res =
+        client.post(&endpoint).header(header::CONTENT_TYPE, "application/json").body(body).send()?;
     let cookies = res
         .headers()
         .get(reqwest::header::SET_COOKIE)

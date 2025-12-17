@@ -1,7 +1,7 @@
 use axum::{Extension, Json, extract::State};
 use axum_extra::{json, response::ErasedJson};
 use common::AppError;
-use database::{Db, user::User};
+use database::{Db, users::User};
 use std::sync::{Arc, Mutex};
 
 #[derive(serde::Deserialize)]
@@ -29,6 +29,9 @@ pub struct UpdateBirthDateRequest {
     year: u32,
     month: u8,
     day: u8,
+    offset_hours: i8,
+    offset_minutes: i8,
+    offset_seconds: i8,
 }
 
 pub async fn update_birth_date(
@@ -36,7 +39,11 @@ pub async fn update_birth_date(
     Extension(user): Extension<Arc<Mutex<User>>>,
     Json(body): Json<UpdateBirthDateRequest>,
 ) -> Result<ErasedJson, AppError> {
-    let birth_date = common::validation::is_birth_date_valid(body.year, body.month, body.day)?;
+    let offset =
+        time::UtcOffset::from_hms(body.offset_hours, body.offset_minutes, body.offset_seconds)
+            .map_err(|_| AppError::InvalidData("Invalid UTC Offset"))?;
+    let birth_date =
+        common::validation::is_birth_date_valid(body.year, body.month, body.day, offset)?;
     let username = user.lock().unwrap().username.clone();
     db.update_birth_date(&username, birth_date).await?;
     user.lock().unwrap().birth_date = birth_date;

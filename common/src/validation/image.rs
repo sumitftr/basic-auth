@@ -29,10 +29,7 @@ pub fn is_icon_valid(filepath: &mut String, data: &axum::body::Bytes) -> Result<
     Ok(imgdata.format.to_string())
 }
 
-pub fn is_banner_valid(
-    filepath: &mut String,
-    data: &axum::body::Bytes,
-) -> Result<String, AppError> {
+pub fn is_banner_valid(filepath: &mut String, data: &axum::body::Bytes) -> Result<String, AppError> {
     let imgdata = get_image_data(data, filepath)?;
     Ok(imgdata.format.to_string())
 }

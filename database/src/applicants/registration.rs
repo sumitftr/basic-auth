@@ -79,7 +79,6 @@ impl crate::Db {
         self: &Arc<Self>,
         email: String,
         username: String,
-        new_session: common::session::Session,
     ) -> Result<User, AppError> {
         self.is_username_available(&username).await?;
         let applicant = self.applicants.get(&email).ok_or(AppError::UserNotFound)?;
@@ -102,7 +101,6 @@ impl crate::Db {
             created: OffsetDateTime::now_utc(),
         };
         self.create_user_forced(&user).await;
-        self.add_session(new_session).await?;
         self.applicants.remove(&user.email);
         Ok(user)
     }

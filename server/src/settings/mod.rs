@@ -1,5 +1,5 @@
 use axum::routing::{get, post};
-use database::user::User;
+use database::users::User;
 use std::sync::{Arc, Mutex};
 
 mod account;
@@ -34,7 +34,7 @@ pub async fn fetch_settings(
     let res = user.lock().unwrap().clone();
     axum_extra::json!({
         "email": res.email,
-        "birth_date": res.birth_date,
+        "birth_date": res.birth_date.to_string(),
         "username": res.username,
         "display_name": res.display_name,
         "icon": res.icon,
@@ -44,7 +44,6 @@ pub async fn fetch_settings(
         "gender": res.gender,
         "phone": res.phone,
         "country": res.country,
-        "sessions": res.sessions,
-        "created": res.created,
+        "created": res.created.to_string(),
     })
 }

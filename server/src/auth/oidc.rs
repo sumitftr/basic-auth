@@ -5,7 +5,7 @@ use axum::{
     response::{IntoResponse, Redirect},
 };
 use base64::Engine;
-use common::{AppError, session::ParsedSession};
+use common::{AppError, oauth::OAuthProvider};
 use database::Db;
 use std::sync::Arc;
 
@@ -23,8 +23,8 @@ pub async fn login(
     let csrf_state = common::generate::random_string(32);
     let nonce = common::generate::random_string(32);
     let (code_verifier, code_challenge) = common::generate::pkce();
-    let oauth_cfg =
-        common::oauth::get_oauth_provider(common::oauth::OAuthProvider::try_from(q.by.as_str())?);
+    let oauth_cfg = common::oauth::get_oauth_provider(OAuthProvider::from(q.by))
+        .ok_or(AppError::InvalidOAuthProvider)?;
 
     db.add_oauth_creds(
         *conn_info,
@@ -73,8 +73,8 @@ struct TokenResponse {
 pub async fn callback(
     State(db): State<Arc<Db>>,
     ConnectInfo(conn_info): ConnectInfo<ClientSocket>,
-    Query(q): Query<ProviderRedirect>,
     headers: HeaderMap,
+    Query(q): Query<ProviderRedirect>,
 ) -> Result<impl IntoResponse, AppError> {
     let oauth_info =
         db.get_oauth_creds(&conn_info).ok_or(AppError::BadReq("OAuth credentials not found"))?;
@@ -83,7 +83,8 @@ pub async fn callback(
         return Err(AppError::BadReq("CSRF state didn't match"));
     }
 
-    let oauth_cfg = common::oauth::get_oauth_provider(oauth_info.provider);
+    let oauth_cfg = common::oauth::get_oauth_provider(oauth_info.provider)
+        .ok_or(AppError::InvalidOAuthProvider)?;
     let client = reqwest::Client::new();
     let redirect_uri = format!("{}/api/oauth2/callback", &*common::SERVICE_DOMAIN);
 
@@ -153,34 +154,41 @@ pub async fn callback(
         fetch_user_info().await?
     };
 
-    // create applicant from openid_connecting entry
     match db.get_user_by_email(&user_info.email).await {
-        Ok(mut u) => match ParsedSession::parse_and_verify_from_headers(&headers) {
-            Ok(parsed_session) => {
-                db.make_user_active(parsed_session, u);
-                db.remove_oauth_creds(&conn_info);
-                Ok(Redirect::to("/").into_response())
-            }
-            Err(_) => {
-                let (db_session, parsed_session, set_cookie_headermap) =
-                    common::session::create_session(&headers);
-                u.sessions.push(db_session);
-                db.update_sessions(&u.username, &u.sessions).await?;
-                db.make_user_active(parsed_session, u);
-                db.remove_oauth_creds(&conn_info);
-                Ok((set_cookie_headermap, Redirect::to("/")).into_response())
+        // if the user found inside database
+        Ok(user) => match user.oauth_provider {
+            // return error if the user have already registered with password
+            OAuthProvider::None => Err(AppError::BadReq(
+                "Your account with this email already exists. Please login to link your account.",
+            )),
+            // login if the user is already registered with OIDC
+            _ => {
+                let (new_session, parsed_session, set_cookie_headermap) =
+                    common::session::create_session(user.id, &headers, *conn_info);
+                db.add_session(new_session.clone()).await?;
+                // activating session by adding it to `Db::active`
+                if let Some((arc_wrapped, is_session_present)) = db.get_active_user(&parsed_session)
+                    && !is_session_present
+                {
+                    let mut guard = arc_wrapped.lock().unwrap();
+                    guard.1.push(new_session);
+                } else {
+                    db.make_user_active(user, new_session);
+                }
+                db.remove_oauth_creds(&*conn_info);
+                Ok((set_cookie_headermap, Redirect::to("/")).into_response()) // REDIRECT ENDPOINT NEEDS TO BE CHECKED
             }
         },
+        // create applicant if the user is trying to register using open id connect
         Err(AppError::UserNotFound) => {
-            Arc::clone(&db)
-                .create_applicant_oidc(
-                    *conn_info,
-                    user_info.name,
-                    user_info.email,
-                    user_info.picture,
-                    oauth_info.provider,
-                )
-                .await?;
+            db.create_applicant_oidc(
+                *conn_info,
+                user_info.name,
+                user_info.email,
+                user_info.picture,
+                oauth_info.provider,
+            )
+            .await?;
             db.remove_oauth_creds(&conn_info);
             Ok(Redirect::to("/register/finish_oidc").into_response())
         }

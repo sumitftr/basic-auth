@@ -5,7 +5,7 @@ use axum::{
 };
 use axum_extra::{json, response::ErasedJson};
 use common::AppError;
-use database::{Db, user::User};
+use database::{Db, users::User};
 use serde::Deserialize;
 use std::sync::{Arc, Mutex};
 

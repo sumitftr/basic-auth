@@ -6,8 +6,7 @@ use axum_extra::{json, response::ErasedJson};
 use common::AppError;
 use database::Db;
 use std::sync::Arc;
-
-/// first step of registering an user
+use time::UtcOffset;
 
 #[derive(serde::Deserialize)]
 pub struct CreateUserRequest {
@@ -16,6 +15,9 @@ pub struct CreateUserRequest {
     year: u32,
     month: u8,
     day: u8,
+    offset_hours: i8,
+    offset_minutes: i8,
+    offset_seconds: i8,
 }
 
 pub async fn start(
@@ -26,9 +28,10 @@ pub async fn start(
     // validating user sent data
     common::validation::is_display_name_valid(&body.name)?;
     common::validation::is_email_valid(&body.email)?;
-    let birth_date = common::validation::is_birth_date_valid(body.year, body.month, body.day)?;
-
-    // generating otp
+    let offset = UtcOffset::from_hms(body.offset_hours, body.offset_minutes, body.offset_seconds)
+        .map_err(|_| AppError::InvalidData("Invalid UTC Offset"))?;
+    let birth_date =
+        common::validation::is_birth_date_valid(body.year, body.month, body.day, offset)?;
     let otp = common::generate::otp(&body.email);
 
     // storing applicant data in memory
@@ -56,7 +59,6 @@ pub async fn resend_otp(
     State(db): State<Arc<Db>>,
     Json(body): Json<ResendOtpRequest>,
 ) -> Result<ErasedJson, AppError> {
-    // generating otp
     let otp = common::generate::otp(&body.email);
     db.update_applicant_otp(&body.email, otp.clone()).await?;
 
@@ -72,8 +74,6 @@ pub async fn resend_otp(
         "message": "The email has been sent"
     }))
 }
-
-/// second step of registering an user
 
 #[derive(serde::Deserialize)]
 pub struct VerifyEmailRequest {
@@ -105,8 +105,6 @@ pub async fn verify_email(
     }))
 }
 
-/// third step of registering an user
-
 #[derive(serde::Deserialize)]
 pub struct SetPasswordRequest {
     email: String,
@@ -128,8 +126,6 @@ pub async fn set_password(
     }))
 }
 
-/// last step of registering an user
-
 #[derive(serde::Deserialize)]
 pub struct SetUsernameRequest {
     email: String,
@@ -138,21 +134,24 @@ pub struct SetUsernameRequest {
 
 pub async fn set_username(
     State(db): State<Arc<Db>>,
+    ConnectInfo(conn_info): ConnectInfo<ClientSocket>,
     headers: HeaderMap,
     Json(body): Json<SetUsernameRequest>,
 ) -> Result<impl IntoResponse, AppError> {
     // checking validity of the username
     common::validation::is_username_valid(&body.username)?;
 
-    // creating session
-    let (db_session, parsed_session, set_cookie_headermap) =
-        common::session::create_session(&headers);
-
     // registering user to primary database
-    let user = db.set_applicant_username(body.email, body.username, db_session).await?;
+    let user = db.set_applicant_username(body.email, body.username).await?;
+
+    let (new_session, _, set_cookie_headermap) =
+        common::session::create_session(user.id, &headers, *conn_info);
+
+    // adding `Session` to primary database
+    db.add_session(new_session.clone()).await?;
 
     // activating session by adding it to `Db::active`
-    db.make_user_active(parsed_session, user);
+    db.make_user_active(user, new_session);
 
     Ok((
         StatusCode::CREATED,
@@ -163,36 +162,42 @@ pub async fn set_username(
     ))
 }
 
-/// for finishing oidc application
-
 #[derive(serde::Deserialize)]
 pub struct FinishOidcRequest {
     email: String,
     year: u32,
     month: u8,
     day: u8,
+    offset_hours: i8,
+    offset_minutes: i8,
+    offset_seconds: i8,
     username: String,
 }
 
 pub async fn finish_oidc(
     State(db): State<Arc<Db>>,
+    ConnectInfo(conn_info): ConnectInfo<ClientSocket>,
     headers: HeaderMap,
     Json(body): Json<FinishOidcRequest>,
 ) -> Result<impl IntoResponse, AppError> {
     // checking validity of the username
-    let birth_date = common::validation::is_birth_date_valid(body.year, body.month, body.day)?;
+    let offset = UtcOffset::from_hms(body.offset_hours, body.offset_minutes, body.offset_seconds)
+        .map_err(|_| AppError::InvalidData("Invalid UTC Offset"))?;
+    let birth_date =
+        common::validation::is_birth_date_valid(body.year, body.month, body.day, offset)?;
     common::validation::is_username_valid(&body.username)?;
 
-    // creating session
-    let (db_session, parsed_session, set_cookie_headermap) =
-        common::session::create_session(&headers);
-
     // registering user to primary database
-    let user =
-        db.finish_oidc_application(body.email, birth_date, body.username, db_session).await?;
+    let user = db.finish_oidc_application(body.email, birth_date, body.username).await?;
+
+    let (new_session, _, set_cookie_headermap) =
+        common::session::create_session(user.id, &headers, *conn_info);
+
+    // adding `Session` to primary database
+    db.add_session(new_session.clone()).await?;
 
     // activating session by adding it to `Db::active`
-    db.make_user_active(parsed_session, user);
+    db.make_user_active(user, new_session);
 
     Ok((
         StatusCode::CREATED,

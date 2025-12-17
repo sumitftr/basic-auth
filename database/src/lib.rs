@@ -1,3 +1,4 @@
+#![allow(clippy::type_complexity)]
 use common::session::Session;
 use moka::sync::Cache;
 use std::{sync::Arc, time::Duration};

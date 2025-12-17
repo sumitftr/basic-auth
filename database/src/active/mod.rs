@@ -1,3 +1,4 @@
+#![allow(clippy::type_complexity)]
 use crate::users::User;
 use common::session::{ParsedSession, Session};
 use std::sync::{Arc, Mutex};
@@ -10,21 +11,10 @@ impl crate::Db {
         user: User,
         session: Session,
     ) -> Arc<Mutex<(User, Vec<Session>)>> {
-        let uid = user.id.clone();
+        let uid = user.id;
         let arc_wrapped = Arc::new(Mutex::new((user, vec![session])));
         self.active.insert(uid, arc_wrapped.clone());
         arc_wrapped
-    }
-
-    pub async fn make_session_active(
-        self: &Arc<Self>,
-        arc_wrapped: &Arc<Mutex<(User, Vec<Session>)>>,
-        parsed_session: &ParsedSession,
-    ) -> Result<(), common::AppError> {
-        let session = self.get_session(parsed_session).await?;
-        let mut guard = arc_wrapped.lock().unwrap();
-        guard.1.push(session);
-        Ok(())
     }
 
     /// returns None if the user is not present
@@ -50,21 +40,15 @@ impl crate::Db {
         self: &Arc<Self>,
         parsed_session: &ParsedSession,
     ) -> Option<Arc<Mutex<(User, Vec<Session>)>>> {
-        if let Some(arc_wrapped) = self.active.get(&parsed_session.user_id) {
-            let mut guard = arc_wrapped.lock().unwrap();
-            guard.1 = guard
-                .1
-                .drain(..)
-                .filter(|v| v.unsigned_ssid != parsed_session.unsigned_ssid)
-                .collect();
-            if guard.1.len() == 0 {
-                self.active.remove(&parsed_session.user_id)
-            } else {
-                drop(guard);
-                Some(arc_wrapped)
-            }
+        let arc_wrapped = self.active.get(&parsed_session.user_id)?;
+        let mut guard = arc_wrapped.lock().unwrap();
+        guard.1 =
+            guard.1.drain(..).filter(|v| v.unsigned_ssid != parsed_session.unsigned_ssid).collect();
+        if guard.1.is_empty() {
+            self.active.remove(&parsed_session.user_id)
         } else {
-            None
+            drop(guard);
+            Some(arc_wrapped)
         }
     }
 }

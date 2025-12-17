@@ -2,7 +2,7 @@
 
 use axum::{Extension, Json, extract::State};
 use common::AppError;
-use database::{Db, user::User};
+use database::{Db, users::User};
 use std::sync::{Arc, Mutex};
 
 #[derive(serde::Deserialize)]

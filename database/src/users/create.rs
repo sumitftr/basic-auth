@@ -36,13 +36,13 @@ impl crate::Db {
             }
             Err(e) => {
                 tracing::error!("Failed to create user: {:?}", e);
-                if let Some(db_err) = e.as_database_error() {
-                    if db_err.code() == Some(std::borrow::Cow::Borrowed("23505")) {
-                        if db_err.message().contains("email") {
-                            return Err(AppError::EmailTaken);
-                        } else {
-                            return Err(AppError::UsernameTaken);
-                        }
+                if let Some(db_err) = e.as_database_error()
+                    && db_err.code() == Some(std::borrow::Cow::Borrowed("23505"))
+                {
+                    if db_err.message().contains("email") {
+                        return Err(AppError::EmailTaken);
+                    } else {
+                        return Err(AppError::UsernameTaken);
                     }
                 }
                 Err(AppError::ServerError)

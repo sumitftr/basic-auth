@@ -1,4 +1,3 @@
-use reqwest::Url;
 use std::sync::Arc;
 
 static OAUTH_PROVIDERS: std::sync::LazyLock<OAuthProviders> =
@@ -12,7 +11,7 @@ struct OAuthProviders<'a> {
 pub struct OAuthConfig<'a> {
     pub client_id: String,
     pub client_secret: String,
-    pub authorization_endpoint: Url,
+    pub authorization_endpoint: reqwest::Url,
     pub token_endpoint: &'a str,
     pub userinfo_endpoint: &'a str,
     pub provider: OAuthProvider,
@@ -24,8 +23,10 @@ impl<'a> Default for OAuthProviders<'a> {
             google: Arc::new(OAuthConfig {
                 client_id: std::env::var("GOOGLE_CLIENT_ID").unwrap(),
                 client_secret: std::env::var("GOOGLE_CLIENT_SECRET").unwrap(),
-                authorization_endpoint: Url::parse("https://accounts.google.com/o/oauth2/v2/auth")
-                    .unwrap(),
+                authorization_endpoint: reqwest::Url::parse(
+                    "https://accounts.google.com/o/oauth2/v2/auth",
+                )
+                .unwrap(),
                 token_endpoint: "https://oauth2.googleapis.com/token",
                 userinfo_endpoint: "https://openidconnect.googleapis.com/v1/userinfo",
                 provider: OAuthProvider::Google,
@@ -56,10 +57,10 @@ impl From<String> for OAuthProvider {
 }
 
 impl OAuthProvider {
-    pub fn get_scopes(&self) -> Option<&'static str> {
+    pub fn get_scopes(&self) -> &'static str {
         match self {
-            OAuthProvider::Google => Some("openid email profile"),
-            OAuthProvider::None => None,
+            OAuthProvider::Google => "openid email profile",
+            OAuthProvider::None => "",
         }
     }
 
