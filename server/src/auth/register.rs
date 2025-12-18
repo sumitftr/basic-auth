@@ -34,6 +34,8 @@ pub async fn start(
         common::validation::is_birth_date_valid(body.year, body.month, body.day, offset)?;
     let otp = common::generate::otp(&body.email);
 
+    tracing::info!("Email: {}, OTP: {}", body.email, otp);
+
     // storing applicant data in memory
     db.create_applicant(*conn_info, body.name, body.email.clone(), birth_date, otp.clone()).await?;
 

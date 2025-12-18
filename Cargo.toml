@@ -17,7 +17,7 @@ axum       = { version = "0.8", features = ["http2", "macros", "multipart", "ws"
 axum-extra = { version = "0.12", features = ["erased-json"] }
 base64     = { version = "0.22" }
 const-hex  = { version = "1.17", features = ["alloc"] }
-celes      = { version = "2.6" }
+celes      = { version = "2" }
 dotenv     = { version = "0.15" }
 hmac       = { version = "0.12" }
 lettre     = { version = "0.11", features = ["tokio1-rustls", "tokio1-native-tls", "ring", "webpki-roots"] }
@@ -34,7 +34,7 @@ tower      = { version = "0.5" }
 tower-http = { version = "0.6", features = ["trace"] }
 tracing    = { version = "0.1" }
 tracing-subscriber = { version = "0.3" }
-uuid       = { version = "1.18", features = ["v4"] }
+uuid       = { version = "1", features = ["v4"] }
 
 [workspace.lints.clippy]
 redundant_clone = "warn"

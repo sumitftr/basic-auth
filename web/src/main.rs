@@ -5,7 +5,7 @@ pub async fn main() {
     dotenv::dotenv().ok();
 
     tracing_subscriber::registry()
-        .with(tracing::level_filters::LevelFilter::from_level(tracing::Level::TRACE))
+        .with(tracing::level_filters::LevelFilter::from_level(tracing::Level::DEBUG))
         .with(tracing_subscriber::fmt::Layer::default())
         .init();
 

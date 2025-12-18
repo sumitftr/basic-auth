@@ -2,14 +2,16 @@
 mod common;
 
 use common::{Printer, Scanner};
+use fake::{Fake, faker::internet::en::Password};
 use reqwest::header;
 use std::io::Write;
 
 #[test]
 fn main() -> Result<(), reqwest::Error> {
     const SOCKET: &str = "http://127.0.0.1:8080";
+    let is_auto = std::env::var("AUTO").ok().map(|v| v.as_str() == "true").unwrap_or(false);
     let client = reqwest::blocking::Client::builder()
-        .user_agent("reqwest 0.12, rust lang")
+        .user_agent(fake::faker::internet::en::UserAgent().fake::<String>())
         .build()
         .unwrap_or_default();
 
@@ -21,15 +23,19 @@ fn main() -> Result<(), reqwest::Error> {
     let cookies = token.next_line::<String>();
 
     loop {
-        let endpoint1 = format!("{}/api/settings/password", SOCKET);
         out.write("Enter old password: ");
         let old_password = token.next_line::<String>();
-        out.write("Enter new password: ");
-        let new_password = token.next_line::<String>();
+        let new_password = if is_auto {
+            Password(8..128).fake::<String>()
+        } else {
+            out.write("Enter new password: ");
+            token.next_line::<String>()
+        };
+
         let body1 =
-            format!(r#"{{"old_password":"{old_password}","new_password":"{new_password}"}}"#);
+            format!(r#"{{"old_password": "{old_password}", "new_password": "{new_password}"}}"#);
         let res1 = client
-            .post(&endpoint1)
+            .post(format!("{}/api/settings/password", SOCKET))
             .header(header::CONTENT_TYPE, "application/json")
             .header(header::COOKIE, &cookies)
             .body(body1)

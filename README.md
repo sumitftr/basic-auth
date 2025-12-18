@@ -1,12 +1,12 @@
 # Features
 
 - Consistency across sessions: When a user logs in with multiple devices having different sessions, the user data will stay consistent across all devices upon reload.
-- User sent cookies are not directly stored in database. User sent cookies are signed with the `SECRET_KEY` and the unsigned version is stored in database.
+- Cookies are not directly stored in database. Cookies are signed with the `SECRET_KEY` and the unsigned version is stored in database.
 - Auto Refreshing Sessions: If a user tries to log in within 7 days after the session has expired then the user is automatically logged back in.
 
 # Limitations & Use Cases
 
-- This server is dependent on `moka` (a fast, concurrent cache library) instead of other key value databases like redis, memcached, valkey, dragonfly, etc. So using load balancers without session affinity (sticky sessions) will break the origin servers
+- This server is dependent on `moka` (a fast, concurrent cache library) instead of other key value databases like `redis`, `memcached`, `valkey`, `dragonfly`, etc. So using load balancers without session affinity (sticky sessions) will break the origin servers
 - The session affinity ttl (Time to Live) must be equal to `common::session::Session::MEM_CACHE_DURATION` for consistency
 
 # Build and Run
@@ -52,7 +52,7 @@ Step 3: Run your project
 ```
   cargo run --release
 ```
-or (for hot reloading)
+  or (for hot reloading)
 ```
   cargo watch -x run
 ```

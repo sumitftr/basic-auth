@@ -1,8 +1,8 @@
 use axum::{Extension, Json, extract::State};
 use axum_extra::{json, response::ErasedJson};
 use common::AppError;
-use database::{Db, users::User};
-use std::sync::{Arc, Mutex};
+use database::{Db, UserInfo};
+use std::sync::Arc;
 
 #[derive(serde::Deserialize)]
 pub struct UpdateLegalNameRequest {
@@ -11,13 +11,13 @@ pub struct UpdateLegalNameRequest {
 
 pub async fn update_legal_name(
     State(db): State<Arc<Db>>,
-    Extension(user): Extension<Arc<Mutex<User>>>,
+    Extension(user): Extension<UserInfo>,
     Json(body): Json<UpdateLegalNameRequest>,
 ) -> Result<ErasedJson, AppError> {
     common::validation::is_legal_name_valid(&body.legal_name)?;
-    let username = user.lock().unwrap().username.clone();
+    let username = user.lock().unwrap().0.username.clone();
     db.update_legal_name(&username, &body.legal_name).await?;
-    user.lock().unwrap().legal_name = Some(body.legal_name.clone());
+    user.lock().unwrap().0.legal_name = Some(body.legal_name.clone());
     Ok(json!({
         "legal_name": body.legal_name,
         "message": "Your legal name has been updated"
@@ -36,7 +36,7 @@ pub struct UpdateBirthDateRequest {
 
 pub async fn update_birth_date(
     State(db): State<Arc<Db>>,
-    Extension(user): Extension<Arc<Mutex<User>>>,
+    Extension(user): Extension<UserInfo>,
     Json(body): Json<UpdateBirthDateRequest>,
 ) -> Result<ErasedJson, AppError> {
     let offset =
@@ -44,9 +44,9 @@ pub async fn update_birth_date(
             .map_err(|_| AppError::InvalidData("Invalid UTC Offset"))?;
     let birth_date =
         common::validation::is_birth_date_valid(body.year, body.month, body.day, offset)?;
-    let username = user.lock().unwrap().username.clone();
+    let username = user.lock().unwrap().0.username.clone();
     db.update_birth_date(&username, birth_date).await?;
-    user.lock().unwrap().birth_date = birth_date;
+    user.lock().unwrap().0.birth_date = birth_date;
     Ok(json!({
         "birth_date": birth_date.to_string(),
         "message": "Your birth date has been updated"
@@ -60,13 +60,13 @@ pub struct UpdateGenderRequest {
 
 pub async fn update_gender(
     State(db): State<Arc<Db>>,
-    Extension(user): Extension<Arc<Mutex<User>>>,
+    Extension(user): Extension<UserInfo>,
     Json(body): Json<UpdateGenderRequest>,
 ) -> Result<ErasedJson, AppError> {
     common::validation::is_gender_valid(&body.gender)?;
-    let username = user.lock().unwrap().username.clone();
+    let username = user.lock().unwrap().0.username.clone();
     db.update_gender(&username, &body.gender).await?;
-    user.lock().unwrap().gender = Some(body.gender.clone());
+    user.lock().unwrap().0.gender = Some(body.gender.clone());
     Ok(json!({
         "gender": body.gender,
         "message": "Your gender has been updated"
@@ -80,13 +80,13 @@ pub struct UpdateCountryRequest {
 
 pub async fn update_country(
     State(db): State<Arc<Db>>,
-    Extension(user): Extension<Arc<Mutex<User>>>,
+    Extension(user): Extension<UserInfo>,
     Json(body): Json<UpdateCountryRequest>,
 ) -> Result<ErasedJson, AppError> {
     let country = common::validation::is_country_valid(&body.country)?;
-    let username = user.lock().unwrap().username.clone();
+    let username = user.lock().unwrap().0.username.clone();
     db.update_country(&username, &country).await?;
-    user.lock().unwrap().country = Some(country.clone());
+    user.lock().unwrap().0.country = Some(country.clone());
     Ok(json!({
         "country": country,
         "message": "Your country has been updated"

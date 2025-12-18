@@ -5,9 +5,9 @@ use axum::{
 };
 use axum_extra::{json, response::ErasedJson};
 use common::AppError;
-use database::{Db, users::User};
+use database::{Db, UserInfo};
 use serde::Deserialize;
-use std::sync::{Arc, Mutex};
+use std::sync::Arc;
 
 #[derive(Deserialize)]
 pub struct UpdateEmailRequest {
@@ -17,10 +17,10 @@ pub struct UpdateEmailRequest {
 pub async fn update_email(
     State(db): State<Arc<Db>>,
     ConnectInfo(conn_info): ConnectInfo<ClientSocket>,
-    Extension(user): Extension<Arc<Mutex<User>>>,
+    Extension(user): Extension<UserInfo>,
     Json(body): Json<UpdateEmailRequest>,
 ) -> Result<ErasedJson, AppError> {
-    let email = user.lock().unwrap().email.clone();
+    let email = user.lock().unwrap().0.email.clone();
     // checking whether the new email is same as original email or not
     if email == body.new_email {
         return Err(AppError::BadReq("Your new email cannot be same as of your original email"));
@@ -28,6 +28,8 @@ pub async fn update_email(
 
     common::validation::is_email_valid(&body.new_email)?;
     let otp = common::generate::otp(&body.new_email);
+
+    tracing::info!("Email: {}, OTP: {}", email, otp);
 
     // adding an entry to database for further checking
     db.request_email_update(*conn_info, email, body.new_email.clone(), otp.clone()).await?;
@@ -53,12 +55,12 @@ pub struct VerifyEmailRequest {
 
 pub async fn verify_email(
     State(db): State<Arc<Db>>,
-    Extension(user): Extension<Arc<Mutex<User>>>,
+    Extension(user): Extension<UserInfo>,
     Json(body): Json<VerifyEmailRequest>,
 ) -> Result<ErasedJson, AppError> {
-    let old_email = user.lock().unwrap().email.clone();
+    let old_email = user.lock().unwrap().0.email.clone();
     db.update_email(&old_email, body.new_email.clone(), &body.otp).await?;
-    user.lock().unwrap().email = body.new_email.clone();
+    user.lock().unwrap().0.email = body.new_email.clone();
     Ok(json!({
         "email": body.new_email,
         "message": "Your email has been verified",

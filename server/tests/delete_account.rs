@@ -2,6 +2,7 @@
 mod common;
 
 use common::{Printer, Scanner};
+use fake::Fake;
 use reqwest::header;
 use std::io::Write;
 
@@ -9,7 +10,7 @@ use std::io::Write;
 fn main() -> Result<(), reqwest::Error> {
     const SOCKET: &str = "http://127.0.0.1:8080";
     let client = reqwest::blocking::Client::builder()
-        .user_agent("reqwest 0.12, rust lang")
+        .user_agent(fake::faker::internet::en::UserAgent().fake::<String>())
         .build()
         .unwrap_or_default();
 

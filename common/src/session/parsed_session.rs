@@ -25,21 +25,24 @@ impl ParsedSession {
         let mut ssid = None;
         let mut unsigned_ssid = None;
         let mut uuid = None;
-        for cookies in cookies_list {
-            if let Some(s) = cookies.split(';').find(|s| s.trim().starts_with("SSID=")) {
-                ssid = Some(s.trim()[5..].to_string());
-                unsigned_ssid = Some(
-                    Uuid::from_str(
-                        &super::verify(&s.trim()[5..])
-                            .ok_or(ParsedSessionError::VerificationError)?,
-                    )
-                    .map_err(|_| ParsedSessionError::VerificationError)?,
-                );
-            }
-            if let Some(s) = cookies.split(';').find(|s| s.trim().starts_with("UUID=")) {
-                uuid = Some(
-                    uuid::Uuid::from_str(s).map_err(|_| ParsedSessionError::VerificationError)?,
-                );
+        for cookie_header in cookies_list {
+            for cookie in cookie_header.split(';') {
+                if cookie.trim().starts_with("SSID=") {
+                    ssid = Some(cookie.trim()[5..].to_string());
+                    unsigned_ssid = Some(
+                        Uuid::from_str(
+                            &super::verify(&cookie.trim()[5..])
+                                .ok_or(ParsedSessionError::VerificationError)?,
+                        )
+                        .map_err(|_| ParsedSessionError::VerificationError)?,
+                    );
+                }
+                if cookie.trim().starts_with("UUID=") {
+                    uuid = Some(
+                        uuid::Uuid::from_str(&cookie.trim()[5..])
+                            .map_err(|_| ParsedSessionError::VerificationError)?,
+                    );
+                }
             }
         }
         if let Some(ssid) = ssid

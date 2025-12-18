@@ -1,4 +1,3 @@
-#![allow(clippy::type_complexity)]
 use common::session::Session;
 use moka::sync::Cache;
 use std::{sync::Arc, time::Duration};
@@ -10,11 +9,13 @@ pub mod bucket;
 pub mod sessions;
 pub mod users;
 
+pub type UserInfo = Arc<std::sync::Mutex<(users::User, Vec<Session>)>>;
+
 pub struct Db {
     pool: sqlx::Pool<sqlx::Postgres>,
     bucket: bucket::BlackBlazeB2,
     // in memory stores
-    active: Cache<sqlx::types::Uuid, Arc<std::sync::Mutex<(users::User, Vec<Session>)>>>,
+    active: Cache<sqlx::types::Uuid, UserInfo>,
     applicants: applicants::ApplicantsCache,
     openid_connecting: Cache<std::net::SocketAddr, applicants::OAuthInfo>,
     recovering: Cache<String, applicants::PasswordResetInfo>, // code

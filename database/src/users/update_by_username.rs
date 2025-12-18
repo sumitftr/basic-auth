@@ -35,7 +35,7 @@ impl crate::Db {
                 AppError::ServerError
             })?;
 
-        tracing::info!("[Legal Name Updated] @{username}");
+        tracing::info!("[Legal Name Updated] @{username}, Legal Name: {legal_name}");
         Ok(())
     }
 
@@ -52,7 +52,7 @@ impl crate::Db {
                 AppError::ServerError
             })?;
 
-        tracing::info!("[Birth Date Updated] @{username}");
+        tracing::info!("[Birth Date Updated] @{username}, Birth Date: {birth_date}");
         Ok(())
     }
 
@@ -69,7 +69,7 @@ impl crate::Db {
                 AppError::ServerError
             })?;
 
-        tracing::info!("[Gender Updated] @{username}");
+        tracing::info!("[Gender Updated] @{username}, Gender: {gender}");
         Ok(())
     }
 
@@ -86,7 +86,7 @@ impl crate::Db {
                 AppError::ServerError
             })?;
 
-        tracing::info!("[Country Updated] @{username}");
+        tracing::info!("[Country Updated] @{username}, Country: {country}");
         Ok(())
     }
 

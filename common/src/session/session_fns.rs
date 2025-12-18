@@ -48,49 +48,6 @@ pub fn create_session(
     )
 }
 
-// /// finds the current used session from a list of `UserSession`s
-// pub fn get_session_index(
-//     sessions: &[Session],
-//     parsed_session: &ParsedSession,
-// ) -> Result<usize, AppError> {
-//     for (i, session) in sessions.iter().enumerate() {
-//         if session.unsigned_ssid == parsed_session.unsigned_ssid {
-//             return Ok(i);
-//         }
-//     }
-//     Err(AppError::SessionExpired)
-// }
-
-// pub fn clear_expired_sessions(sessions: &mut Vec<Session>) {
-//     let tmp_sessions = std::mem::take(sessions);
-
-//     let now = SystemTime::now();
-//     let filtered_sessions =
-//         tmp_sessions.into_iter().filter(|s| now < s.expires_at).collect::<Vec<Session>>();
-
-//     let _ = std::mem::replace(sessions, filtered_sessions);
-// }
-
-// pub fn delete_current_session(sessions: &mut Vec<Session>, cur: &ParsedSession) {
-//     *sessions = sessions.drain(..).filter(|v| v.unsigned_ssid != cur.unsigned_ssid).collect();
-// }
-
-// pub fn delete_selected_sessions(sessions: Vec<Session>, mut selected: Vec<String>) -> Vec<Session> {
-//     sessions
-//         .into_iter()
-//         .filter(|v| {
-//             #[allow(clippy::needless_range_loop)]
-//             for i in 0..selected.len() {
-//                 if selected[i] == v.unsigned_ssid.to_string() {
-//                     std::mem::take(&mut selected[i]);
-//                     return false;
-//                 }
-//             }
-//             true
-//         })
-//         .collect::<Vec<Session>>()
-// }
-
 pub fn expire_session() -> HeaderMap {
     HeaderMap::from_iter([
         (

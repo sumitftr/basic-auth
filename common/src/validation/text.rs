@@ -2,6 +2,7 @@ use crate::AppError;
 use std::str::FromStr;
 use time::OffsetDateTime;
 
+#[allow(unused)]
 const SPECIAL: [char; 33] = [
     ' ', '!', '"', '#', '$', '%', '&', '\'', '(', ')', '*', '+', ',', '-', '.', '/', ':', ';', '<',
     '=', '>', '?', '@', '[', '\\', ']', '^', '_', '`', '{', '|', '}', '~',
@@ -50,7 +51,7 @@ pub fn is_password_strong(p: &str) -> Result<(), AppError> {
     if p.len() > 128 {
         return Err(AppError::InvalidData("Password cannot be more than 128 characters"));
     }
-    let (mut lower, mut upper, mut digit, mut special) = (false, false, false, false);
+    let (mut lower, mut upper, mut digit) = (false, false, false);
     for c in p.chars() {
         if c.is_lowercase() {
             lower = true;
@@ -61,15 +62,12 @@ pub fn is_password_strong(p: &str) -> Result<(), AppError> {
         if c.is_numeric() {
             digit = true;
         }
-        if SPECIAL.contains(&c) {
-            special = true;
-        }
     }
-    if lower && upper && digit && special {
+    if lower && upper && digit {
         return Ok(());
     }
     Err(AppError::InvalidData(
-        "Password must contain a lowercase alphabet, a uppercase alphabet, a digit and a special character",
+        "Password must contain a lowercase alphabet, a uppercase alphabet and a digit",
     ))
 }
 

@@ -2,14 +2,22 @@
 mod common;
 
 use common::{Printer, Scanner};
+use fake::{
+    Fake,
+    faker::{
+        lorem::en::Sentence,
+        name::en::{FirstName, LastName},
+    },
+};
 use reqwest::header;
 use std::io::Write;
 
 #[test]
 fn main() -> Result<(), reqwest::Error> {
     const SOCKET: &str = "http://127.0.0.1:8080";
+    let is_auto = std::env::var("AUTO").ok().map(|v| v.as_str() == "true").unwrap_or(false);
     let client = reqwest::blocking::Client::builder()
-        .user_agent("reqwest 0.12, rust lang")
+        .user_agent(fake::faker::internet::en::UserAgent().fake::<String>())
         .build()
         .unwrap_or_default();
 
@@ -21,10 +29,18 @@ fn main() -> Result<(), reqwest::Error> {
     let cookies = token.next_line::<String>();
     out.write("Enter icon path: ");
     let icon_path = token.next_line::<String>();
-    out.write("Enter display name: ");
-    let display_name = token.next_line::<String>();
-    out.write("Enter bio: ");
-    let bio = token.next_line::<String>();
+    let display_name = if is_auto {
+        format!("{} {}", FirstName().fake::<String>(), LastName().fake::<String>())
+    } else {
+        out.write("Enter display name: ");
+        token.next_line::<String>()
+    };
+    let bio = if is_auto {
+        Sentence(5..15).fake::<String>()
+    } else {
+        out.write("Enter bio: ");
+        token.next_line::<String>()
+    };
 
     // creating multipart form
     let mut form = reqwest::blocking::multipart::Form::new();

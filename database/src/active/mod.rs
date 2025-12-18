@@ -1,4 +1,3 @@
-#![allow(clippy::type_complexity)]
 use crate::users::User;
 use common::session::{ParsedSession, Session};
 use std::sync::{Arc, Mutex};

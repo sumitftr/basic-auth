@@ -1,6 +1,4 @@
 use axum::routing::{get, post};
-use database::users::User;
-use std::sync::{Arc, Mutex};
 
 mod account;
 mod email;
@@ -29,9 +27,9 @@ pub async fn settings_routes() -> axum::Router {
 }
 
 pub async fn fetch_settings(
-    axum::Extension(user): axum::Extension<Arc<Mutex<User>>>,
+    axum::Extension(user): axum::Extension<database::UserInfo>,
 ) -> axum_extra::response::ErasedJson {
-    let res = user.lock().unwrap().clone();
+    let res = user.lock().unwrap().0.clone();
     axum_extra::json!({
         "email": res.email,
         "birth_date": res.birth_date.to_string(),
