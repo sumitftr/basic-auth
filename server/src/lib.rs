@@ -3,8 +3,9 @@ mod auth;
 mod connection;
 mod middleware;
 mod settings;
-mod sync_db;
+mod stream_drop;
 mod user;
+mod user_data;
 
 pub use connection::ClientSocket;
 
@@ -17,10 +18,10 @@ pub async fn routes() -> axum::Router {
         .merge(user::user_routes().await)
 }
 
-pub async fn get_custom_listener() -> sync_db::CustomListener {
+pub async fn get_custom_listener() -> stream_drop::CustomListener {
     use axum::serve::Listener;
     let listener = tokio::net::TcpListener::bind(std::env::var("SOCKET").unwrap()).await.unwrap();
-    let custom_listener = sync_db::CustomListener::from(listener);
+    let custom_listener = stream_drop::CustomListener::from(listener);
     tracing::info!("[+] listening on {}", custom_listener.local_addr().unwrap());
     custom_listener
 }

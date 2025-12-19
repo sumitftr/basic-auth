@@ -32,8 +32,8 @@ pub async fn start(
         .map_err(|_| AppError::InvalidData("Invalid UTC Offset"))?;
     let birth_date =
         common::validation::is_birth_date_valid(body.year, body.month, body.day, offset)?;
-    let otp = common::generate::otp(&body.email);
 
+    let otp = common::generate::otp(&body.email);
     tracing::info!("Email: {}, OTP: {}", body.email, otp);
 
     // storing applicant data in memory
@@ -117,7 +117,6 @@ pub async fn set_password(
     State(db): State<Arc<Db>>,
     Json(body): Json<SetPasswordRequest>,
 ) -> Result<ErasedJson, AppError> {
-    // checking if the user sent password is valid or not
     common::validation::is_password_strong(&body.password)?;
 
     // setting password in in-memory database
@@ -140,7 +139,6 @@ pub async fn set_username(
     headers: HeaderMap,
     Json(body): Json<SetUsernameRequest>,
 ) -> Result<impl IntoResponse, AppError> {
-    // checking validity of the username
     common::validation::is_username_valid(&body.username)?;
 
     // registering user to primary database
@@ -149,19 +147,11 @@ pub async fn set_username(
     let (new_session, _, set_cookie_headermap) =
         common::session::create_session(user.id, &headers, *conn_info);
 
-    // adding `Session` to primary database
+    let res_body = crate::user_data::arrange(&user, &vec![&new_session]);
     db.add_session(user.id, new_session.clone()).await?;
-
-    // activating session by adding it to `Db::active`
     db.make_user_active(user, new_session);
 
-    Ok((
-        StatusCode::CREATED,
-        set_cookie_headermap,
-        json!({
-            "message": "User Created"
-        }),
-    ))
+    Ok((StatusCode::CREATED, set_cookie_headermap, res_body))
 }
 
 #[derive(serde::Deserialize)]
@@ -182,12 +172,12 @@ pub async fn finish_oidc(
     headers: HeaderMap,
     Json(body): Json<FinishOidcRequest>,
 ) -> Result<impl IntoResponse, AppError> {
-    // checking validity of the username
+    common::validation::is_username_valid(&body.username)?;
+
     let offset = UtcOffset::from_hms(body.offset_hours, body.offset_minutes, body.offset_seconds)
         .map_err(|_| AppError::InvalidData("Invalid UTC Offset"))?;
     let birth_date =
         common::validation::is_birth_date_valid(body.year, body.month, body.day, offset)?;
-    common::validation::is_username_valid(&body.username)?;
 
     // registering user to primary database
     let user = db.finish_oidc_application(body.email, birth_date, body.username).await?;
@@ -195,17 +185,9 @@ pub async fn finish_oidc(
     let (new_session, _, set_cookie_headermap) =
         common::session::create_session(user.id, &headers, *conn_info);
 
-    // adding `Session` to primary database
+    let res_body = crate::user_data::arrange(&user, &vec![&new_session]);
     db.add_session(user.id, new_session.clone()).await?;
-
-    // activating session by adding it to `Db::active`
     db.make_user_active(user, new_session);
 
-    Ok((
-        StatusCode::CREATED,
-        set_cookie_headermap,
-        json!({
-            "message": "User Created"
-        }),
-    ))
+    Ok((StatusCode::CREATED, set_cookie_headermap, res_body))
 }

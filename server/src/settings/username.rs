@@ -1,23 +1,30 @@
 use axum::{Extension, Json, extract::State};
 use axum_extra::{json, response::ErasedJson};
 use common::AppError;
-use database::{Db, UserInfo};
+use database::{Db, UserData};
 use std::sync::Arc;
 
 #[derive(serde::Deserialize)]
 pub struct UpdateUsernameRequest {
     new_username: String,
+    password: String,
 }
 
 pub async fn update_username(
     State(db): State<Arc<Db>>,
-    Extension(user): Extension<UserInfo>,
+    Extension(user): Extension<UserData>,
     Json(body): Json<UpdateUsernameRequest>,
 ) -> Result<ErasedJson, AppError> {
+    let username = {
+        let guard = user.lock().unwrap();
+        if guard.0.password.as_ref().is_none_or(|v| v != &body.password) {
+            return Err(AppError::PasswordMismatch);
+        }
+        guard.0.username.clone()
+    };
     // checking if the new username is valid or not
     common::validation::is_username_valid(&body.new_username)?;
     // checking whether the new username is same as original username or not
-    let username = user.lock().unwrap().0.username.clone();
     if username == body.new_username {
         return Err(AppError::BadReq(
             "Your new username cannot be same as of your original username",
@@ -39,7 +46,7 @@ pub struct ValidateUsernameRequest {
 
 pub async fn validate_username(
     State(db): State<Arc<Db>>,
-    Extension(user): Extension<UserInfo>,
+    Extension(user): Extension<UserData>,
     Json(body): Json<ValidateUsernameRequest>,
 ) -> Result<ErasedJson, AppError> {
     // checking if the new username is valid or not

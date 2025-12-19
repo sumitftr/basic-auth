@@ -53,7 +53,7 @@ impl crate::Db {
 
         match &user.password {
             Some(db_password) if db_password == password => Ok(user),
-            Some(_) => Err(AppError::WrongPassword),
+            Some(_) => Err(AppError::PasswordMismatch),
             None => Err(AppError::BadReq("Password not set")),
         }
     }
@@ -75,7 +75,7 @@ impl crate::Db {
 
         match &user.password {
             Some(db_password) if db_password == password => Ok(user),
-            Some(_) => Err(AppError::WrongPassword),
+            Some(_) => Err(AppError::PasswordMismatch),
             None => Err(AppError::BadReq("Password not set")),
         }
     }

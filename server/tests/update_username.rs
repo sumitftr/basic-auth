@@ -29,8 +29,10 @@ fn main() -> Result<(), reqwest::Error> {
             out.write("Enter username: ");
             token.next_line::<String>()
         };
+        out.write("Enter password: ");
+        let password = token.next_line::<String>();
 
-        let body1 = format!(r#"{{"new_username":"{new_username}"}}"#);
+        let body1 = format!(r#"{{"new_username": "{new_username}", "password": "{password}"}}"#);
         if is_auto {
             out.write(&body1);
             out.write("\n");

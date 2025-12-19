@@ -1,4 +1,4 @@
-use common::AppError;
+use common::{AppError, oauth::OAuthProvider};
 use std::sync::Arc;
 
 // implementation block for checking and updating user attributes by email
@@ -21,6 +21,31 @@ impl crate::Db {
             })?;
 
         tracing::info!("[Password Updated] Email: {email}");
+        Ok(())
+    }
+
+    pub async fn update_oauth_provider(
+        self: &Arc<Self>,
+        email: &str,
+        oauth_provider: OAuthProvider,
+    ) -> Result<(), AppError> {
+        sqlx::query_as!(
+            User,
+            "UPDATE users SET oauth_provider = $1 WHERE email = $2",
+            oauth_provider.get_str(),
+            email
+        )
+        .fetch_one(&self.pool)
+        .await
+        .map_err(|e| match e {
+            sqlx::Error::RowNotFound => AppError::UserNotFound,
+            _ => {
+                tracing::error!("{:?}", e);
+                AppError::ServerError
+            }
+        })?;
+
+        tracing::info!("[OAuth Provider Updated] Email: {email}");
         Ok(())
     }
 }

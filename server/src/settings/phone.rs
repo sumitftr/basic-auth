@@ -2,7 +2,7 @@
 
 use axum::{Extension, Json, extract::State};
 use common::AppError;
-use database::{Db, UserInfo};
+use database::{Db, UserData};
 use std::sync::Arc;
 
 #[derive(serde::Deserialize)]
@@ -12,7 +12,7 @@ pub struct UpdatePhoneRequest {
 
 pub async fn update_phone(
     State(db): State<Arc<Db>>,
-    Extension(user): Extension<UserInfo>,
+    Extension(user): Extension<UserData>,
     Json(body): Json<UpdatePhoneRequest>,
 ) -> Result<String, AppError> {
     todo!()
@@ -25,7 +25,7 @@ pub struct VerifyPhoneRequest {
 
 pub async fn verify_phone(
     State(db): State<Arc<Db>>,
-    Extension(user): Extension<UserInfo>,
+    Extension(user): Extension<UserData>,
     Json(body): Json<VerifyPhoneRequest>,
 ) -> Result<String, AppError> {
     todo!()

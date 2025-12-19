@@ -9,13 +9,13 @@ pub mod bucket;
 pub mod sessions;
 pub mod users;
 
-pub type UserInfo = Arc<std::sync::Mutex<(users::User, Vec<Session>)>>;
+pub type UserData = Arc<std::sync::Mutex<(users::User, Vec<Session>)>>;
 
 pub struct Db {
     pool: sqlx::Pool<sqlx::Postgres>,
     bucket: bucket::BlackBlazeB2,
     // in memory stores
-    active: Cache<sqlx::types::Uuid, UserInfo>,
+    active: Cache<sqlx::types::Uuid, UserData>,
     applicants: applicants::ApplicantsCache,
     openid_connecting: Cache<std::net::SocketAddr, applicants::OAuthInfo>,
     recovering: Cache<String, applicants::PasswordResetInfo>, // code

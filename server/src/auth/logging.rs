@@ -6,7 +6,7 @@ use axum::{
 };
 use axum_extra::{json, response::ErasedJson};
 use common::{AppError, session::ParsedSession};
-use database::{Db, UserInfo};
+use database::{Db, UserData};
 use std::sync::Arc;
 
 #[derive(serde::Deserialize)]
@@ -31,6 +31,7 @@ pub async fn login(
 
     let (new_session, parsed_session, set_cookie_headermap) =
         common::session::create_session(user.id, &headers, *conn_info);
+    let res_body = crate::user_data::arrange(&user, &vec![&new_session]);
 
     // adding `Session` to primary database
     db.add_session(user.id, new_session.clone()).await?;
@@ -45,19 +46,13 @@ pub async fn login(
         db.make_user_active(user, new_session);
     }
 
-    Ok((
-        StatusCode::CREATED,
-        set_cookie_headermap,
-        json!({
-            "message": "Login Successful"
-        }),
-    ))
+    Ok((StatusCode::CREATED, set_cookie_headermap, res_body))
 }
 
 pub async fn logout(
     State(db): State<Arc<Db>>,
     Extension(parsed_session): Extension<ParsedSession>,
-    Extension(user): Extension<UserInfo>,
+    Extension(user): Extension<UserData>,
 ) -> Result<impl IntoResponse, AppError> {
     let user_id = user.lock().unwrap().0.id;
 
@@ -76,16 +71,20 @@ pub async fn logout(
 #[derive(serde::Deserialize)]
 pub struct LogoutDevicesRequest {
     sessions: Vec<String>,
+    password: String,
 }
 
 pub async fn logout_devices(
     State(db): State<Arc<Db>>,
     Extension(parsed_session): Extension<ParsedSession>,
-    Extension(user): Extension<UserInfo>,
+    Extension(user): Extension<UserData>,
     Json(body): Json<LogoutDevicesRequest>,
 ) -> Result<impl IntoResponse, AppError> {
     let (user_id, mut session_list) = {
         let guard = user.lock().unwrap();
+        if guard.0.password.as_ref().is_none_or(|v| v != &body.password) {
+            return Err(AppError::PasswordMismatch);
+        }
         (guard.0.id, guard.1.clone())
     };
 
@@ -110,13 +109,22 @@ pub async fn logout_devices(
     }))
 }
 
+#[derive(serde::Deserialize)]
+pub struct LogoutAllRequest {
+    password: String,
+}
+
 pub async fn logout_all(
     State(db): State<Arc<Db>>,
     Extension(parsed_session): Extension<ParsedSession>,
-    Extension(user): Extension<UserInfo>,
+    Extension(user): Extension<UserData>,
+    Json(body): Json<LogoutAllRequest>,
 ) -> Result<ErasedJson, AppError> {
     let (user_id, mut session_list) = {
         let guard = user.lock().unwrap();
+        if guard.0.password.as_ref().is_none_or(|v| v != &body.password) {
+            return Err(AppError::PasswordMismatch);
+        }
         (guard.0.id, guard.1.clone())
     };
 
@@ -128,6 +136,6 @@ pub async fn logout_all(
     user.lock().unwrap().1 = session_list;
 
     Ok(json!({
-        "message": "Your all sessions has been deleted, except the current one"
+        "message": "Your all other sessions has been deleted"
     }))
 }

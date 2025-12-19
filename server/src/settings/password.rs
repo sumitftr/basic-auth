@@ -1,7 +1,7 @@
 use axum::{Extension, Json, extract::State};
 use axum_extra::{json, response::ErasedJson};
 use common::AppError;
-use database::{Db, UserInfo};
+use database::{Db, UserData};
 use std::sync::Arc;
 
 #[derive(serde::Deserialize)]
@@ -12,13 +12,13 @@ pub struct UpdatePasswordRequest {
 
 pub async fn update_password(
     State(db): State<Arc<Db>>,
-    Extension(user): Extension<UserInfo>,
+    Extension(user): Extension<UserData>,
     Json(body): Json<UpdatePasswordRequest>,
 ) -> Result<ErasedJson, AppError> {
     let email = {
         let guard = user.lock().unwrap();
-        if guard.0.password.as_ref().unwrap() != &body.old_password {
-            return Err(AppError::WrongPassword);
+        if guard.0.password.as_ref().is_none_or(|v| v != &body.old_password) {
+            return Err(AppError::PasswordMismatch);
         }
         guard.0.email.clone()
     };
@@ -28,4 +28,23 @@ pub async fn update_password(
     Ok(json!({
         "message": "Your password has been changed"
     }))
+}
+
+#[derive(serde::Deserialize)]
+pub struct VerifyPasswordRequest {
+    password: String,
+}
+
+pub async fn verify_password(
+    Extension(user): Extension<UserData>,
+    Json(body): Json<VerifyPasswordRequest>,
+) -> Result<ErasedJson, AppError> {
+    let guard = user.lock().unwrap();
+    if guard.0.password.as_ref().is_none_or(|v| v != &body.password) {
+        Err(AppError::PasswordMismatch)
+    } else {
+        Ok(json!({
+            "success": "Password correct"
+        }))
+    }
 }

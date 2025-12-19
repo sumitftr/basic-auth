@@ -70,6 +70,13 @@ impl OAuthProvider {
             OAuthProvider::None => "",
         }
     }
+
+    pub fn from_domain(domain: &str) -> Self {
+        match domain {
+            "gmail.com" => OAuthProvider::Google,
+            _ => OAuthProvider::None,
+        }
+    }
 }
 
 pub fn get_oauth_provider(provider: OAuthProvider) -> Option<Arc<OAuthConfig<'static>>> {

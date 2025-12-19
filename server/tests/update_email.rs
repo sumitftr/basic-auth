@@ -30,8 +30,10 @@ fn main() -> Result<(), reqwest::Error> {
             out.write("Enter email: ");
             new_email = token.next_line::<String>();
         };
+        out.write("Enter password: ");
+        let password = token.next_line::<String>();
 
-        let body1 = format!(r#"{{"new_email": "{new_email}"}}"#);
+        let body1 = format!(r#"{{"new_email": "{new_email}", "password": "{password}"}}"#);
         if is_auto {
             out.write(&body1);
             out.write("\n");

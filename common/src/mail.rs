@@ -34,28 +34,28 @@ pub async fn send(to_email: String, subject: String, body: String) -> Result<(),
             AppError::ServerError
         })?;
 
-    // // sending the email and wait for completion
-    // tokio::spawn(async move {
-    //     MAILER
-    //         .send(msg)
-    //         .await
-    //         .map_err(|e| {
-    //             tracing::error!("{e:?}");
-    //             AppError::ServerError
-    //         })
-    //         .map(|_| ())
-    // })
-    // .await
-    // .map_err(|e| {
-    //     tracing::error!("Task join error: {e:?}");
-    //     AppError::ServerError
-    // })?
-
-    // Fire-and-forget version - returns immediately
+    // sending the email and wait for completion
     tokio::spawn(async move {
-        if let Err(e) = MAILER.send(msg).await {
-            tracing::error!("Failed to send email: {e:?}");
-        }
-    });
-    Ok(())
+        MAILER
+            .send(msg)
+            .await
+            .map_err(|e| {
+                tracing::error!("{e:?}");
+                AppError::ServerError
+            })
+            .map(|_| ())
+    })
+    .await
+    .map_err(|e| {
+        tracing::error!("Task join error: {e:?}");
+        AppError::ServerError
+    })?
+
+    // // Fire-and-forget version - returns immediately
+    // tokio::spawn(async move {
+    //     if let Err(e) = MAILER.send(msg).await {
+    //         tracing::error!("Failed to send email: {e:?}");
+    //     }
+    // });
+    // Ok(())
 }

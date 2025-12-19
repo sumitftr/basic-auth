@@ -13,7 +13,7 @@ pub enum AppError {
     UserNotFound,
     UsernameTaken,
     EmailTaken,
-    WrongPassword,
+    PasswordMismatch,
     SessionExpired,
     InvalidSession(HeaderMap),
     ServerError,
@@ -56,7 +56,7 @@ impl axum::response::IntoResponse for AppError {
             Self::EmailTaken => {
                 (StatusCode::CONFLICT, JsonMsg::new("Email already taken")).into_response() 
             }
-            Self::WrongPassword => {
+            Self::PasswordMismatch => {
                 (StatusCode::UNAUTHORIZED, JsonMsg::new("Password didn't match")).into_response()
             }
             Self::SessionExpired => {

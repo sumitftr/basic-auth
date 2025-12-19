@@ -1,7 +1,7 @@
 use axum::{Extension, Json, extract::State};
 use axum_extra::{json, response::ErasedJson};
 use common::AppError;
-use database::{Db, UserInfo};
+use database::{Db, UserData};
 use std::sync::Arc;
 
 #[derive(serde::Deserialize)]
@@ -11,7 +11,7 @@ pub struct UpdateLegalNameRequest {
 
 pub async fn update_legal_name(
     State(db): State<Arc<Db>>,
-    Extension(user): Extension<UserInfo>,
+    Extension(user): Extension<UserData>,
     Json(body): Json<UpdateLegalNameRequest>,
 ) -> Result<ErasedJson, AppError> {
     common::validation::is_legal_name_valid(&body.legal_name)?;
@@ -36,7 +36,7 @@ pub struct UpdateBirthDateRequest {
 
 pub async fn update_birth_date(
     State(db): State<Arc<Db>>,
-    Extension(user): Extension<UserInfo>,
+    Extension(user): Extension<UserData>,
     Json(body): Json<UpdateBirthDateRequest>,
 ) -> Result<ErasedJson, AppError> {
     let offset =
@@ -60,7 +60,7 @@ pub struct UpdateGenderRequest {
 
 pub async fn update_gender(
     State(db): State<Arc<Db>>,
-    Extension(user): Extension<UserInfo>,
+    Extension(user): Extension<UserData>,
     Json(body): Json<UpdateGenderRequest>,
 ) -> Result<ErasedJson, AppError> {
     common::validation::is_gender_valid(&body.gender)?;
@@ -80,7 +80,7 @@ pub struct UpdateCountryRequest {
 
 pub async fn update_country(
     State(db): State<Arc<Db>>,
-    Extension(user): Extension<UserInfo>,
+    Extension(user): Extension<UserData>,
     Json(body): Json<UpdateCountryRequest>,
 ) -> Result<ErasedJson, AppError> {
     let country = common::validation::is_country_valid(&body.country)?;

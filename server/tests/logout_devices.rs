@@ -21,11 +21,13 @@ fn main() -> Result<(), reqwest::Error> {
     out.write("Enter cookie: ");
     let cookies = token.next_line::<String>();
 
-    let s_endpoint = format!("{}/api/settings", SOCKET);
-    let res = client.get(&s_endpoint).header(header::COOKIE, &cookies).send()?;
+    out.write("Enter password: ");
+    let password = token.next_line::<String>();
+
+    let res =
+        client.get(format!("{}/api/settings", SOCKET)).header(header::COOKIE, &cookies).send()?;
     writeln!(out.inner, "{:#?}", res.text()?);
 
-    let endpoint = format!("{}/api/logout_devices", SOCKET);
     out.write("Enter number of cookies you want to delete: ");
     let l = token.next_line::<usize>();
     let mut sessions = Vec::with_capacity(l);
@@ -33,9 +35,9 @@ fn main() -> Result<(), reqwest::Error> {
         sessions.push(token.next::<String>());
     }
     let res = client
-        .post(&endpoint)
+        .post(format!("{}/api/logout_devices", SOCKET))
         .header(header::COOKIE, &cookies)
-        .json(&LogoutDevicesRequest { sessions })
+        .json(&LogoutDevicesRequest { sessions, password })
         .send()?;
     writeln!(out.inner, "{:?}", res.text()?);
 
@@ -45,4 +47,5 @@ fn main() -> Result<(), reqwest::Error> {
 #[derive(serde::Serialize)]
 pub struct LogoutDevicesRequest {
     sessions: Vec<String>,
+    password: String,
 }

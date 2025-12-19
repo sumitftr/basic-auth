@@ -40,3 +40,9 @@ impl Session {
         }
     }
 }
+
+impl AsRef<Session> for Session {
+    fn as_ref(&self) -> &Session {
+        self
+    }
+}
