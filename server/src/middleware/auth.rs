@@ -30,7 +30,7 @@ pub async fn auth_middleware(
     }
 
     // User not cached, fetch from database (not found inside `Db::active`)
-    let (user, session) = db.get_user_by_parsed_session(&parsed_session).await?;
+    let (user, session) = db.get_all_by_parsed_session(&parsed_session).await?;
 
     match session.session_status() {
         SessionStatus::Valid(_) => {
@@ -46,7 +46,7 @@ pub async fn auth_middleware(
                 common::session::create_session(user.id, req.headers(), *conn_info);
 
             // replacing the old session with new session
-            db.add_session(new_session.clone()).await?;
+            db.add_session(user.id, new_session.clone()).await?;
             db.remove_session(user.id, session.unsigned_ssid).await?;
             db.make_user_active(user, new_session);
 

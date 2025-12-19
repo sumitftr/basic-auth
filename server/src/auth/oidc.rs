@@ -165,7 +165,7 @@ pub async fn callback(
             _ => {
                 let (new_session, parsed_session, set_cookie_headermap) =
                     common::session::create_session(user.id, &headers, *conn_info);
-                db.add_session(new_session.clone()).await?;
+                db.add_session(user.id, new_session.clone()).await?;
                 // activating session by adding it to `Db::active`
                 if let Some((arc_wrapped, is_session_present)) = db.get_active_user(&parsed_session)
                     && !is_session_present
@@ -175,7 +175,7 @@ pub async fn callback(
                 } else {
                     db.make_user_active(user, new_session);
                 }
-                db.remove_oauth_creds(&*conn_info);
+                db.remove_oauth_creds(&conn_info);
                 Ok((set_cookie_headermap, Redirect::to("/")).into_response()) // REDIRECT ENDPOINT NEEDS TO BE CHECKED
             }
         },

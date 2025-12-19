@@ -21,7 +21,6 @@ pub fn create_session(
     (
         Session {
             unsigned_ssid: uid,
-            user_id,
             user_agent,
             ip_address: socket_addr.ip(),
             created_at: now,

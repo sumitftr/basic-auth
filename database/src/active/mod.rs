@@ -1,15 +1,11 @@
-use crate::users::User;
+use crate::{UserInfo, users::User};
 use common::session::{ParsedSession, Session};
 use std::sync::{Arc, Mutex};
 
 // implementation block for creating active users
 // those are the users whose session is cached in memory
 impl crate::Db {
-    pub fn make_user_active(
-        self: &Arc<Self>,
-        user: User,
-        session: Session,
-    ) -> Arc<Mutex<(User, Vec<Session>)>> {
+    pub fn make_user_active(self: &Arc<Self>, user: User, session: Session) -> UserInfo {
         let uid = user.id;
         let arc_wrapped = Arc::new(Mutex::new((user, vec![session])));
         self.active.insert(uid, arc_wrapped.clone());
@@ -22,7 +18,7 @@ impl crate::Db {
     pub fn get_active_user(
         self: &Arc<Self>,
         parsed_session: &ParsedSession,
-    ) -> Option<(Arc<Mutex<(User, Vec<Session>)>>, bool)> {
+    ) -> Option<(UserInfo, bool)> {
         let arc_wrapped = self.active.get(&parsed_session.user_id)?;
         let mut flag = false;
         let guard = arc_wrapped.lock().unwrap();
@@ -35,10 +31,7 @@ impl crate::Db {
         Some((arc_wrapped, flag))
     }
 
-    pub fn remove_active_user(
-        self: &Arc<Self>,
-        parsed_session: &ParsedSession,
-    ) -> Option<Arc<Mutex<(User, Vec<Session>)>>> {
+    pub fn remove_active_user(self: &Arc<Self>, parsed_session: &ParsedSession) -> Option<UserInfo> {
         let arc_wrapped = self.active.get(&parsed_session.user_id)?;
         let mut guard = arc_wrapped.lock().unwrap();
         guard.1 =

@@ -150,7 +150,7 @@ pub async fn set_username(
         common::session::create_session(user.id, &headers, *conn_info);
 
     // adding `Session` to primary database
-    db.add_session(new_session.clone()).await?;
+    db.add_session(user.id, new_session.clone()).await?;
 
     // activating session by adding it to `Db::active`
     db.make_user_active(user, new_session);
@@ -196,7 +196,7 @@ pub async fn finish_oidc(
         common::session::create_session(user.id, &headers, *conn_info);
 
     // adding `Session` to primary database
-    db.add_session(new_session.clone()).await?;
+    db.add_session(user.id, new_session.clone()).await?;
 
     // activating session by adding it to `Db::active`
     db.make_user_active(user, new_session);

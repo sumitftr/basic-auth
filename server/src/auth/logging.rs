@@ -5,12 +5,9 @@ use axum::{
     response::IntoResponse,
 };
 use axum_extra::{json, response::ErasedJson};
-use common::{
-    AppError,
-    session::{ParsedSession, Session},
-};
-use database::{Db, users::User};
-use std::sync::{Arc, Mutex};
+use common::{AppError, session::ParsedSession};
+use database::{Db, UserInfo};
+use std::sync::Arc;
 
 #[derive(serde::Deserialize)]
 pub struct LoginRequest {
@@ -36,7 +33,7 @@ pub async fn login(
         common::session::create_session(user.id, &headers, *conn_info);
 
     // adding `Session` to primary database
-    db.add_session(new_session.clone()).await?;
+    db.add_session(user.id, new_session.clone()).await?;
 
     // activating session by adding it to `Db::active`
     if let Some((arc_wrapped, is_session_present)) = db.get_active_user(&parsed_session)
@@ -60,9 +57,9 @@ pub async fn login(
 pub async fn logout(
     State(db): State<Arc<Db>>,
     Extension(parsed_session): Extension<ParsedSession>,
-    Extension(user): Extension<Arc<Mutex<User>>>,
+    Extension(user): Extension<UserInfo>,
 ) -> Result<impl IntoResponse, AppError> {
-    let user_id = user.lock().unwrap().id;
+    let user_id = user.lock().unwrap().0.id;
 
     db.remove_session(user_id, parsed_session.unsigned_ssid).await?;
     db.remove_active_user(&parsed_session);
@@ -84,7 +81,7 @@ pub struct LogoutDevicesRequest {
 pub async fn logout_devices(
     State(db): State<Arc<Db>>,
     Extension(parsed_session): Extension<ParsedSession>,
-    Extension(user): Extension<Arc<Mutex<(User, Vec<Session>)>>>,
+    Extension(user): Extension<UserInfo>,
     Json(body): Json<LogoutDevicesRequest>,
 ) -> Result<impl IntoResponse, AppError> {
     let (user_id, mut session_list) = {
@@ -109,14 +106,14 @@ pub async fn logout_devices(
     user.lock().unwrap().1 = session_list;
 
     Ok(json!({
-        "message": "You sessions has been updated"
+        "message": "Your sessions has been updated"
     }))
 }
 
 pub async fn logout_all(
     State(db): State<Arc<Db>>,
     Extension(parsed_session): Extension<ParsedSession>,
-    Extension(user): Extension<Arc<Mutex<(User, Vec<Session>)>>>,
+    Extension(user): Extension<UserInfo>,
 ) -> Result<ErasedJson, AppError> {
     let (user_id, mut session_list) = {
         let guard = user.lock().unwrap();
@@ -131,6 +128,6 @@ pub async fn logout_all(
     user.lock().unwrap().1 = session_list;
 
     Ok(json!({
-        "message": "Deleted all other user sessions"
+        "message": "Your all sessions has been deleted, except the current one"
     }))
 }

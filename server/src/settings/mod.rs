@@ -13,7 +13,7 @@ pub async fn settings_routes() -> axum::Router {
         .route("/api/settings", get(fetch_settings))
         .route("/api/settings/email", post(email::update_email))
         .route("/api/settings/verify_email", post(email::verify_email))
-        .route("/api/settings/username", post(username::update_username))
+        .route("/api/settings/username", post(username::update_username).get(username::validate_username))
         .route("/api/settings/password", post(password::update_password))
         .route("/api/settings/legal_name", post(metadata::update_legal_name))
         .route("/api/settings/birth_date", post(metadata::update_birth_date))
@@ -29,19 +29,36 @@ pub async fn settings_routes() -> axum::Router {
 pub async fn fetch_settings(
     axum::Extension(user): axum::Extension<database::UserInfo>,
 ) -> axum_extra::response::ErasedJson {
-    let res = user.lock().unwrap().0.clone();
+    let (u, s) = {
+        let guard = user.lock().unwrap();
+        (guard.0.clone(), guard.1.clone())
+    };
+
+    let sessions: Vec<_> = s
+        .iter()
+        .map(|session| {
+            serde_json::json!({
+                "unsigned_ssid": session.unsigned_ssid.to_string(),
+                "user_agent": session.user_agent,
+                "created_at": session.created_at.to_string(),
+                "last_used": session.last_used.to_string(),
+            })
+        })
+        .collect();
+
     axum_extra::json!({
-        "email": res.email,
-        "birth_date": res.birth_date.to_string(),
-        "username": res.username,
-        "display_name": res.display_name,
-        "icon": res.icon,
-        "banner": res.banner,
-        "bio": res.bio,
-        "legal_name": res.legal_name,
-        "gender": res.gender,
-        "phone": res.phone,
-        "country": res.country,
-        "created": res.created.to_string(),
+        "email": u.email,
+        "birth_date": u.birth_date.to_string(),
+        "username": u.username,
+        "display_name": u.display_name,
+        "icon": u.icon,
+        "banner": u.banner,
+        "bio": u.bio,
+        "legal_name": u.legal_name,
+        "gender": u.gender,
+        "phone": u.phone,
+        "country": u.country,
+        "created": u.created.to_string(),
+        "sessions": sessions,
     })
 }

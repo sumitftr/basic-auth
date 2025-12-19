@@ -29,7 +29,7 @@ fn main() -> Result<(), reqwest::Error> {
         .header(header::CONTENT_TYPE, "application/json")
         .body(body)
         .send()?;
-    let cookies = v
+    let cookies = res
         .headers()
         .get_all(reqwest::header::SET_COOKIE)
         .into_iter()

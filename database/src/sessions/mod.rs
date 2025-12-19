@@ -26,7 +26,6 @@ impl crate::Db {
 
         Ok(Session {
             unsigned_ssid: row.unsigned_ssid,
-            user_id: row.user_id,
             user_agent: row.user_agent,
             ip_address: row.ip_address.ip(),
             created_at: row.created_at,
@@ -36,7 +35,7 @@ impl crate::Db {
     }
 
     /// returns the `User` and `Session` that matches the `parsed_session.unsigned_ssid`
-    pub async fn get_user_by_parsed_session(
+    pub async fn get_all_by_parsed_session(
         self: &Arc<Self>,
         parsed_session: &ParsedSession,
     ) -> Result<(User, Session), AppError> {
@@ -79,7 +78,6 @@ impl crate::Db {
 
         let session = Session {
             unsigned_ssid: row.unsigned_ssid,
-            user_id: row.user_id,
             user_agent: row.user_agent,
             ip_address: row.ip_address.ip(),
             created_at: row.created_at,
@@ -91,13 +89,17 @@ impl crate::Db {
     }
 
     /// adds a session to sessions table
-    pub async fn add_session(self: &Arc<Self>, session: Session) -> Result<(), AppError> {
+    pub async fn add_session(
+        self: &Arc<Self>,
+        user_id: Uuid,
+        session: Session,
+    ) -> Result<(), AppError> {
         sqlx::query!(
             r#"INSERT INTO sessions (
                 unsigned_ssid, user_id, user_agent, ip_address, created_at, last_used, expires_at
             ) VALUES ($1, $2, $3, $4, $5, $6, $7)"#,
             session.unsigned_ssid,
-            session.user_id,
+            user_id,
             session.user_agent,
             IpNetwork::from(session.ip_address),
             session.created_at,
@@ -111,11 +113,7 @@ impl crate::Db {
             AppError::ServerError
         })?;
 
-        tracing::info!(
-            "[Session Added] user_id: {}, session_id: {}",
-            session.user_id,
-            session.unsigned_ssid
-        );
+        tracing::info!("[Session Added] user_id: {user_id}, session_id: {}", session.unsigned_ssid);
         Ok(())
     }
 
