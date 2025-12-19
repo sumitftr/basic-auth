@@ -4,7 +4,7 @@ use std::{sync::Arc, time::Duration};
 use tokio::sync::OnceCell;
 
 mod active;
-pub mod applicants;
+pub mod applications;
 pub mod bucket;
 pub mod sessions;
 pub mod users;
@@ -16,9 +16,7 @@ pub struct Db {
     bucket: bucket::BlackBlazeB2,
     // in memory stores
     active: Cache<sqlx::types::Uuid, UserData>,
-    applicants: applicants::ApplicantsCache,
-    openid_connecting: Cache<std::net::SocketAddr, applicants::OAuthInfo>,
-    recovering: Cache<String, applicants::PasswordResetInfo>, // code
+    applications: applications::Applications,
 }
 
 static DB: OnceCell<Arc<Db>> = OnceCell::const_new();
@@ -40,15 +38,7 @@ impl Db {
                     .max_capacity(32728)
                     .time_to_live(Duration::from_secs(Session::MEM_CACHE_DURATION))
                     .build(),
-                applicants: applicants::ApplicantsCache::new(),
-                openid_connecting: Cache::builder()
-                    .max_capacity(4096)
-                    .time_to_live(Duration::from_secs(300))
-                    .build(),
-                recovering: Cache::builder()
-                    .max_capacity(4096)
-                    .time_to_live(Duration::from_secs(300))
-                    .build(),
+                applications: applications::Applications::new(),
             })
         })
         .await

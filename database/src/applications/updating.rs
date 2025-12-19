@@ -1,4 +1,4 @@
-use crate::applicants::{Applicant, ApplicationStatus};
+use super::{RegistrantEntry, RegistrantStatus};
 use common::AppError;
 use std::{net::SocketAddr, sync::Arc};
 
@@ -12,9 +12,9 @@ impl crate::Db {
         otp: String,
     ) -> Result<(), AppError> {
         self.is_email_available(&new_email).await?;
-        self.applicants.insert(
+        self.applications.insert_registrant(
             new_email,
-            Applicant {
+            RegistrantEntry {
                 socket_addr,
                 display_name: None,
                 birth_date: None,
@@ -22,7 +22,7 @@ impl crate::Db {
                 icon: None,
                 phone: None,
                 oauth_provider: common::oauth::OAuthProvider::None,
-                status: ApplicationStatus::UpdatingEmail { old_email, otp },
+                status: RegistrantStatus::UpdatingEmail { old_email, otp },
             },
         );
         Ok(())
@@ -35,9 +35,9 @@ impl crate::Db {
         new_email: String,
         otp: &str,
     ) -> Result<(), AppError> {
-        let entry = self.applicants.get(&new_email).ok_or(AppError::UserNotFound)?;
+        let entry = self.applications.registrants.get(&new_email).ok_or(AppError::UserNotFound)?;
         match &entry.status {
-            ApplicationStatus::UpdatingEmail { old_email: mem_old_email, otp: mem_otp }
+            RegistrantStatus::UpdatingEmail { old_email: mem_old_email, otp: mem_otp }
                 if otp == mem_otp && old_email == mem_old_email =>
             {
                 sqlx::query!("UPDATE users SET email = $1 WHERE email = $2", new_email, old_email)
@@ -47,14 +47,15 @@ impl crate::Db {
                         tracing::error!("{:?}", e);
                         AppError::ServerError
                     })?;
+                self.applications.remove_registrant(&new_email);
 
                 tracing::info!("[Email Updated] Old: {old_email}, New: {new_email}");
                 Ok(())
             }
-            ApplicationStatus::UpdatingEmail { otp: mem_otp, .. } if otp != mem_otp => {
+            RegistrantStatus::UpdatingEmail { otp: mem_otp, .. } if otp != mem_otp => {
                 Err(AppError::InvalidOTP)
             }
-            ApplicationStatus::UpdatingEmail { .. } => {
+            RegistrantStatus::UpdatingEmail { .. } => {
                 Err(AppError::BadReq("New email didn't match"))
             }
             _ => Err(AppError::BadReq("Please verify the email")),

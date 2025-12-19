@@ -26,7 +26,7 @@ pub async fn login(
     let oauth_cfg = common::oauth::get_oauth_provider(OAuthProvider::from(q.by))
         .ok_or(AppError::InvalidOAuthProvider)?;
 
-    db.add_oauth_creds(
+    db.add_oidc_info(
         *conn_info,
         csrf_state.clone(),
         code_verifier,
@@ -76,14 +76,10 @@ pub async fn callback(
     headers: HeaderMap,
     Query(q): Query<ProviderRedirect>,
 ) -> Result<impl IntoResponse, AppError> {
-    let oauth_info =
-        db.get_oauth_creds(&conn_info).ok_or(AppError::BadReq("OAuth credentials not found"))?;
+    let oidc_info =
+        db.get_oidc_info(&q.csrf_state).ok_or(AppError::BadReq("CSRF state didn't match"))?;
 
-    if oauth_info.csrf_state != q.csrf_state {
-        return Err(AppError::BadReq("CSRF state didn't match"));
-    }
-
-    let oauth_cfg = common::oauth::get_oauth_provider(oauth_info.provider)
+    let oauth_cfg = common::oauth::get_oauth_provider(oidc_info.provider)
         .ok_or(AppError::InvalidOAuthProvider)?;
     let client = reqwest::Client::new();
     let redirect_uri = format!("{}/api/oauth2/callback", &*common::SERVICE_DOMAIN);
@@ -97,7 +93,7 @@ pub async fn callback(
             ("code", &q.authorization_code),
             ("redirect_uri", &redirect_uri),
             ("grant_type", &"authorization_code".to_string()),
-            ("code_verifier", &oauth_info.code_verifier),
+            ("code_verifier", &oidc_info.code_verifier),
         ])
         .send()
         .await
@@ -138,7 +134,7 @@ pub async fn callback(
 
     // getting user info by decoding id_token or by `fetch_user_info` function
     let user_info = if let Some(id_token) = token_response.id_token {
-        match verify_and_decode_id_token(&id_token, &oauth_cfg.client_id, &oauth_info.nonce) {
+        match verify_and_decode_id_token(&id_token, &oauth_cfg.client_id, &oidc_info.nonce) {
             Ok(claims) => UserInfo {
                 sub: claims.userinfo.sub,
                 email: claims.userinfo.email,
@@ -175,21 +171,21 @@ pub async fn callback(
                 } else {
                     db.make_user_active(user, new_session);
                 }
-                db.remove_oauth_creds(&conn_info);
+                db.remove_oidc_info(&q.csrf_state);
                 Ok((set_cookie_headermap, Redirect::to("/")).into_response()) // REDIRECT ENDPOINT NEEDS TO BE CHECKED
             }
         },
-        // create applicant if the user is trying to register using open id connect
+        // create registrant if the user is trying to register using open id connect
         Err(AppError::UserNotFound) => {
-            db.create_applicant_oidc(
+            db.create_registrant_oidc(
                 *conn_info,
                 user_info.name,
                 user_info.email,
                 user_info.picture,
-                oauth_info.provider,
+                oidc_info.provider,
             )
             .await?;
-            db.remove_oauth_creds(&conn_info);
+            db.remove_oidc_info(&q.csrf_state);
             Ok(Redirect::to("/register/finish_oidc").into_response())
         }
         Err(e) => Err(e),

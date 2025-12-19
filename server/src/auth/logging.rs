@@ -40,8 +40,7 @@ pub async fn login(
     if let Some((arc_wrapped, is_session_present)) = db.get_active_user(&parsed_session)
         && !is_session_present
     {
-        let mut guard = arc_wrapped.lock().unwrap();
-        guard.1.push(new_session);
+        arc_wrapped.lock().unwrap().1.push(new_session);
     } else {
         db.make_user_active(user, new_session);
     }

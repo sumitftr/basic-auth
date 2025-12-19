@@ -36,8 +36,7 @@ pub async fn start(
     let otp = common::generate::otp(&body.email);
     tracing::info!("Email: {}, OTP: {}", body.email, otp);
 
-    // storing applicant data in memory
-    db.create_applicant(*conn_info, body.name, body.email.clone(), birth_date, otp.clone()).await?;
+    db.create_registrant(*conn_info, body.name, body.email.clone(), birth_date, otp.clone()).await?;
 
     // sending otp to the email
     common::mail::send(
@@ -62,7 +61,7 @@ pub async fn resend_otp(
     Json(body): Json<ResendOtpRequest>,
 ) -> Result<ErasedJson, AppError> {
     let otp = common::generate::otp(&body.email);
-    db.update_applicant_otp(&body.email, otp.clone()).await?;
+    db.update_registrant_otp(&body.email, otp.clone()).await?;
 
     // resending otp to the email
     common::mail::send(
@@ -88,7 +87,7 @@ pub async fn verify_email(
     Json(body): Json<VerifyEmailRequest>,
 ) -> Result<ErasedJson, AppError> {
     // verifying email by checking if the otp sent by user matches the original one
-    db.verify_applicant_email(&body.email, &body.otp).await?;
+    db.verify_registrant_email(&body.email, &body.otp).await?;
 
     // sending email verification success
     common::mail::send(
@@ -119,8 +118,7 @@ pub async fn set_password(
 ) -> Result<ErasedJson, AppError> {
     common::validation::is_password_strong(&body.password)?;
 
-    // setting password in in-memory database
-    db.set_applicant_password(&body.email, body.password).await?;
+    db.set_registrant_password(&body.email, body.password).await?;
 
     Ok(json!({
         "message": format!("Your password for email {} has been set", body.email)
@@ -142,7 +140,7 @@ pub async fn set_username(
     common::validation::is_username_valid(&body.username)?;
 
     // registering user to primary database
-    let user = db.set_applicant_username(body.email, body.username).await?;
+    let user = db.set_registrant_username(body.email, body.username).await?;
 
     let (new_session, _, set_cookie_headermap) =
         common::session::create_session(user.id, &headers, *conn_info);

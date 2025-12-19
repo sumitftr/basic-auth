@@ -1,4 +1,4 @@
-use super::{Applicant, ApplicationStatus};
+use super::{RegistrantEntry, RegistrantStatus};
 use crate::users::User;
 use common::AppError;
 use sqlx::types::time::OffsetDateTime;
@@ -6,7 +6,7 @@ use std::{net::SocketAddr, sync::Arc};
 
 // sub steps for registering an user
 impl crate::Db {
-    pub async fn create_applicant(
+    pub async fn create_registrant(
         self: &Arc<Self>,
         socket: SocketAddr,
         name: String,
@@ -15,9 +15,9 @@ impl crate::Db {
         otp: String,
     ) -> Result<(), AppError> {
         self.is_email_available(&email).await?;
-        self.applicants.insert(
+        self.applications.insert_registrant(
             email,
-            Applicant {
+            RegistrantEntry {
                 socket_addr: socket,
                 display_name: Some(name),
                 birth_date: Some(birth_date),
@@ -25,70 +25,70 @@ impl crate::Db {
                 icon: None,
                 phone: None,
                 oauth_provider: common::oauth::OAuthProvider::None,
-                status: ApplicationStatus::Created(otp),
+                status: RegistrantStatus::Created(otp),
             },
         );
         Ok(())
     }
 
-    pub async fn update_applicant_otp(
+    pub async fn update_registrant_otp(
         self: &Arc<Self>,
         email: &str,
         otp: String,
     ) -> Result<(), AppError> {
-        if let Some(mut entry) = self.applicants.get(email) {
-            entry.status = ApplicationStatus::Created(otp);
-            self.applicants.insert(email.to_string(), entry);
+        if let Some(mut entry) = self.applications.registrants.get(email) {
+            entry.status = RegistrantStatus::Created(otp);
+            self.applications.insert_registrant(email.to_string(), entry);
             Ok(())
         } else {
             Err(AppError::UserNotFound)
         }
     }
 
-    pub async fn verify_applicant_email(
+    pub async fn verify_registrant_email(
         self: &Arc<Self>,
         email: &str,
         otp: &str,
     ) -> Result<(), AppError> {
-        let entry = self.applicants.get(email).ok_or(AppError::UserNotFound)?;
+        let entry = self.applications.registrants.get(email).ok_or(AppError::UserNotFound)?;
         match &entry.status {
-            ApplicationStatus::Created(db_otp) if db_otp == otp => {
-                self.applicants.insert(email.to_string(), entry);
+            RegistrantStatus::Created(db_otp) if db_otp == otp => {
+                self.applications.insert_registrant(email.to_string(), entry);
                 Ok(())
             }
-            ApplicationStatus::Created(_) => Err(AppError::InvalidOTP),
+            RegistrantStatus::Created(_) => Err(AppError::InvalidOTP),
             _ => Err(AppError::BadReq("Please verify the email")),
         }
     }
 
-    pub async fn set_applicant_password(
+    pub async fn set_registrant_password(
         self: &Arc<Self>,
         email: &str,
         password: String,
     ) -> Result<(), AppError> {
-        if let Some(mut entry) = self.applicants.get(email) {
+        if let Some(mut entry) = self.applications.registrants.get(email) {
             entry.password = Some(password);
-            self.applicants.insert(email.to_string(), entry);
+            self.applications.insert_registrant(email.to_string(), entry);
             Ok(())
         } else {
             Err(AppError::UserNotFound)
         }
     }
 
-    pub async fn set_applicant_username(
+    pub async fn set_registrant_username(
         self: &Arc<Self>,
         email: String,
         username: String,
     ) -> Result<User, AppError> {
         self.is_username_available(&username).await?;
-        let applicant = self.applicants.get(&email).ok_or(AppError::UserNotFound)?;
+        let registrant = self.applications.registrants.get(&email).ok_or(AppError::UserNotFound)?;
 
         let user = User {
             id: sqlx::types::Uuid::new_v4(),
-            display_name: applicant.display_name.unwrap(),
+            display_name: registrant.display_name.unwrap(),
             email,
-            birth_date: applicant.birth_date.unwrap(),
-            password: applicant.password,
+            birth_date: registrant.birth_date.unwrap(),
+            password: registrant.password,
             username,
             banner: None,
             icon: None,
@@ -101,7 +101,7 @@ impl crate::Db {
             created: OffsetDateTime::now_utc(),
         };
         self.create_user_forced(&user).await;
-        self.applicants.remove(&user.email);
+        self.applications.remove_registrant(&user.email);
         Ok(user)
     }
 }

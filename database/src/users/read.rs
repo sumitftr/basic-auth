@@ -6,7 +6,7 @@ use std::sync::Arc;
 impl crate::Db {
     // Check if email is available
     pub async fn is_email_available(&self, email: &str) -> Result<(), AppError> {
-        if self.applicants.get(email).is_some() {
+        if self.applications.is_email_present(email) {
             return Err(AppError::EmailTaken);
         }
 
