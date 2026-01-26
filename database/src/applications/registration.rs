@@ -11,7 +11,6 @@ impl crate::Db {
         socket: SocketAddr,
         name: String,
         email: String,
-        birth_date: OffsetDateTime,
         otp: String,
     ) -> Result<(), AppError> {
         self.is_email_available(&email).await?;
@@ -20,7 +19,6 @@ impl crate::Db {
             RegistrantEntry {
                 socket_addr: socket,
                 display_name: Some(name),
-                birth_date: Some(birth_date),
                 password: None,
                 icon: None,
                 phone: None,
@@ -87,7 +85,7 @@ impl crate::Db {
             id: sqlx::types::Uuid::new_v4(),
             display_name: registrant.display_name.unwrap(),
             email,
-            birth_date: registrant.birth_date.unwrap(),
+            birth_date: None,
             password: registrant.password,
             username,
             banner: None,

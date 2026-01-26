@@ -2,7 +2,7 @@ CREATE TABLE IF NOT EXISTS deleted_users (
     id             UUID PRIMARY KEY NOT NULL,
     display_name   VARCHAR(255) NOT NULL,
     email          VARCHAR(320) NOT NULL,
-    birth_date     TIMESTAMPTZ NOT NULL,
+    birth_date     TIMESTAMPTZ,
     password       VARCHAR(128),
     username       VARCHAR(32) NOT NULL,
     banner         VARCHAR(511),

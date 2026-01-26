@@ -17,7 +17,6 @@ impl crate::Db {
             RegistrantEntry {
                 socket_addr,
                 display_name: None,
-                birth_date: None,
                 password: None,
                 icon: None,
                 phone: None,

@@ -23,7 +23,6 @@ pub enum DropType {
 pub struct RegistrantEntry {
     pub socket_addr: std::net::SocketAddr,
     pub display_name: Option<String>,
-    pub birth_date: Option<sqlx::types::time::OffsetDateTime>,
     pub password: Option<String>,
     pub icon: Option<String>,
     pub phone: Option<String>,

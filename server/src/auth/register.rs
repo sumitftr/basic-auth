@@ -6,18 +6,11 @@ use axum_extra::{json, response::ErasedJson};
 use common::AppError;
 use database::Db;
 use std::sync::Arc;
-use time::UtcOffset;
 
 #[derive(serde::Deserialize)]
 pub struct CreateUserRequest {
     name: String,
     email: String,
-    year: u32,
-    month: u8,
-    day: u8,
-    offset_hours: i8,
-    offset_minutes: i8,
-    offset_seconds: i8,
 }
 
 pub async fn start(
@@ -28,15 +21,11 @@ pub async fn start(
     // validating user sent data
     common::validation::is_display_name_valid(&body.name)?;
     common::validation::is_email_valid(&body.email)?;
-    let offset = UtcOffset::from_hms(body.offset_hours, body.offset_minutes, body.offset_seconds)
-        .map_err(|_| AppError::InvalidData("Invalid UTC Offset"))?;
-    let birth_date =
-        common::validation::is_birth_date_valid(body.year, body.month, body.day, offset)?;
 
     let otp = common::generate::otp(&body.email);
     tracing::info!("Email: {}, OTP: {}", body.email, otp);
 
-    db.create_registrant(*conn_info, body.name, body.email.clone(), birth_date, otp.clone()).await?;
+    db.create_registrant(*conn_info, body.name, body.email.clone(), otp.clone()).await?;
 
     // sending otp to the email
     common::mail::send(
@@ -155,12 +144,6 @@ pub async fn set_username(
 #[derive(serde::Deserialize)]
 pub struct FinishOidcRequest {
     email: String,
-    year: u32,
-    month: u8,
-    day: u8,
-    offset_hours: i8,
-    offset_minutes: i8,
-    offset_seconds: i8,
     username: String,
 }
 
@@ -172,13 +155,8 @@ pub async fn finish_oidc(
 ) -> Result<impl IntoResponse, AppError> {
     common::validation::is_username_valid(&body.username)?;
 
-    let offset = UtcOffset::from_hms(body.offset_hours, body.offset_minutes, body.offset_seconds)
-        .map_err(|_| AppError::InvalidData("Invalid UTC Offset"))?;
-    let birth_date =
-        common::validation::is_birth_date_valid(body.year, body.month, body.day, offset)?;
-
     // registering user to primary database
-    let user = db.finish_oidc_application(body.email, birth_date, body.username).await?;
+    let user = db.finish_oidc_application(body.email, body.username).await?;
 
     let (new_session, _, set_cookie_headermap) =
         common::session::create_session(user.id, &headers, *conn_info);

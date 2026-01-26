@@ -7,7 +7,7 @@ default-members = [ "web" ]
 [workspace.package]
 version = "0.1.0"
 edition = "2024"
-authors = ["Sumit Modak <sumit.modak.code@gmail.com>"]
+authors = ["Sumit Modak <sumitftr@proton.me>"]
 repository = "https://github.com/sumitftr/basic-auth"
 license = "MIT"
 readme = "README.md"

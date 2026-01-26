@@ -22,17 +22,15 @@ fn main() -> Result<(), reqwest::Error> {
     loop {
         out.write("Enter your email: ");
         let email = token.next::<String>();
-        out.write("Enter year of birth: ");
-        let year = token.next::<u32>();
-        out.write("Enter month of birth: ");
-        let month = token.next::<u8>();
-        out.write("Enter day of birth: ");
-        let day = token.next::<u8>();
+        // out.write("Enter year of birth: ");
+        // let year = token.next::<u32>();
+        // out.write("Enter month of birth: ");
+        // let month = token.next::<u8>();
+        // out.write("Enter day of birth: ");
+        // let day = token.next::<u8>();
         out.write("Enter your username: ");
         let username = token.next::<String>();
-        let body4 = format!(
-            r#"{{"email":"{email}","year":{year},"month":{month},"day":{day},"username":"{username}"}}"#
-        );
+        let body4 = format!(r#"{{"email":"{email}","username":"{username}"}}"#);
         let res4 = client
             .post(&endpoint4)
             .header(header::CONTENT_TYPE, "application/json")

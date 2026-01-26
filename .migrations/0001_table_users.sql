@@ -2,7 +2,7 @@ CREATE TABLE IF NOT EXISTS users (
     id             UUID PRIMARY KEY NOT NULL,
     display_name   VARCHAR(64) NOT NULL,
     email          VARCHAR(320) NOT NULL UNIQUE,
-    birth_date     TIMESTAMPTZ NOT NULL,
+    birth_date     TIMESTAMPTZ,
     password       VARCHAR(128),
     username       VARCHAR(32) NOT NULL UNIQUE,
     banner         VARCHAR(511),

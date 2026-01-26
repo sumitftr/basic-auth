@@ -15,9 +15,11 @@ where
         })
         .collect::<Vec<_>>();
 
+    let birth_date = if let Some(v) = &user.birth_date { v.to_string() } else { "".to_string() };
+
     axum_extra::json!({
         "email": &user.email,
-        "birth_date": user.birth_date.to_string(),
+        "birth_date": birth_date,
         "username": &user.username,
         "display_name": &user.display_name,
         "icon": &user.icon,

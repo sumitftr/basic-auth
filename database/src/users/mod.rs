@@ -17,7 +17,7 @@ macro_rules! user_struct {
             pub id: sqlx::types::Uuid,
             pub display_name: String,
             pub email: String,
-            pub birth_date: OffsetDateTime,
+            pub birth_date: Option<OffsetDateTime>,
             pub password: Option<String>,
             pub username: String,
             pub banner: Option<String>,

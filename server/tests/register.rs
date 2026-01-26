@@ -1,4 +1,4 @@
-#![allow(unused_must_use)]
+#![allow(unused_must_use, unused_parens)]
 mod common;
 
 use common::{Printer, Scanner};
@@ -24,37 +24,35 @@ fn main() -> Result<(), reqwest::Error> {
 
     // first step of registering
     loop {
-        let (name, year, month, day, offset_hours, offset_minutes, offset_seconds) = if is_auto {
+        let (name) = if is_auto {
             email = FreeEmail().fake();
             (
-                format!("{} {}", FirstName().fake::<String>(), LastName().fake::<String>()),
-                (1950..=2024).fake::<u32>(),
-                (1..=12).fake::<u8>(),
-                (1..=28).fake::<u8>(),
-                (1..=11).fake::<u8>(),
-                (1..=59).fake::<u8>(),
-                (1..=59).fake::<u8>(),
+                format!("{} {}", FirstName().fake::<String>(), LastName().fake::<String>())
+                // (1950..=2024).fake::<u32>(),
+                // (1..=12).fake::<u8>(),
+                // (1..=28).fake::<u8>(),
+                // (1..=11).fake::<u8>(),
+                // (1..=59).fake::<u8>(),
+                // (1..=59).fake::<u8>(),
             )
         } else {
             out.write("Enter name: ");
             let name = token.next_line::<String>();
             out.write("Enter email: ");
             email = token.next_line::<String>();
-            out.write("Enter year of birth: ");
-            let year = token.next::<u32>();
-            out.write("Enter month of birth: ");
-            let month = token.next::<u8>();
-            out.write("Enter day of birth: ");
-            let day = token.next::<u8>();
-            let offset_hours = (1..=11).fake::<u8>();
-            let offset_minutes = (1..=59).fake::<u8>();
-            let offset_seconds = (1..=59).fake::<u8>();
-            (name, year, month, day, offset_hours, offset_minutes, offset_seconds)
+            // out.write("Enter year of birth: ");
+            // let year = token.next::<u32>();
+            // out.write("Enter month of birth: ");
+            // let month = token.next::<u8>();
+            // out.write("Enter day of birth: ");
+            // let day = token.next::<u8>();
+            // let offset_hours = (1..=11).fake::<u8>();
+            // let offset_minutes = (1..=59).fake::<u8>();
+            // let offset_seconds = (1..=59).fake::<u8>();
+            (name)
         };
 
-        let body1 = format!(
-            r#"{{"name": "{name}", "email": "{email}", "year": {year}, "month": {month}, "day": {day}, "offset_hours": {offset_hours}, "offset_minutes": {offset_minutes}, "offset_seconds": {offset_seconds}}}"#
-        );
+        let body1 = format!(r#"{{"name": "{name}", "email": "{email}"}}"#);
         if is_auto {
             out.write(&body1);
             out.write("\n");

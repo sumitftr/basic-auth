@@ -20,7 +20,6 @@ impl crate::Db {
             RegistrantEntry {
                 socket_addr,
                 display_name: Some(name),
-                birth_date: None,
                 password: None,
                 icon: Some(icon),
                 phone: None,
@@ -34,7 +33,6 @@ impl crate::Db {
     pub async fn finish_oidc_application(
         self: &Arc<Self>,
         email: String,
-        birth_date: OffsetDateTime,
         username: String,
     ) -> Result<User, AppError> {
         self.is_username_available(&username).await?;
@@ -74,7 +72,7 @@ impl crate::Db {
             id,
             display_name: registrant.display_name.unwrap(),
             email,
-            birth_date,
+            birth_date: None,
             password: None,
             username,
             banner: None,
