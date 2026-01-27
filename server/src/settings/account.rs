@@ -1,8 +1,8 @@
 use axum::{Extension, extract::State};
 use axum_extra::{json, response::ErasedJson};
-use common::{AppError, session::ParsedSession};
 use database::{Db, UserData};
 use std::sync::Arc;
+use util::{AppError, session::ParsedSession};
 
 pub async fn delete_account(
     State(db): State<Arc<Db>>,

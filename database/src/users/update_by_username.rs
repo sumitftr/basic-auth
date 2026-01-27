@@ -1,5 +1,5 @@
-use common::AppError;
 use std::sync::Arc;
+use util::AppError;
 
 // implementation block for checking and updating user attributes by username
 impl crate::Db {

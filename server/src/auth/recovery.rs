@@ -4,9 +4,9 @@ use axum::{
     extract::{ConnectInfo, Query, State},
 };
 use axum_extra::{json, response::ErasedJson};
-use common::AppError;
 use database::Db;
 use std::sync::Arc;
+use util::AppError;
 
 #[derive(serde::Deserialize)]
 pub struct ForgotPasswordRequest {
@@ -19,18 +19,18 @@ pub async fn forgot_password(
     ConnectInfo(conn_info): ConnectInfo<ClientSocket>,
     Json(body): Json<ForgotPasswordRequest>,
 ) -> Result<ErasedJson, AppError> {
-    common::validation::is_email_valid(&body.email)?;
-    let code = common::generate::hex_64(&body.email);
+    util::validation::is_email_valid(&body.email)?;
+    let code = util::generate::hex_64(&body.email);
     db.request_password_reset(*conn_info, body.email.clone(), code.clone());
 
-    common::mail::send(
+    util::mail::send(
         body.email.clone(),
-        format!("{} password reset request", &*common::SERVICE_NAME),
+        format!("{} password reset request", &*util::SERVICE_NAME),
         format!(
             "<h1>Reset your password?</h1>\nIf you requested a password reset for {} press on this link {}\nIf you didn't make the request, please ignore this email.\nThanks, {}\n",
             body.email,
-            format_args!("{}/api/reset_password?code={code}", &*common::SERVICE_DOMAIN),
-            &*common::SERVICE_NAME
+            format_args!("{}/api/reset_password?code={code}", &*util::SERVICE_DOMAIN),
+            &*util::SERVICE_NAME
         ),
     ).await?;
 
@@ -55,17 +55,13 @@ pub async fn reset_password(
     Query(q): Query<ResetPasswordQuery>,
     Json(body): Json<ResetPasswordRequest>,
 ) -> Result<ErasedJson, AppError> {
-    common::validation::is_password_strong(&body.password)?;
+    util::validation::is_password_strong(&body.password)?;
     let email = db.reset_password(*conn_info, &q.code, &body.password).await?;
 
-    common::mail::send(
+    util::mail::send(
         email.clone(),
-        format!("Your {} password has been changed", &*common::SERVICE_NAME),
-        format!(
-            "Your password for {} has been changed.\nThanks, {}\n",
-            email,
-            &*common::SERVICE_NAME
-        ),
+        format!("Your {} password has been changed", &*util::SERVICE_NAME),
+        format!("Your password for {} has been changed.\nThanks, {}\n", email, &*util::SERVICE_NAME),
     )
     .await?;
 

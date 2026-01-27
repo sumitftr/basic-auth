@@ -1,6 +1,6 @@
 use crate::users::User;
-use common::AppError;
 use std::sync::Arc;
+use util::AppError;
 
 impl crate::Db {
     // adds a user to the database

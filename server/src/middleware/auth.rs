@@ -3,7 +3,7 @@ use axum::{
     middleware::Next,
     response::{IntoResponse, Response},
 };
-use common::{
+use util::{
     AppError,
     session::{ParsedSession, SessionStatus},
 };
@@ -43,7 +43,7 @@ pub async fn auth_middleware(
         SessionStatus::Expiring(_) | SessionStatus::Refreshable(_) => {
             // automatic session refresh code block
             let (new_session, _, set_cookie_headermap) =
-                common::session::create_session(user.id, req.headers(), *conn_info);
+                util::session::create_session(user.id, req.headers(), *conn_info);
 
             // replacing the old session with new session
             db.add_session(user.id, new_session.clone()).await?;
@@ -57,7 +57,7 @@ pub async fn auth_middleware(
         SessionStatus::Invalid => {
             db.clear_expired_sessions(user.id).await?;
 
-            return Err(AppError::InvalidSession(common::session::expire_session()));
+            return Err(AppError::InvalidSession(util::session::expire_session()));
         }
     }
 

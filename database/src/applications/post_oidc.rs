@@ -1,8 +1,8 @@
 use super::{RegistrantEntry, RegistrantStatus};
 use crate::users::User;
-use common::AppError;
 use sqlx::types::time::OffsetDateTime;
 use std::{net::SocketAddr, sync::Arc};
+use util::AppError;
 
 // sub steps for registering an user
 impl crate::Db {
@@ -12,7 +12,7 @@ impl crate::Db {
         name: String,
         email: String,
         icon: String,
-        oauth_provider: common::oauth::OAuthProvider,
+        oauth_provider: util::oauth::OAuthProvider,
     ) -> Result<(), AppError> {
         self.is_email_available(&email).await?;
         self.applications.insert_registrant(

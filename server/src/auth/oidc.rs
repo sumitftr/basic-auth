@@ -5,9 +5,9 @@ use axum::{
     response::{IntoResponse, Redirect},
 };
 use base64::Engine;
-use common::{AppError, oauth::OAuthProvider};
 use database::Db;
 use std::sync::Arc;
+use util::{AppError, oauth::OAuthProvider};
 
 #[derive(serde::Deserialize)]
 pub struct ProviderQuery {
@@ -20,10 +20,10 @@ pub async fn login(
     Query(q): Query<ProviderQuery>,
 ) -> Result<Redirect, AppError> {
     // Generate state, nonce, and PKCE
-    let csrf_state = common::generate::random_string(32);
-    let nonce = common::generate::random_string(32);
-    let (code_verifier, code_challenge) = common::generate::pkce();
-    let oauth_cfg = common::oauth::get_oauth_provider(OAuthProvider::from(q.by))
+    let csrf_state = util::generate::random_string(32);
+    let nonce = util::generate::random_string(32);
+    let (code_verifier, code_challenge) = util::generate::pkce();
+    let oauth_cfg = util::oauth::get_oauth_provider(OAuthProvider::from(q.by))
         .ok_or(AppError::InvalidOAuthProvider)?;
 
     db.add_oidc_info(
@@ -34,7 +34,7 @@ pub async fn login(
         oauth_cfg.provider,
     );
 
-    let redirect_uri = format!("{}/api/oauth2/callback", &*common::SERVICE_DOMAIN);
+    let redirect_uri = format!("{}/api/oauth2/callback", &*util::SERVICE_DOMAIN);
     let mut request_uri = oauth_cfg.authorization_endpoint.clone();
     request_uri
         .query_pairs_mut()
@@ -79,10 +79,10 @@ pub async fn callback(
     let oidc_info =
         db.get_oidc_info(&q.csrf_state).ok_or(AppError::BadReq("CSRF state didn't match"))?;
 
-    let oauth_cfg = common::oauth::get_oauth_provider(oidc_info.provider)
-        .ok_or(AppError::InvalidOAuthProvider)?;
+    let oauth_cfg =
+        util::oauth::get_oauth_provider(oidc_info.provider).ok_or(AppError::InvalidOAuthProvider)?;
     let client = reqwest::Client::new();
-    let redirect_uri = format!("{}/api/oauth2/callback", &*common::SERVICE_DOMAIN);
+    let redirect_uri = format!("{}/api/oauth2/callback", &*util::SERVICE_DOMAIN);
 
     // Exchange authorization code for tokens
     let token_response = match client
@@ -160,7 +160,7 @@ pub async fn callback(
             // login if the user is already registered with OIDC
             _ => {
                 let (new_session, parsed_session, set_cookie_headermap) =
-                    common::session::create_session(user.id, &headers, *conn_info);
+                    util::session::create_session(user.id, &headers, *conn_info);
                 db.add_session(user.id, new_session.clone()).await?;
                 // activating session by adding it to `Db::active`
                 if let Some((arc_wrapped, is_session_present)) = db.get_active_user(&parsed_session)

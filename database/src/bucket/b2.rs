@@ -1,8 +1,8 @@
-use common::AppError;
 use serde::{Deserialize, Serialize};
 use sha1::{Digest, Sha1};
 use std::sync::Arc;
 use tokio::sync::RwLock;
+use util::AppError;
 
 pub struct BlackBlazeB2 {
     pub client: reqwest::Client,

@@ -1,6 +1,6 @@
 use super::User;
-use common::AppError;
 use std::sync::Arc;
+use util::AppError;
 
 // implementation block for checking user attributes
 impl crate::Db {

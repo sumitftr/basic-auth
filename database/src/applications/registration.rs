@@ -1,8 +1,8 @@
 use super::{RegistrantEntry, RegistrantStatus};
 use crate::users::User;
-use common::AppError;
 use sqlx::types::time::OffsetDateTime;
 use std::{net::SocketAddr, sync::Arc};
+use util::AppError;
 
 // sub steps for registering an user
 impl crate::Db {
@@ -22,7 +22,7 @@ impl crate::Db {
                 password: None,
                 icon: None,
                 phone: None,
-                oauth_provider: common::oauth::OAuthProvider::None,
+                oauth_provider: util::oauth::OAuthProvider::None,
                 status: RegistrantStatus::Created(otp),
             },
         );
@@ -95,7 +95,7 @@ impl crate::Db {
             gender: None,
             phone: None,
             country: None,
-            oauth_provider: common::oauth::OAuthProvider::None,
+            oauth_provider: util::oauth::OAuthProvider::None,
             created: OffsetDateTime::now_utc(),
         };
         self.create_user_forced(&user).await;

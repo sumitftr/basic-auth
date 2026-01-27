@@ -1,6 +1,6 @@
 use axum::{extract::Request, middleware::Next, response::Response};
-use common::AppError;
 use database::users::User;
+use util::AppError;
 
 pub async fn admin_middleware(req: Request, next: Next) -> Result<Response, AppError> {
     if let Some(u) = req.extensions().get::<User>()

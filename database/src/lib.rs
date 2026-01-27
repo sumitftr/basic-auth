@@ -1,7 +1,7 @@
-use common::session::Session;
 use moka::sync::Cache;
 use std::{sync::Arc, time::Duration};
 use tokio::sync::OnceCell;
+use util::session::Session;
 
 mod active;
 pub mod applications;

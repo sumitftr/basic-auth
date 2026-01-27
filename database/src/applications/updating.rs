@@ -1,6 +1,6 @@
 use super::{RegistrantEntry, RegistrantStatus};
-use common::AppError;
 use std::{net::SocketAddr, sync::Arc};
+use util::AppError;
 
 // implementation block for checking and updating user attributes by email
 impl crate::Db {
@@ -20,7 +20,7 @@ impl crate::Db {
                 password: None,
                 icon: None,
                 phone: None,
-                oauth_provider: common::oauth::OAuthProvider::None,
+                oauth_provider: util::oauth::OAuthProvider::None,
                 status: RegistrantStatus::UpdatingEmail { old_email, otp },
             },
         );

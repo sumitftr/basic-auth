@@ -4,10 +4,10 @@ use axum::{
     extract::{ConnectInfo, State},
 };
 use axum_extra::{json, response::ErasedJson};
-use common::{AppError, oauth::OAuthProvider};
 use database::{Db, UserData};
 use serde::Deserialize;
 use std::sync::Arc;
+use util::{AppError, oauth::OAuthProvider};
 
 #[derive(Deserialize)]
 pub struct UpdateEmailRequest {
@@ -32,19 +32,19 @@ pub async fn update_email(
     if email == body.new_email {
         return Err(AppError::BadReq("Your new email cannot be same as of your original email"));
     }
-    common::validation::is_email_valid(&body.new_email)?;
+    util::validation::is_email_valid(&body.new_email)?;
 
-    let otp = common::generate::otp(&body.new_email);
+    let otp = util::generate::otp(&body.new_email);
     tracing::info!("Email: {}, OTP: {}", email, otp);
 
     // adding an entry to database for further checking
     db.request_email_update(*conn_info, email, body.new_email.clone(), otp.clone()).await?;
 
     // sending mail to the new email for verification
-    common::mail::send(
+    util::mail::send(
         body.new_email,
-        format!("{otp} is your {} verification code", &*common::SERVICE_NAME),
-        format!("Confirm your email address\n {otp}\n Thanks,\n {}", &*common::SERVICE_NAME),
+        format!("{otp} is your {} verification code", &*util::SERVICE_NAME),
+        format!("Confirm your email address\n {otp}\n Thanks,\n {}", &*util::SERVICE_NAME),
     )
     .await?;
 

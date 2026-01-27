@@ -1,10 +1,10 @@
 use crate::users::User;
-use common::{
+use sqlx::types::{Uuid, ipnetwork::IpNetwork};
+use std::sync::Arc;
+use util::{
     AppError,
     session::{ParsedSession, Session},
 };
-use sqlx::types::{Uuid, ipnetwork::IpNetwork};
-use std::sync::Arc;
 
 impl crate::Db {
     /// returns the session that matches `parsed_session.unsigned_ssid`
@@ -72,7 +72,7 @@ impl crate::Db {
             gender: row.gender,
             phone: row.phone,
             country: row.country,
-            oauth_provider: common::oauth::OAuthProvider::from(row.oauth_provider.as_str()),
+            oauth_provider: util::oauth::OAuthProvider::from(row.oauth_provider.as_str()),
             created: row.created,
         };
 

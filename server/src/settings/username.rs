@@ -1,8 +1,8 @@
 use axum::{Extension, Json, extract::State};
 use axum_extra::{json, response::ErasedJson};
-use common::AppError;
 use database::{Db, UserData};
 use std::sync::Arc;
+use util::AppError;
 
 #[derive(serde::Deserialize)]
 pub struct UpdateUsernameRequest {
@@ -23,7 +23,7 @@ pub async fn update_username(
         guard.0.username.clone()
     };
     // checking if the new username is valid or not
-    common::validation::is_username_valid(&body.new_username)?;
+    util::validation::is_username_valid(&body.new_username)?;
     // checking whether the new username is same as original username or not
     if username == body.new_username {
         return Err(AppError::BadReq(
@@ -50,7 +50,7 @@ pub async fn validate_username(
     Json(body): Json<ValidateUsernameRequest>,
 ) -> Result<ErasedJson, AppError> {
     // checking if the new username is valid or not
-    common::validation::is_username_valid(&body.username)?;
+    util::validation::is_username_valid(&body.username)?;
     // checking whether the new username is same as original username or not
     let username = user.lock().unwrap().0.username.clone();
     if username == body.username {

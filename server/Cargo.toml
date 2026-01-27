@@ -8,8 +8,8 @@ license.workspace = true
 readme.workspace = true
 
 [dependencies]
-common = { path = "../common" }
 database = { path = "../database" }
+util = { path = "../util" }
 
 axum = { workspace = true }
 axum-extra = { workspace = true }

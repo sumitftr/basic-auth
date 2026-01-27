@@ -26,7 +26,7 @@ pub struct RegistrantEntry {
     pub password: Option<String>,
     pub icon: Option<String>,
     pub phone: Option<String>,
-    pub oauth_provider: common::oauth::OAuthProvider,
+    pub oauth_provider: util::oauth::OAuthProvider,
     pub status: RegistrantStatus,
 }
 
@@ -45,7 +45,7 @@ pub struct OidcInfo {
     pub socket_addr: SocketAddr,
     pub code_verifier: String,
     pub nonce: String,
-    pub provider: common::oauth::OAuthProvider,
+    pub provider: util::oauth::OAuthProvider,
 }
 
 impl Applications {

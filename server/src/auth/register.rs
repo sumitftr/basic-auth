@@ -3,9 +3,9 @@ use axum::extract::ConnectInfo;
 use axum::http::{StatusCode, header::HeaderMap};
 use axum::{Json, extract::State, response::IntoResponse};
 use axum_extra::{json, response::ErasedJson};
-use common::AppError;
 use database::Db;
 use std::sync::Arc;
+use util::AppError;
 
 #[derive(serde::Deserialize)]
 pub struct CreateUserRequest {
@@ -19,19 +19,19 @@ pub async fn start(
     Json(body): Json<CreateUserRequest>,
 ) -> Result<ErasedJson, AppError> {
     // validating user sent data
-    common::validation::is_display_name_valid(&body.name)?;
-    common::validation::is_email_valid(&body.email)?;
+    util::validation::is_display_name_valid(&body.name)?;
+    util::validation::is_email_valid(&body.email)?;
 
-    let otp = common::generate::otp(&body.email);
+    let otp = util::generate::otp(&body.email);
     tracing::info!("Email: {}, OTP: {}", body.email, otp);
 
     db.create_registrant(*conn_info, body.name, body.email.clone(), otp.clone()).await?;
 
     // sending otp to the email
-    common::mail::send(
+    util::mail::send(
         body.email,
-        format!("{otp} is your {} verification code", &*common::SERVICE_NAME),
-        format!("Confirm your email address\n {otp}\n Thanks,\n {}", &*common::SERVICE_NAME),
+        format!("{otp} is your {} verification code", &*util::SERVICE_NAME),
+        format!("Confirm your email address\n {otp}\n Thanks,\n {}", &*util::SERVICE_NAME),
     )
     .await?;
 
@@ -49,14 +49,14 @@ pub async fn resend_otp(
     State(db): State<Arc<Db>>,
     Json(body): Json<ResendOtpRequest>,
 ) -> Result<ErasedJson, AppError> {
-    let otp = common::generate::otp(&body.email);
+    let otp = util::generate::otp(&body.email);
     db.update_registrant_otp(&body.email, otp.clone()).await?;
 
     // resending otp to the email
-    common::mail::send(
+    util::mail::send(
         body.email,
-        format!("{otp} is your {} verification code", &*common::SERVICE_NAME),
-        format!("Confirm your email address\n {otp}\n Thanks,\n {}", &*common::SERVICE_NAME),
+        format!("{otp} is your {} verification code", &*util::SERVICE_NAME),
+        format!("Confirm your email address\n {otp}\n Thanks,\n {}", &*util::SERVICE_NAME),
     )
     .await?;
 
@@ -79,13 +79,13 @@ pub async fn verify_email(
     db.verify_registrant_email(&body.email, &body.otp).await?;
 
     // sending email verification success
-    common::mail::send(
+    util::mail::send(
         body.email.clone(),
         format!("Your email {} has been verified successfully", body.email),
         format!(
             "Your email {} has been verified successfully\n Thanks,\n {}",
             body.email,
-            &*common::SERVICE_NAME
+            &*util::SERVICE_NAME
         ),
     )
     .await?;
@@ -105,7 +105,7 @@ pub async fn set_password(
     State(db): State<Arc<Db>>,
     Json(body): Json<SetPasswordRequest>,
 ) -> Result<ErasedJson, AppError> {
-    common::validation::is_password_strong(&body.password)?;
+    util::validation::is_password_strong(&body.password)?;
 
     db.set_registrant_password(&body.email, body.password).await?;
 
@@ -126,13 +126,13 @@ pub async fn set_username(
     headers: HeaderMap,
     Json(body): Json<SetUsernameRequest>,
 ) -> Result<impl IntoResponse, AppError> {
-    common::validation::is_username_valid(&body.username)?;
+    util::validation::is_username_valid(&body.username)?;
 
     // registering user to primary database
     let user = db.set_registrant_username(body.email, body.username).await?;
 
     let (new_session, _, set_cookie_headermap) =
-        common::session::create_session(user.id, &headers, *conn_info);
+        util::session::create_session(user.id, &headers, *conn_info);
 
     let res_body = crate::user_data::arrange(&user, &vec![&new_session]);
     db.add_session(user.id, new_session.clone()).await?;
@@ -153,13 +153,13 @@ pub async fn finish_oidc(
     headers: HeaderMap,
     Json(body): Json<FinishOidcRequest>,
 ) -> Result<impl IntoResponse, AppError> {
-    common::validation::is_username_valid(&body.username)?;
+    util::validation::is_username_valid(&body.username)?;
 
     // registering user to primary database
     let user = db.finish_oidc_application(body.email, body.username).await?;
 
     let (new_session, _, set_cookie_headermap) =
-        common::session::create_session(user.id, &headers, *conn_info);
+        util::session::create_session(user.id, &headers, *conn_info);
 
     let res_body = crate::user_data::arrange(&user, &vec![&new_session]);
     db.add_session(user.id, new_session.clone()).await?;

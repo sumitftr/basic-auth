@@ -1,6 +1,6 @@
 use super::OidcInfo;
-use common::oauth::OAuthProvider;
 use std::{net::SocketAddr, sync::Arc};
+use util::oauth::OAuthProvider;
 
 // implementation block for those users who are authenticating using open_id_connect
 impl crate::Db {

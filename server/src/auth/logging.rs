@@ -5,9 +5,9 @@ use axum::{
     response::IntoResponse,
 };
 use axum_extra::{json, response::ErasedJson};
-use common::{AppError, session::ParsedSession};
 use database::{Db, UserData};
 use std::sync::Arc;
+use util::{AppError, session::ParsedSession};
 
 #[derive(serde::Deserialize)]
 pub struct LoginRequest {
@@ -30,7 +30,7 @@ pub async fn login(
     };
 
     let (new_session, parsed_session, set_cookie_headermap) =
-        common::session::create_session(user.id, &headers, *conn_info);
+        util::session::create_session(user.id, &headers, *conn_info);
     let res_body = crate::user_data::arrange(&user, &vec![&new_session]);
 
     // adding `Session` to primary database
@@ -60,7 +60,7 @@ pub async fn logout(
 
     Ok((
         StatusCode::CREATED,
-        common::session::expire_session(),
+        util::session::expire_session(),
         json!({
             "message": "Logout Successful"
         }),

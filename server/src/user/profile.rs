@@ -3,9 +3,9 @@ use axum::{
     extract::{Multipart, Path, State},
 };
 use axum_extra::{json, response::ErasedJson};
-use common::AppError;
 use database::{Db, users::User};
 use std::sync::{Arc, Mutex};
+use util::AppError;
 
 pub async fn get_user_profile(
     State(db): State<Arc<Db>>,
@@ -89,7 +89,7 @@ pub async fn update_profile(
                     AppError::InvalidData("Failed to read name")
                 })?;
 
-                common::validation::is_display_name_valid(&text)?;
+                util::validation::is_display_name_valid(&text)?;
 
                 display_name = Some(text.trim().to_string());
             }
@@ -99,7 +99,7 @@ pub async fn update_profile(
                     AppError::InvalidData("Failed to read bio")
                 })?;
 
-                common::validation::is_bio_valid(&text)?;
+                util::validation::is_bio_valid(&text)?;
 
                 bio = Some(text);
             }

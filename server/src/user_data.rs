@@ -1,6 +1,6 @@
 pub fn arrange<S>(user: &database::users::User, sessions: &[S]) -> axum_extra::response::ErasedJson
 where
-    S: AsRef<common::session::Session>,
+    S: AsRef<util::session::Session>,
 {
     let session_list = sessions
         .iter()

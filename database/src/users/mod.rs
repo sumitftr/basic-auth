@@ -27,7 +27,7 @@ macro_rules! user_struct {
             pub gender: Option<String>,
             pub phone: Option<String>,
             pub country: Option<String>,
-            pub oauth_provider: common::oauth::OAuthProvider,
+            pub oauth_provider: util::oauth::OAuthProvider,
             pub created: OffsetDateTime,
             $(pub $extra_field: $extra_type,)*
         }

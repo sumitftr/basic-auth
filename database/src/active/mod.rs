@@ -1,6 +1,6 @@
 use crate::{UserData, users::User};
-use common::session::{ParsedSession, Session};
 use std::sync::{Arc, Mutex};
+use util::session::{ParsedSession, Session};
 
 // implementation block for creating active users
 // those are the users whose session is cached in memory

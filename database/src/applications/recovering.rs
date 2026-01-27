@@ -1,5 +1,5 @@
-use common::AppError;
 use std::{net::SocketAddr, sync::Arc};
+use util::AppError;
 
 // implementation block for those users who forgot their password
 impl crate::Db {

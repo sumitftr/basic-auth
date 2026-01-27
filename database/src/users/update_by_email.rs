@@ -1,5 +1,5 @@
-use common::{AppError, oauth::OAuthProvider};
 use std::sync::Arc;
+use util::{AppError, oauth::OAuthProvider};
 
 // implementation block for checking and updating user attributes by email
 impl crate::Db {

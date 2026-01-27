@@ -8,7 +8,7 @@ license.workspace = true
 readme.workspace = true
 
 [dependencies]
-common = { path = "../common" }
+util = { path = "../util" }
 
 axum = { workspace = true }
 base64 = { workspace = true }

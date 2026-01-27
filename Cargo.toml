@@ -1,6 +1,6 @@
 [workspace]
 resolver = "3"
-members = [ "common", "database", "server", "web" ]
+members = [ "database", "server", "util", "web" ]
 exclude = []
 default-members = [ "web" ]
 

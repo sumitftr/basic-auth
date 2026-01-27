@@ -1,5 +1,5 @@
-use common::AppError;
 use std::sync::Arc;
+use util::AppError;
 
 impl crate::Db {
     pub async fn upload_icon(
@@ -9,7 +9,7 @@ impl crate::Db {
         _id: &str,
     ) -> Result<String, AppError> {
         // checking if the user sent icon is valid or not
-        let content_type = common::validation::is_icon_valid(&mut filename, &data)?;
+        let content_type = util::validation::is_icon_valid(&mut filename, &data)?;
         filename = format!("icon/{_id}-{filename}");
         self.upload_image(data, &filename, &content_type).await
     }
@@ -21,7 +21,7 @@ impl crate::Db {
         _id: &str,
     ) -> Result<String, AppError> {
         // checking if the user sent banner is valid or not
-        let content_type = common::validation::is_banner_valid(&mut filename, &data)?;
+        let content_type = util::validation::is_banner_valid(&mut filename, &data)?;
         filename = format!("banner/{_id}-{filename}");
         self.upload_image(data, &filename, &content_type).await
     }
