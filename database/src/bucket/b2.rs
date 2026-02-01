@@ -1,6 +1,5 @@
 use serde::{Deserialize, Serialize};
 use sha1::{Digest, Sha1};
-use std::sync::Arc;
 use tokio::sync::RwLock;
 use util::AppError;
 
@@ -11,7 +10,7 @@ pub struct BlackBlazeB2 {
     pub endpoint: String,
     pub name: String,
     pub bucket_id: String,
-    pub api_url: RwLock<String>, // Changed to RwLock to update after auth
+    pub api_url: RwLock<String>,
     pub auth_token: RwLock<Option<String>>,
     pub public_url: String,
 }
@@ -147,11 +146,9 @@ impl BlackBlazeB2 {
             AppError::ServerError
         })
     }
-}
 
-impl crate::Db {
     pub async fn upload_image(
-        self: &Arc<Self>,
+        &self,
         data: axum::body::Bytes,
         filename: &str,
         content_type: &str,
@@ -167,14 +164,13 @@ impl crate::Db {
         let sha1_hash = format!("{:x}", hasher.finalize());
 
         // Get upload URL
-        let upload_info = self.bucket.get_upload_url().await?;
+        let upload_info = self.get_upload_url().await?;
 
         // URL encode the filename
         let encoded_filename = urlencoding::encode(filename);
 
         // Upload file
         let response = self
-            .bucket
             .client
             .post(&upload_info.upload_url)
             .header("Authorization", &upload_info.authorization_token)
@@ -196,21 +192,20 @@ impl crate::Db {
             return Err(AppError::ServerError);
         }
 
-        Ok(format!("{}/{}", self.bucket.public_url, filename))
+        Ok(format!("{}/{}", self.public_url, filename))
     }
 
-    pub async fn delete_image(self: &Arc<Self>, filename: &str) -> Result<(), AppError> {
-        let auth_token = self.bucket.get_auth_token().await?;
-        let api_url = self.bucket.api_url.read().await.clone();
+    pub async fn delete_image(&self, filename: &str) -> Result<(), AppError> {
+        let auth_token = self.get_auth_token().await?;
+        let api_url = self.api_url.read().await.clone();
 
         // First, get file info to get the file ID
         let list_response = self
-            .bucket
             .client
             .post(format!("{}/b2api/v2/b2_list_file_names", api_url))
             .header("Authorization", &auth_token)
             .json(&serde_json::json!({
-                "bucketId": self.bucket.bucket_id,
+                "bucketId": self.bucket_id,
                 "startFileName": filename,
                 "maxFileCount": 1,
                 "prefix": filename
@@ -254,7 +249,6 @@ impl crate::Db {
 
         // Delete the file
         let delete_response = self
-            .bucket
             .client
             .post(format!("{}/b2api/v2/b2_delete_file_version", api_url))
             .header("Authorization", &auth_token)

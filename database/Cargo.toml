@@ -12,19 +12,21 @@ util = { path = "../util" }
 
 axum = { workspace = true }
 base64 = { workspace = true }
+const-hex = { workspace = true }
+hmac = { workspace = true }
 moka = { workspace = true }
 reqwest = { workspace = true }
 serde = { workspace = true }
 serde_json = { workspace = true }
+sha2 = { workspace = true }
 sqlx = { workspace = true }
+time = { workspace = true }
 tokio = { workspace = true }
 tracing = { workspace = true }
 
+# Required by BlackblazeB2 only
 sha1 = { version = "0.10" }
 urlencoding = { version = "2" }
-sha2 = { workspace = true }
-hmac = { workspace = true }
-const-hex = { workspace = true }
 
 [lints]
 workspace = true

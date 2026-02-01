@@ -1,6 +1,6 @@
 mod b2;
 mod crud;
-mod object_storage;
+mod r2;
 
 pub use b2::BlackBlazeB2;
-pub use object_storage::ObjectStorage;
+pub use r2::CloudflareR2;

@@ -11,7 +11,7 @@ impl crate::Db {
         // checking if the user sent icon is valid or not
         let content_type = util::validation::is_icon_valid(&mut filename, &data)?;
         filename = format!("icon/{_id}-{filename}");
-        self.upload_image(data, &filename, &content_type).await
+        self.bucket.upload_image(data, &filename, &content_type).await
     }
 
     pub async fn upload_banner(
@@ -23,6 +23,11 @@ impl crate::Db {
         // checking if the user sent banner is valid or not
         let content_type = util::validation::is_banner_valid(&mut filename, &data)?;
         filename = format!("banner/{_id}-{filename}");
-        self.upload_image(data, &filename, &content_type).await
+        self.bucket.upload_image(data, &filename, &content_type).await
     }
 }
+
+// TODO:
+// - Use Vec<Bucket> instead of Bucket (where Bucket can be any types inside database::bucket module)
+// - Create a function that determines closest bucket region based on client's ip (crate: maxminddb)
+// - And then perform the requested operation
